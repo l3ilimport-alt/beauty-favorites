@@ -154,6 +154,10 @@ MAKEUP = ["שפתון", "ליפ", "גלוס", "גלוז", "סטיין", "lip", "
 # מארז/מבחר/לוט הנמכר כיחידה אחת — מזוהה לפי השם העברי בלבד (excel מכיל "MIX" רועש)
 BUNDLE_RE = re.compile(r'מבחר|בולק|תפזורת|מארז|מיקס|ללא קופסה|no\s*box|nobox', re.I)
 def ptype(p):
+    # עקיפה מפורשת מקובץ הידע — גוברת על כל הניחושים (לתיקוני סיווג נקודתיים)
+    ov = str(p.get("category_main") or "").strip()
+    if ov:
+        return ov
     nm = str(p.get("name_he") or "")
     if BUNDLE_RE.search(nm) and "ערבוב" not in nm:   # מארזים גובר על קטגוריית התוכן
         return "מארזים"
