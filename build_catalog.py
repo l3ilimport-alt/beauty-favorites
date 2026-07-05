@@ -165,6 +165,15 @@ def ptype(p):
     STRONG_FRAG = ["בושם", "בשמים", "או דה", "eau de", "edp", "edt", "parfum", "perfume", "cologne", "מבושם"]
     if any(w in nm_l for w in STRONG_FRAG):
         return "בושם"
+    # טיפוח/שיער מפורש בשם — רק כשאין מילת איפור בשם (סרום-פאונדיישן יישאר איפור)
+    _mk_in_name = any(w in nm_l for w in MAKEUP)
+    STRONG_SKIN = ["סרום", "קרם לחות", "קרם עיניים", "קרם גוף", "קרם ידיים", "פילינג", "תרחיץ",
+                   "טיפות לחות", "מסכת פנים", "מי פנים", "טונר", "serum", "moistur", "cleanser"]
+    if not _mk_in_name and any(w in nm_l for w in STRONG_SKIN):
+        return "טיפוח"
+    STRONG_HAIR = ["שמפו", "מרכך", "מסכת שיער", "לשיער", "shampoo", "conditioner", "hair mask", "hair oil"]
+    if not _mk_in_name and any(w in nm_l for w in STRONG_HAIR):
+        return "שיער"
     if BUNDLE_RE.search(nm) and "ערבוב" not in nm:   # מארזים גובר על קטגוריית התוכן
         return "מארזים"
     txt = " ".join(str(p.get(k) or "") for k in
