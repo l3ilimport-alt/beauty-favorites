@@ -159,6 +159,12 @@ def ptype(p):
     if ov:
         return ov
     nm = str(p.get("name_he") or "")
+    # בושם מפורש בשם המוצר — גובר על מילות איפור אקראיות בתיאור
+    # (מונע בושם-לגבר בקטגוריית איפור; "ספריי קיבוע" לא נתפס כי אין בו מילת בושם)
+    nm_l = (nm + " " + str(p.get("name_en") or "")).lower()
+    STRONG_FRAG = ["בושם", "בשמים", "או דה", "eau de", "edp", "edt", "parfum", "perfume", "cologne", "מבושם"]
+    if any(w in nm_l for w in STRONG_FRAG):
+        return "בושם"
     if BUNDLE_RE.search(nm) and "ערבוב" not in nm:   # מארזים גובר על קטגוריית התוכן
         return "מארזים"
     txt = " ".join(str(p.get(k) or "") for k in
