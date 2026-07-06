@@ -822,8 +822,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
 <header class="herobanner">
-  <!-- וידאו הירו (אופציונלי): הניחו catalog/hero.mp4, הוסיפו src="hero.mp4" והחליפו display:none ב-display:block -->
-  <video class="hero-video" style="display:none" autoplay muted loop playsinline preload="none"></video>
+  <!-- וידאו הירו: catalog/hero.mp4 (נוזל ורוד אבסטרקטי, Pexels, רישיון מסחרי חופשי). להסרה — למחוק את התגית או את הקובץ. -->
+  <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="" src="hero.mp4"></video>
   <div class="hero-deco l" id="heroDecoL"></div>
   <div class="hero-deco r" id="heroDecoR"></div>
   <div class="hero-inner">
