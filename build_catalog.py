@@ -541,8 +541,9 @@ a{color:inherit}img{display:block}
 .hero-deco .hd2{top:70%;inset-inline-start:14px;width:70px;height:70px;animation-delay:3.1s;transform:rotate(-3deg)}
 @keyframes hdFloat{0%,100%{margin-top:0}50%{margin-top:-12px}}
 @media(min-width:860px){.hero-deco{display:block}}
-/* וידאו הירו (סלוט מוכן): הניחו קובץ hero.mp4 בתיקיית catalog והסירו את style="display:none" מתגית הווידאו ב-HTML */
-.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.18;pointer-events:none}
+/* וידאו הירו — דסקטופ בלבד (במובייל לא נטען כלל, לשמירת קצב+נתונים). המקור מוזרק ב-JS רק במסך רחב. */
+.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.18;pointer-events:none;display:none}
+@media(min-width:860px){.hero-video{display:block}}
 @media(prefers-reduced-motion:reduce){.herobanner::before,.herobanner::after,.hero-deco .hd{animation:none!important}}
 .hero-inner{max-width:860px;margin:0 auto;padding:58px 20px 54px;text-align:center;position:relative}
 .hero-kicker{font-family:var(--font);font-size:13px;font-weight:500;letter-spacing:7px;color:var(--accent-d);text-transform:uppercase}
@@ -581,6 +582,38 @@ a{color:inherit}img{display:block}
 .cattile.active .ci{border-color:var(--accent);box-shadow:0 6px 18px rgba(124,58,237,.28)}
 .cattile.active span{color:var(--accent-d)}
 @media(max-width:640px){.cattile .ci{width:64px;height:64px}.cattile span{font-size:11.5px}}
+
+/* brand picker button + modal */
+.brandpick{display:flex;justify-content:center;padding:6px 16px 2px}
+.brandpickbtn{display:inline-flex;align-items:center;gap:9px;font-family:var(--font);font-size:14px;font-weight:600;
+  cursor:pointer;padding:9px 20px;border-radius:30px;border:1px solid var(--border2);background:var(--surface);
+  color:var(--accent-d);box-shadow:var(--shadow);transition:.18s}
+.brandpickbtn:hover{border-color:var(--accent-l);transform:translateY(-1px)}
+.brandpickbtn .bpi{font-size:16px}
+.brandpickbtn.on{background:var(--accent);color:#fff;border-color:transparent}
+.brandpickbtn .clr{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+  background:rgba(255,255,255,.28);font-size:12px;line-height:1}
+.brandsheet{max-width:720px}
+.bm{padding:6px 20px 24px}
+.bm h3{font-size:20px;font-weight:700;text-align:center;margin:6px 0 12px}
+.bm .bsearch{position:relative;margin-bottom:14px}
+.bm .bsearch input{width:100%;font-size:16px;font-family:var(--font);padding:11px 40px;border:1px solid var(--border2);
+  border-radius:30px;background:var(--surface);color:var(--text);outline:none}
+.bm .bsearch input:focus{border-color:var(--accent-l);box-shadow:0 0 0 3px var(--accent-soft)}
+.bm .bsearch .ico{position:absolute;right:15px;top:50%;transform:translateY(-50%);color:var(--accent-l);font-size:17px}
+.bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.bcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px;min-height:96px;transition:.15s}
+.bcard:hover{border-color:var(--accent-l);box-shadow:var(--shadow);transform:translateY(-2px)}
+.bcard.on{border-color:var(--accent);box-shadow:0 4px 14px rgba(124,58,237,.24)}
+.bcard .blogo{height:38px;max-width:100%;object-fit:contain;mix-blend-mode:multiply}
+.bcard .bwm{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--accent-d);text-align:center;line-height:1.15}
+.bcard .bname{font-size:11px;font-weight:600;color:var(--muted);text-align:center;line-height:1.2}
+.bcard .bcount{font-size:10px;color:var(--accent-l);font-weight:700}
+.bcard.allb{background:linear-gradient(160deg,var(--accent-soft),#fff)}
+.bcard.allb .bwm{font-style:italic}
+.bm .bempty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
+@media(max-width:640px){.bgrid{grid-template-columns:repeat(3,1fr);gap:8px}.bcard{min-height:84px;padding:11px 7px}.bcard .blogo{height:30px}}
 
 /* low-stock urgency */
 .lowstock{font-size:11px;font-weight:700;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1px 8px;align-self:flex-start}
@@ -822,8 +855,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
 <header class="herobanner">
-  <!-- וידאו הירו: catalog/hero.mp4 (נוזל ורוד אבסטרקטי, Pexels, רישיון מסחרי חופשי). להסרה — למחוק את התגית או את הקובץ. -->
-  <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="" src="hero.mp4"></video>
+  <!-- וידאו הירו: catalog/hero.mp4 (נוזל ורוד אבסטרקטי, Pexels, רישיון מסחרי חופשי). המקור מוזרק ב-JS בדסקטופ בלבד. -->
+  <video class="hero-video" autoplay muted loop playsinline preload="auto"></video>
   <div class="hero-deco l" id="heroDecoL"></div>
   <div class="hero-deco r" id="heroDecoR"></div>
   <div class="hero-inner">
@@ -858,7 +891,11 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button onclick="wholesaleLogout()">יציאה</button>
 </div>
 
-<nav class="brandnav" id="brandnav"></nav>
+<div class="brandpick">
+  <button class="brandpickbtn" id="brandPickBtn" onclick="openBrandModal()">
+    <span class="bpi">🏷️</span><span id="brandPickLbl">כל המותגים</span>
+  </button>
+</div>
 <div class="toolbar" id="prices"></div>
 <div class="toolbar">
   <button class="chip favbtn" id="favchip" onclick="toggleFavOnly()">♥ המועדפים שלי</button>
@@ -947,6 +984,14 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 <div class="ov" id="policyModal"><div class="sheet"><button class="x" onclick="closeOv('policyModal')">✕</button><div class="policy" id="policyBody"></div></div></div>
 
+<div class="ov" id="brandModal"><div class="sheet brandsheet"><button class="x" onclick="closeOv('brandModal')">✕</button>
+  <div class="bm">
+    <h3 id="brandModalTitle">בחירת מותג</h3>
+    <div class="bsearch"><span class="ico">⌕</span><input id="brandSearch" type="search" autocomplete="off" placeholder="חיפוש מותג…" oninput="renderBrandGrid()"></div>
+    <div class="bgrid" id="brandGrid"></div>
+  </div>
+</div></div>
+
 <div class="ov" id="clubModal"><div class="sheet"><button class="x" onclick="closeOv('clubModal')">✕</button>
   <div class="om">
     <h3 id="clubTitle">💼 מועדון העסקים</h3>
@@ -1018,7 +1063,8 @@ const I18N={
   club_join:'📲 הצטרפות בוואטסאפ',club_have:'🔑 יש לי קוד סיטונאי',
   f_access:'הצהרת נגישות',left_only:'נותרו רק {n} במלאי!',
   tr_orig:'✔ מוצרים מקוריים בלבד',tr_eta:'🚚 אספקה עד 72 שעות',tr_wa:'💬 שירות אישי בוואטסאפ',
-  wa_q:'יש שאלה? דברו איתנו בוואטסאפ'},
+  wa_q:'יש שאלה? דברו איתנו בוואטסאפ',
+  brand_title:'בחירת מותג',brand_search:'חיפוש מותג…'},
  ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',in_stock_short:'متوفر',reset_all:'مسح الكل',cons_rec:'موصى للمستهلك:',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
@@ -1051,7 +1097,8 @@ const I18N={
   club_join:'📲 الانضمام عبر واتساب',club_have:'🔑 لديّ رمز جملة',
   f_access:'إعلان إمكانية الوصول',left_only:'بقي {n} فقط في المخزون!',
   tr_orig:'✔ منتجات أصلية فقط',tr_eta:'🚚 التوصيل خلال 72 ساعة',tr_wa:'💬 خدمة شخصية عبر واتساب',
-  wa_q:'لديك سؤال؟ تواصلوا معنا عبر واتساب'}
+  wa_q:'لديك سؤال؟ تواصلوا معنا عبر واتساب',
+  brand_title:'اختيار الماركة',brand_search:'ابحث عن ماركة…'}
 };
 let LANG=localStorage.getItem('sf_lang')||'he';
 function t(k){return (I18N[LANG]&&I18N[LANG][k]!=null)?I18N[LANG][k]:(I18N.he[k]!=null?I18N.he[k]:k);}
@@ -1077,6 +1124,7 @@ function applyStatic(){
   setText('fOrderT',t('f_order'));setText('fShipFree',t('f_free'));setText('fEta',t('f_eta'));setText('fWa',t('f_wa'));
   setText('pbBiz',t('f_biz'));setText('pbShip',t('pb_ship'));setText('pbRet',t('pb_ret'));setText('pbTerms',t('f_terms'));setText('pbPriv',t('pb_priv'));
   setText('wsTitle',t('ws_title'));setText('wsSub',t('ws_sub'));setPh('wsCode',t('ws_ph'));setText('wsGo',t('ws_go'));setText('wsBannerTxt',t('ws_active'));
+  setText('brandModalTitle',t('brand_title'));setPh('brandSearch',t('brand_search'));if(typeof updateBrandBtn==='function')updateBrandBtn();
   setText('promo1',t('promo_free'));setText('promo2',t('promo_coupon'));setText('promo3',t('promo_eta'));
   setText('tr1',t('tr_orig'));setText('tr2',t('tr_eta'));setText('tr3',t('tr_wa'));
   setText('clubTitle',t('club_title'));setText('clubSub',t('club_sub'));setText('clubJoin',t('club_join'));setText('clubHave',t('club_have'));
@@ -1153,13 +1201,9 @@ function buildNav(){
   const cats=catsInStock();
   if(curCat!=='__all__'&&!cats.includes(curCat))curCat='__all__';   // קטגוריה שנבחרה אזלה → חזרה להכל (אריחי הקטגוריות הם הניווט היחיד)
 
-  const bn=document.getElementById('brandnav');
   const brands=brandsInStock();
   if(curBrand!=='__all__'&&!brands.includes(curBrand))curBrand='__all__';   // מותג שנבחר אזל → חזרה להכל
-  const mb=(l,v)=>`<button class="pill ${v===curBrand?'active':''}" data-b="${v}">${l}</button>`;
-  bn.innerHTML=mb(t('all_brands'),'__all__')+brands.map(b=>mb(b,b)).join('');
-  bn.onclick=e=>{const b=e.target.closest('[data-b]');if(!b)return;curBrand=b.dataset.b;
-    [...bn.children].forEach(c=>c.classList.toggle('active',c.dataset.b===curBrand));render()};
+  updateBrandBtn();
 
   const pr=document.getElementById('prices');
   const mp=(l,i)=>`<button class="chip ${i===curPrice?'active':''}" data-p="${i}">${l}</button>`;
@@ -1209,6 +1253,65 @@ function initHeroDeco(){
     ids.forEach((id,k)=>{const e=document.getElementById(id);if(e)e.classList.toggle('cur',k===pi)});
   },3500);
 })();
+
+// ===== בורר מותגים (כפתור + חלון גדול) =====
+// זוגות [קובץ-לוגו, [שמות-מותג]] — מפתח החיפוש מנורמל (normText) כדי לעמוד בהבדלי גרש/פיסוק בין DB לקטלוג.
+const BRAND_LOGO_PAIRS=[
+  ["brand-logos/elf.png",["אי.אל.אף"]],
+  ["brand-logos/rare-beauty.webp",["ריר ביוטי"]],
+  ["brand-logos/fenty.png",["פנטי ביוטי"]],
+  ["brand-logos/benefit.svg",["בנפיט"]],
+  ["brand-logos/too-faced.png",["טו פייסד"]],
+  ["brand-logos/anastasia.svg",["אנסטסיה בברלי הילס","אנסטסיה בוורלי הילס","אנסטסיה"]],
+  ["brand-logos/charlotte-tilbury.svg",["שרלוט טילבורי"]],
+  ["brand-logos/armani.svg",["ארמני"]],
+  ["brand-logos/morphe.png",["מורפי","מורף"]],
+  ["brand-logos/victorias-secret.svg",["ויקטוריה סיקרט"]],
+  ["brand-logos/nars.png",["נארס"]],
+  ["brand-logos/makeup-for-ever.png",["מייק אפ פור אבר"]],
+  ["brand-logos/natasha-denona.png",["נטשה דנונה"]],
+  ["brand-logos/sol-de-janeiro.png",["סול דה ז'נרו"]],
+  ["brand-logos/bobbi-brown.png",["בובי בראון"]],
+  ["brand-logos/clarins.svg",["קלרינס"]],
+  ["brand-logos/ysl.svg",["ייב סן לורן"]],
+  ["brand-logos/urban-decay.svg",["אורבן דקיי"]],
+  ["brand-logos/dolce-gabbana.svg",["דולצ'ה וגבאנה"]],
+  ["brand-logos/lancome.svg",["לנקום"]],
+  ["brand-logos/dior.svg",["דיור"]],
+  ["brand-logos/clinique.svg",["קליניק"]],
+  ["brand-logos/kryolan.jpg",["Kryolan"]],
+  ["brand-logos/laneige.jpg",["לנייג'"]]
+];
+const BRAND_LOGOS={};
+BRAND_LOGO_PAIRS.forEach(function(p){p[1].forEach(function(n){BRAND_LOGOS[normText(n)]=p[0];});});
+function brandLogo(b){return BRAND_LOGOS[normText(b)];}
+function brandCount(b){return GROUPS.reduce((s,g)=>s+((g.brand===b&&(!STOCK_READY||g.variants.some(v=>STOCK[nbc(v.barcode)]>0)))?1:0),0);}
+function brandVisual(b){
+  const lg=brandLogo(b);
+  if(lg)return `<img class="blogo" src="${aesc(lg)}" alt="${aesc(b)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bwm',textContent:this.alt}))">`;
+  return `<span class="bwm">${esc(b)}</span>`;
+}
+function updateBrandBtn(){
+  const lbl=document.getElementById('brandPickLbl'),btn=document.getElementById('brandPickBtn');if(!lbl||!btn)return;
+  lbl.textContent=(curBrand==='__all__')?t('all_brands'):curBrand;
+  btn.classList.toggle('on',curBrand!=='__all__');
+}
+function openBrandModal(){const s=document.getElementById('brandSearch');if(s)s.value='';renderBrandGrid();openOv('brandModal');
+  setTimeout(function(){if(s)s.focus();},60);}
+function renderBrandGrid(){
+  const grid=document.getElementById('brandGrid');if(!grid)return;
+  const q=normText((document.getElementById('brandSearch')||{}).value||'');
+  let brands=brandsInStock();
+  if(q)brands=brands.filter(b=>normText(b).includes(q)||expandSearch(b).includes(q));
+  const total=brandsInStock().length;
+  const allCard=(!q)?`<div class="bcard allb ${curBrand==='__all__'?'on':''}" data-b="__all__"><span class="bwm">${t('all_brands')}</span><span class="bcount">${total}</span></div>`:'';
+  grid.innerHTML=allCard+brands.map(b=>{const hasLogo=!!brandLogo(b);
+    return `<div class="bcard ${curBrand===b?'on':''}" data-b="${aesc(b)}">${brandVisual(b)}${hasLogo?`<span class="bname">${esc(b)}</span>`:''}<span class="bcount">${brandCount(b)}</span></div>`;}).join('');
+  if(!brands.length)grid.innerHTML='<div class="bempty">'+t('empty')+'</div>';
+  grid.onclick=e=>{const c=e.target.closest('[data-b]');if(!c)return;pickBrand(c.dataset.b);};
+}
+function pickBrand(b){curBrand=b;closeOv('brandModal');buildNav();render();}
+
 buildNav();
 function toggleFavOnly(){favOnly=!favOnly;document.getElementById('favchip').classList.toggle('active',favOnly);render()}
 function resetFilters(){   // איפוס כל הסינונים (קטגוריה/מותג/מחיר/מועדפים/חיפוש)
@@ -1690,6 +1793,8 @@ window.addEventListener('scroll',()=>{
 
 applyStatic();
 render();
+// וידאו הירו: הזרקת המקור רק בדסקטופ (מובייל לא מוריד את הקובץ)
+(function(){var v=document.querySelector('.hero-video');if(v&&window.matchMedia&&window.matchMedia('(min-width:860px)').matches){v.setAttribute('src','hero.mp4');if(v.load)v.load();}})();
 if(SB){var _pb=document.getElementById('payBtn');if(_pb)_pb.style.display='';loadStock();}
 </script>
 </body>
