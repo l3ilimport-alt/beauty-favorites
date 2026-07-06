@@ -342,6 +342,9 @@ def main():
         badges = list(ov.get("badges") or [])
         sale = whole_price(ov.get("sale_price")) if ov.get("sale_price") not in (None, "") else None
         if sale: badges = (["sale"] + badges) if "sale" not in badges else badges
+        # מחיר-לפני (price_before בקובץ הידע): מוצג עם קו-חוצה + תג "מבצע" במצב צרכן בלבד
+        was = whole_price(p.get("price_before")) if p.get("price_before") not in (None, "") else None
+        if was and "sale" not in badges: badges = ["sale"] + badges
         if detect_vegan(p): badges.append("vegan")
 
         raw.append({
@@ -352,6 +355,7 @@ def main():
             "type": ptype(p),
             "price": whole_price(p.get("price_ils")),
             "sale": sale,
+            "was": was,
             "size": p.get("size") or "",
             "shade": p.get("shade") or "",
             "barcode": p.get("barcode") or "",
@@ -382,7 +386,7 @@ def main():
     groups = []
     def variant(p):
         d = {"id": p["id"], "shade": p["shade"] or p["name_he"], "price": p["price"],
-                "sale": p["sale"], "size": p["size"], "barcode": p["barcode"], "imgs": p["imgs"],
+                "sale": p["sale"], "was": p.get("was"), "size": p["size"], "barcode": p["barcode"], "imgs": p["imgs"],
                 "desc": p["desc"], "features": p["features"], "ingredients": p["ingredients"],
                 "usage": p["usage"], "badges": p["badges"], "color": p.get("color")}
         if p.get("desc_ar"): d["desc_ar"] = p["desc_ar"]
@@ -497,6 +501,20 @@ body{padding-bottom:90px}
 a{color:inherit}img{display:block}
 ::-webkit-scrollbar{height:0;width:0}
 
+/* promo bar (free shipping / coupon / delivery) */
+.promobar{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:nowrap;overflow:hidden;
+  background:linear-gradient(90deg,var(--accent-d),var(--accent) 55%,var(--accent-l));color:#fff;
+  font-size:12.5px;font-weight:600;letter-spacing:.2px;padding:7px 12px;text-align:center}
+.promobar span{white-space:nowrap}
+.promobar .pdot{opacity:.55;font-weight:400}
+@media(max-width:640px){
+  .promobar{font-size:12px;padding:6px 10px}
+  .promobar .pdot{display:none}
+  .promobar span:not(.pdot){display:none}
+  .promobar span.cur{display:inline;animation:promoIn .45s ease}
+}
+@keyframes promoIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
 .brandbar{position:relative;display:flex;justify-content:center;align-items:center;padding:14px 16px 10px;background:var(--bg)}
 .brandbar img{height:58px;width:auto;display:block;transition:transform .25s ease}
 .brandbar img:hover{transform:translateY(-1px)}
@@ -509,8 +527,23 @@ a{color:inherit}img{display:block}
 .herobanner{position:relative;width:100%;overflow:hidden;border-bottom:1px solid var(--border);
   background:linear-gradient(135deg,#ece5fb 0%,#f6f1fd 38%,#faf8ff 62%,#efe7fc 100%)}
 .herobanner::before,.herobanner::after{content:'';position:absolute;border-radius:50%;pointer-events:none}
-.herobanner::before{width:340px;height:340px;top:-170px;left:-110px;background:radial-gradient(circle,rgba(168,85,247,.14),transparent 70%)}
-.herobanner::after{width:420px;height:420px;bottom:-230px;right:-130px;background:radial-gradient(circle,rgba(124,58,237,.12),transparent 70%)}
+.herobanner::before{width:340px;height:340px;top:-170px;left:-110px;background:radial-gradient(circle,rgba(168,85,247,.14),transparent 70%);animation:blobA 16s ease-in-out infinite}
+.herobanner::after{width:420px;height:420px;bottom:-230px;right:-130px;background:radial-gradient(circle,rgba(124,58,237,.12),transparent 70%);animation:blobB 20s ease-in-out infinite}
+@keyframes blobA{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(34px,22px) scale(1.1)}}
+@keyframes blobB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-38px,-20px) scale(1.07)}}
+/* hero product collage (floating product cards, desktop only; images injected by JS from in-stock prestige brands) */
+.hero-deco{position:absolute;top:0;bottom:0;width:190px;pointer-events:none;display:none}
+.hero-deco.l{left:14px}.hero-deco.r{right:14px}
+.hero-deco .hd{position:absolute;width:92px;height:92px;object-fit:contain;background:#fff;border:1px solid var(--border2);
+  border-radius:16px;padding:8px;box-shadow:0 10px 28px rgba(91,33,182,.14);animation:hdFloat 7s ease-in-out infinite}
+.hero-deco .hd0{top:12%;inset-inline-start:6px;transform:rotate(-6deg)}
+.hero-deco .hd1{top:44%;inset-inline-start:78px;width:78px;height:78px;animation-delay:1.6s;transform:rotate(5deg)}
+.hero-deco .hd2{top:70%;inset-inline-start:14px;width:70px;height:70px;animation-delay:3.1s;transform:rotate(-3deg)}
+@keyframes hdFloat{0%,100%{margin-top:0}50%{margin-top:-12px}}
+@media(min-width:860px){.hero-deco{display:block}}
+/* וידאו הירו (סלוט מוכן): הניחו קובץ hero.mp4 בתיקיית catalog והסירו את style="display:none" מתגית הווידאו ב-HTML */
+.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.18;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.herobanner::before,.herobanner::after,.hero-deco .hd{animation:none!important}}
 .hero-inner{max-width:860px;margin:0 auto;padding:58px 20px 54px;text-align:center;position:relative}
 .hero-kicker{font-family:var(--font);font-size:13px;font-weight:500;letter-spacing:7px;color:var(--accent-d);text-transform:uppercase}
 .hero-title{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;
@@ -529,6 +562,38 @@ a{color:inherit}img{display:block}
 .herocount{text-align:center;margin:16px 0 2px;min-height:26px}
 .herocount span{display:inline-block;font-size:13px;font-weight:600;color:var(--accent-d);background:var(--accent-soft);border:1px solid var(--border2);padding:5px 18px;border-radius:30px}
 .herocount span:empty{display:none}
+
+/* category image tiles */
+.cattiles{display:flex;gap:12px;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;
+  max-width:1160px;margin:14px auto 2px;padding:4px 18px}
+.cattiles::-webkit-scrollbar{display:none}
+@media(min-width:900px){.cattiles{justify-content:center}}
+.cattile{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;
+  background:none;border:none;font-family:var(--font);padding:2px}
+.cattile .ci{width:78px;height:78px;border-radius:50%;background:var(--surface);border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;padding:10px;transition:.2s;box-shadow:var(--shadow)}
+.cattile img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply}
+.cattile .ph{font-size:26px}
+.cattile span{font-size:12.5px;font-weight:600;color:var(--text)}
+.cattile:hover .ci{border-color:var(--accent-l);transform:translateY(-3px)}
+.cattile.active .ci{border-color:var(--accent);box-shadow:0 6px 18px rgba(124,58,237,.28)}
+.cattile.active span{color:var(--accent-d)}
+@media(max-width:640px){.cattile .ci{width:64px;height:64px}.cattile span{font-size:11.5px}}
+
+/* low-stock urgency */
+.lowstock{font-size:11px;font-weight:700;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1px 8px;align-self:flex-start}
+.pd .lowstock{font-size:12.5px;padding:3px 10px;display:inline-block;margin:2px 0 4px}
+
+/* trust badges row */
+.trustrow{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;max-width:1000px;margin:34px auto 0;padding:0 16px}
+.trustrow span{font-size:12.5px;font-weight:600;color:var(--accent-d);background:var(--surface);
+  border:1px solid var(--border2);border-radius:30px;padding:8px 16px;box-shadow:var(--shadow)}
+
+/* floating WhatsApp help button */
+.wafloat{position:fixed;right:16px;bottom:84px;z-index:70;width:52px;height:52px;border-radius:50%;
+  background:#25d366;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;
+  text-decoration:none;box-shadow:0 10px 26px rgba(37,211,102,.42);transition:.2s}
+.wafloat:hover{transform:scale(1.08)}
 
 /* category nav (primary) */
 .catnav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px 16px 6px;max-width:760px;margin:0 auto}
@@ -745,11 +810,20 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 </style>
 </head>
 <body>
+<div class="promobar" id="promobar">
+  <span id="promo1">🚚 משלוח חינם מעל ₪299</span><span class="pdot">·</span>
+  <span id="promo2">🎁 10% הנחה עם קופון BEAUTY10</span><span class="pdot">·</span>
+  <span id="promo3">⏱ אספקה עד 72 שעות</span>
+</div>
 <div class="brandbar">
   <img src="logo.svg" alt="Beauty Favorites" width="150" height="63" onclick="goTop()" style="cursor:pointer">
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
 <header class="herobanner">
+  <!-- וידאו הירו (אופציונלי): הניחו catalog/hero.mp4, הוסיפו src="hero.mp4" והחליפו display:none ב-display:block -->
+  <video class="hero-video" style="display:none" autoplay muted loop playsinline preload="none"></video>
+  <div class="hero-deco l" id="heroDecoL"></div>
+  <div class="hero-deco r" id="heroDecoR"></div>
   <div class="hero-inner">
     <div class="hero-kicker">Beauty &middot; Curated</div>
     <h1 class="hero-title">Beauty Favorites</h1>
@@ -759,6 +833,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 </header>
 
 <div class="herocount"><span id="heroCount"></span></div>
+<div class="cattiles" id="cattiles"></div>
 <nav class="catnav" id="catnav"></nav>
 
 <div class="search-wrap">
@@ -799,6 +874,12 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 <div class="rescount" id="rescount"></div>
 <main class="grid" id="grid"></main>
 
+<div class="trustrow">
+  <span id="tr1">✔ מוצרים מקוריים בלבד</span>
+  <span id="tr2">🚚 אספקה עד 72 שעות</span>
+  <span id="tr3">💬 שירות אישי בוואטסאפ</span>
+</div>
+
 <footer class="sitefooter">
   <div class="fdisc" id="fDisc">מכירה עצמאית של מוצרים מקוריים · כל הסימנים המסחריים שייכים לבעליהם</div>
   <div class="fcols">
@@ -816,11 +897,13 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
       <button class="flink" onclick="openPolicy('returns')" id="fRet">החזרות וביטולים</button>
       <button class="flink" onclick="openPolicy('terms')" id="fTerms">תקנון</button>
       <button class="flink" onclick="openPolicy('privacy')" id="fPriv">מדיניות פרטיות</button>
+      <button class="flink" onclick="openPolicy('accessibility')" id="fAccess">הצהרת נגישות</button>
     </div>
     <div class="fcol">
       <h4 id="fOrderT">הזמנות</h4>
       <p id="fShipFree">משלוח חינם בהזמנה מעל ₪299</p>
       <p id="fEta">אספקה עד 72 שעות מרגע איסוף ע״י השליח</p>
+      <button class="flink" onclick="openWholesale()" id="fClub">💼 מועדון עסקים — מחירון סיטונאי</button>
       <a class="fwa" href="https://wa.me/972547599923" id="fWa">הזמנה בוואטסאפ</a>
     </div>
   </div>
@@ -832,6 +915,9 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button id="viewOrderBtn" onclick="openOrder()">צפה בהזמנה ←</button>
 </div>
 <button class="totop" id="toTop" onclick="goTop()" aria-label="חזרה למעלה" title="חזרה למעלה">↑</button>
+<a class="wafloat" id="waFloat" target="_blank" rel="noopener"
+   href="https://wa.me/972547599923?text=%D7%A9%D7%9C%D7%95%D7%9D%21%20%D7%99%D7%A9%20%D7%9C%D7%99%20%D7%A9%D7%90%D7%9C%D7%94%20%D7%A2%D7%9C%20%D7%9E%D7%95%D7%A6%D7%A8%20%D7%91%D7%A7%D7%98%D7%9C%D7%95%D7%92"
+   aria-label="יש שאלה? דברו איתנו בוואטסאפ" title="יש שאלה? דברו איתנו בוואטסאפ">💬</a>
 
 <div class="ov" id="pdModal"><div class="sheet"><button class="x" onclick="closePd()">✕</button><div id="pdContent"></div></div></div>
 
@@ -859,6 +945,16 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 </div></div>
 
 <div class="ov" id="policyModal"><div class="sheet"><button class="x" onclick="closeOv('policyModal')">✕</button><div class="policy" id="policyBody"></div></div></div>
+
+<div class="ov" id="clubModal"><div class="sheet"><button class="x" onclick="closeOv('clubModal')">✕</button>
+  <div class="om">
+    <h3 id="clubTitle">💼 מועדון העסקים</h3>
+    <p id="clubSub" style="font-size:14px;line-height:1.7;color:#473d5e;margin:2px 0 16px">מספרה, מאפרת או חנות? הצטרפו למועדון העסקים שלנו וקבלו גישה למחירון סיטונאי מיוחד, שירות אישי והטבות לעסקים.</p>
+    <a class="send" id="clubJoin" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none"
+       href="https://wa.me/972547599923?text=%D7%A9%D7%9C%D7%95%D7%9D%21%20%D7%90%D7%A0%D7%99%20%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F%2F%D7%AA%20%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3%20%D7%9C%D7%9E%D7%95%D7%A2%D7%93%D7%95%D7%9F%20%D7%94%D7%A2%D7%A1%D7%A7%D7%99%D7%9D%20%28%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F%20%D7%A1%D7%99%D7%98%D7%95%D7%A0%D7%90%D7%99%29">📲 הצטרפות בוואטסאפ</a>
+    <button class="send pay" id="clubHave" onclick="closeOv('clubModal');openWsCode()" style="margin-top:10px">🔑 יש לי קוד סיטונאי</button>
+  </div>
+</div></div>
 
 <div class="ov" id="wsModal"><div class="sheet"><button class="x" onclick="closeOv('wsModal')">✕</button>
   <div class="om">
@@ -914,7 +1010,14 @@ const I18N={
   f_biz:'פרטי העסק',f_vat:'המחירים כוללים מע״מ · משלוחים לכל הארץ',f_info:'מידע ומדיניות',
   f_ship:'משלוחים ואספקה',f_ret:'החזרות וביטולים',f_terms:'תקנון',f_priv:'מדיניות פרטיות',
   f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ',
-  pb_ship:'משלוחים',pb_ret:'החזרות',pb_priv:'פרטיות'},
+  pb_ship:'משלוחים',pb_ret:'החזרות',pb_priv:'פרטיות',
+  promo_free:'🚚 משלוח חינם מעל ₪299',promo_coupon:'🎁 10% הנחה עם קופון BEAUTY10',promo_eta:'⏱ אספקה עד 72 שעות',
+  club_link:'💼 מועדון עסקים',club_footer:'💼 מועדון עסקים — מחירון סיטונאי',club_title:'💼 מועדון העסקים',
+  club_sub:'מספרה, מאפרת או חנות? הצטרפו למועדון העסקים שלנו וקבלו גישה למחירון סיטונאי מיוחד, שירות אישי והטבות לעסקים.',
+  club_join:'📲 הצטרפות בוואטסאפ',club_have:'🔑 יש לי קוד סיטונאי',
+  f_access:'הצהרת נגישות',left_only:'נותרו רק {n} במלאי!',
+  tr_orig:'✔ מוצרים מקוריים בלבד',tr_eta:'🚚 אספקה עד 72 שעות',tr_wa:'💬 שירות אישי בוואטסאפ',
+  wa_q:'יש שאלה? דברו איתנו בוואטסאפ'},
  ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',in_stock_short:'متوفر',reset_all:'مسح الكل',cons_rec:'موصى للمستهلك:',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
@@ -940,7 +1043,14 @@ const I18N={
   f_biz:'تفاصيل العمل',f_vat:'الأسعار تشمل الضريبة · توصيل لكل البلاد',f_info:'معلومات وسياسات',
   f_ship:'الشحن والتوصيل',f_ret:'الإرجاع والإلغاء',f_terms:'شروط الاستخدام',f_priv:'سياسة الخصوصية',
   f_order:'الطلبات',f_free:'توصيل مجاني للطلبات فوق ₪299',f_eta:'التوصيل خلال 72 ساعة من استلام المندوب للطرد',f_wa:'اطلب عبر واتساب',
-  pb_ship:'الشحن',pb_ret:'الإرجاع',pb_priv:'الخصوصية'}
+  pb_ship:'الشحن',pb_ret:'الإرجاع',pb_priv:'الخصوصية',
+  promo_free:'🚚 توصيل مجاني فوق ₪299',promo_coupon:'🎁 خصم 10% مع كوبون BEAUTY10',promo_eta:'⏱ التوصيل خلال 72 ساعة',
+  club_link:'💼 نادي الأعمال',club_footer:'💼 نادي الأعمال — أسعار الجملة',club_title:'💼 نادي الأعمال',
+  club_sub:'صالون، خبيرة مكياج أو متجر؟ انضموا إلى نادي الأعمال لدينا واحصلوا على أسعار جملة خاصة وخدمة شخصية ومزايا للأعمال.',
+  club_join:'📲 الانضمام عبر واتساب',club_have:'🔑 لديّ رمز جملة',
+  f_access:'إعلان إمكانية الوصول',left_only:'بقي {n} فقط في المخزون!',
+  tr_orig:'✔ منتجات أصلية فقط',tr_eta:'🚚 التوصيل خلال 72 ساعة',tr_wa:'💬 خدمة شخصية عبر واتساب',
+  wa_q:'لديك سؤال؟ تواصلوا معنا عبر واتساب'}
 };
 let LANG=localStorage.getItem('sf_lang')||'he';
 function t(k){return (I18N[LANG]&&I18N[LANG][k]!=null)?I18N[LANG][k]:(I18N.he[k]!=null?I18N.he[k]:k);}
@@ -966,6 +1076,11 @@ function applyStatic(){
   setText('fOrderT',t('f_order'));setText('fShipFree',t('f_free'));setText('fEta',t('f_eta'));setText('fWa',t('f_wa'));
   setText('pbBiz',t('f_biz'));setText('pbShip',t('pb_ship'));setText('pbRet',t('pb_ret'));setText('pbTerms',t('f_terms'));setText('pbPriv',t('pb_priv'));
   setText('wsTitle',t('ws_title'));setText('wsSub',t('ws_sub'));setPh('wsCode',t('ws_ph'));setText('wsGo',t('ws_go'));setText('wsBannerTxt',t('ws_active'));
+  setText('promo1',t('promo_free'));setText('promo2',t('promo_coupon'));setText('promo3',t('promo_eta'));
+  setText('tr1',t('tr_orig'));setText('tr2',t('tr_eta'));setText('tr3',t('tr_wa'));
+  setText('clubTitle',t('club_title'));setText('clubSub',t('club_sub'));setText('clubJoin',t('club_join'));setText('clubHave',t('club_have'));
+  setText('fAccess',t('f_access'));setText('fClub',t('club_footer'));
+  var wf=document.getElementById('waFloat');if(wf){wf.title=t('wa_q');wf.setAttribute('aria-label',t('wa_q'));}
   updateWsUI();
   var lb=document.getElementById('langBtn');if(lb)lb.textContent=t('other');
 }
@@ -1040,7 +1155,7 @@ function buildNav(){
   const mk=(l,v)=>`<button class="cat ${v===curCat?'active':''}" data-c="${v}">${l}</button>`;
   cn.innerHTML=mk(t('all'),'__all__')+cats.map(c=>mk(catLabel(c),c)).join('');
   cn.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;curCat=b.dataset.c;
-    [...cn.children].forEach(c=>c.classList.toggle('active',c.dataset.c===curCat));render()};
+    [...cn.children].forEach(c=>c.classList.toggle('active',c.dataset.c===curCat));buildCatTiles();render()};
 
   const bn=document.getElementById('brandnav');
   const brands=brandsInStock();
@@ -1055,7 +1170,50 @@ function buildNav(){
   pr.innerHTML=mp(t('all_prices'),-1)+PRICES.map((p,i)=>mp(t(PRICE_KEYS[i]),i)).join('');
   pr.onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;curPrice=+b.dataset.p;
     [...pr.children].forEach(c=>c.classList.toggle('active',+c.dataset.p===curPrice));render()};
+  buildCatTiles();
+  initHeroDeco();
 }
+// ---- אריחי קטגוריות עם תמונה מייצגת (מוצר במלאי ממותג מוביל בקטגוריה) ----
+function buildCatTiles(){
+  const el=document.getElementById('cattiles');if(!el)return;
+  const cats=catsInStock();
+  el.innerHTML=cats.map(c=>{
+    const g=GROUPS.filter(x=>x.type===c&&!x._noimg&&(!STOCK_READY||x.variants.some(v=>STOCK[nbc(v.barcode)]>0)))
+      .sort((a,b)=>prestige(a.brand)-prestige(b.brand))[0];
+    const v=g?g.variants.find(x=>x.imgs&&x.imgs.length):null;
+    const im=v?`<img src="${aesc(v.imgs[0])}" loading="lazy" alt="" onerror="this.style.display='none'">`:'<span class="ph">✦</span>';
+    return `<button class="cattile ${curCat===c?'active':''}" data-c="${c}"><span class="ci">${im}</span><span>${catLabel(c)}</span></button>`;
+  }).join('');
+  el.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;curCat=(curCat===b.dataset.c)?'__all__':b.dataset.c;
+    buildNav();render();
+    var g=document.getElementById('rescount');if(g)g.scrollIntoView({behavior:'smooth',block:'start'});};
+}
+// ---- קולאז' מוצרים צף בהירו (דסקטופ): תמונות מוצרים במלאי ממותגי יוקרה ----
+function initHeroDeco(){
+  const L=document.getElementById('heroDecoL'),R=document.getElementById('heroDecoR');if(!L||!R)return;
+  const pool=GROUPS.filter(g=>!g._noimg&&prestige(g.brand)<=2&&(!STOCK_READY||g.variants.some(v=>STOCK[nbc(v.barcode)]>0)));
+  const srcs=[];
+  for(let i=0;i<6&&pool.length;i++){
+    const g=pool[Math.floor(i*pool.length/6)];
+    const v=g.variants.find(x=>x.imgs&&x.imgs.length);
+    if(v&&!srcs.includes(v.imgs[0]))srcs.push(v.imgs[0]);
+  }
+  if(srcs.length<2){L.innerHTML='';R.innerHTML='';return;}
+  const half=Math.ceil(srcs.length/2);
+  const mk=(s,i)=>`<img src="${aesc(s)}" class="hd hd${i%3}" loading="lazy" alt="" onerror="this.remove()">`;
+  L.innerHTML=srcs.slice(0,half).map(mk).join('');
+  R.innerHTML=srcs.slice(half).map(mk).join('');
+}
+// ---- פס פרומו: במובייל מציג הודעה אחת מתחלפת ----
+(function(){
+  const ids=['promo1','promo2','promo3'];let pi=0;
+  const e0=document.getElementById(ids[0]);if(e0)e0.classList.add('cur');
+  setInterval(function(){
+    if(window.innerWidth>640)return;
+    pi=(pi+1)%ids.length;
+    ids.forEach((id,k)=>{const e=document.getElementById(id);if(e)e.classList.toggle('cur',k===pi)});
+  },3500);
+})();
 buildNav();
 function toggleFavOnly(){favOnly=!favOnly;document.getElementById('favchip').classList.toggle('active',favOnly);render()}
 function resetFilters(){   // איפוס כל הסינונים (קטגוריה/מותג/מחיר/מועדפים/חיפוש)
@@ -1138,7 +1296,14 @@ function badgesHtml(v){
 function priceHtml(v,cls){
   var c=WHOLESALE?PRICE_CONS[nbc(v.barcode)]:null;   // במצב סיטונאי — להציג גם מחיר צרכן מומלץ
   var sub=(c!=null&&c>0)?`<div class="price-cons">${t('cons_rec')} ₪${c}</div>`:'';
-  return `<div class="pricewrap"><div class="price ${cls||''}">₪${eff(v)}</div>${sub}</div>`;
+  var p=eff(v);
+  var was=(!WHOLESALE&&v.was&&v.was>p)?`<span class="was">₪${v.was}</span>`:'';   // מחיר-לפני (price_before) — מצב צרכן בלבד
+  return `<div class="pricewrap"><div class="price ${was?'sale':(cls||'')}">₪${p}${was}</div>${sub}</div>`;
+}
+function lowStockHtml(v){   // דחיפות מלאי חיה: "נותרו רק X!" כשהמלאי 1–3
+  if(!STOCK_READY)return '';
+  var n=STOCK[nbc(v&&v.barcode)];
+  return (n>0&&n<=3)?`<span class="lowstock">🔥 ${t('left_only').replace('{n}',n)}</span>`:'';
 }
 
 // ===== grid =====
@@ -1164,6 +1329,7 @@ function cardHtml(g){
         ${g.name_en?`<div class="nm-en">${esc(g.name_en)}</div>`:''}
         ${g.variants.length>1?`<span class="nsh">${g.variants.length} ${t('shades')}${(STOCK_READY&&nInStock>0)?` · <b class="instk">${nInStock} ${t('in_stock_short')}</b>`:''}</span>`:(v.size?`<div class="meta"><span class="tag">${esc(v.size)}</span></div>`:'')}
         ${shades}
+        ${lowStockHtml(v)}
         <div class="foot">
           ${priceHtml(v)}
           ${isSold(v)?`<span class="soldpill">${t('sold_out')}</span>`
@@ -1247,7 +1413,8 @@ function renderPd(g){
   if(g.variants.length>1){const idx=curIdx(g);
     shades=`<div class="pd-shades"><div class="lbl">${t('pick_shade')} (${g.variants.length}):</div><div class="pd-sw">${g.variants.map((vv,k)=>`<button class="${k===idx?'on':''} ${isSold(vv)?'out':''}" onclick="pdPick('${g.gid}',${k})">${vv.color?`<i class="dot" style="background:${vv.color}"></i>`:''}${esc(vv.shade)}${isSold(vv)?` · ${t('sold_out')}`:''}</button>`).join('')}</div></div>`;}
   const _pc=WHOLESALE?PRICE_CONS[nbc(v.barcode)]:null;   // מחיר צרכן מומלץ במצב סיטונאי
-  const pr=`<div class="pr">₪${eff(v)}</div>`+((_pc!=null&&_pc>0)?`<div class="pr-cons">${t('cons_rec')} ₪${_pc}</div>`:'');
+  const _was=(!WHOLESALE&&v.was&&v.was>eff(v))?`<span class="was">₪${v.was}</span>`:'';
+  const pr=`<div class="pr">₪${eff(v)}${_was}</div>`+((_pc!=null&&_pc>0)?`<div class="pr-cons">${t('cons_rec')} ₪${_pc}</div>`:'')+lowStockHtml(v);
   const bdg=(v.badges||[]).map(b=>`<span class="tag" style="color:#fff;background:${b==='sale'?'#e0245e':b==='vegan'?'#16a34a':'var(--accent)'};border:none">${t('b_'+b)||b}</span>`).join('');
   // similar: other groups, same brand first then same type
   const sim=GROUPS.filter(x=>x.gid!==g.gid&&(x.brand===g.brand||x.type===g.type))
@@ -1312,6 +1479,8 @@ async function sha256hex(str){const norm=String(str).trim().toUpperCase();
   const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(norm));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 function openWholesale(){if(WHOLESALE){wholesaleLogout();return;}
+  openOv('clubModal');}   // מועדון עסקים: קודם מסך שיווקי (הצטרפות בוואטסאפ / יש לי קוד)
+function openWsCode(){
   var i=document.getElementById('wsCode');if(i)i.value='';var m=document.getElementById('wsMsg');if(m){m.textContent='';m.className='cmsg';}
   openOv('wsModal');setTimeout(function(){var el=document.getElementById('wsCode');if(el)el.focus();},60);}
 async function submitWholesale(){const code=document.getElementById('wsCode').value.trim();const msg=document.getElementById('wsMsg');
@@ -1326,7 +1495,7 @@ function setWholesale(on){WHOLESALE=on;
   updateWsUI();repriceCart();renderCart();render();
   if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 function updateWsUI(){var b=document.getElementById('wsBanner');if(b)b.style.display=WHOLESALE?'flex':'none';
-  var pb=document.getElementById('pbWholesale');if(pb)pb.textContent=WHOLESALE?t('ws_exit'):t('ws_enter');}
+  var pb=document.getElementById('pbWholesale');if(pb)pb.textContent=WHOLESALE?t('ws_exit'):t('club_link');}
 function repriceCart(){Object.keys(CART).forEach(function(vid){var m=VMAP[vid];if(m)CART[vid].price=eff(m.v);});}   // עדכון מחירי פריטים בסל למצב הפעיל
 
 function openOrder(){renderOrder();openOv('orderModal')}
@@ -1490,6 +1659,23 @@ const POLICIES={
   <h3>הזמנות</h3><p>שליחת הזמנה מהווה הצעה לרכישה; העסק רשאי לאשר או לדחות הזמנה, ולעדכן מחירים וזמינות מלאי. ההזמנה תיחשב כמאושרת רק לאחר אישור העסק.</p>
   <h3>הבהרה מותגית</h3><p>העסק פועל כמשווק עצמאי של מוצרים מקוריים בלבד, ואינו קשור, מטעמן או בשיתוף עם הרשתות או המותגים המוצגים באתר. שמות המותגים מופיעים לצורך זיהוי המוצרים בלבד, וכל הסימנים המסחריים שייכים לבעליהם.</p>
   <h3>אחריות</h3><p>אחריות המוצר היא של היצרן/היבואן בהתאם לדין.</p>`,
+ accessibility:`<h2>הצהרת נגישות</h2>
+  <p>אנו רואים חשיבות רבה במתן שירות שוויוני לכלל הלקוחות, ובכלל זה אנשים עם מוגבלות, ופועלים להנגשת האתר בהתאם לתקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע"ג-2013, ולתקן הישראלי ת"י 5568 ברמה AA (מבוסס WCAG 2.1).</p>
+  <h3>התאמות הנגישות באתר</h3>
+  <ul>
+    <li>מבנה עמוד סמנטי ותמיכה מלאה בניווט מקלדת.</li>
+    <li>תוויות טקסט (aria-label) לכפתורים ולרכיבים אינטראקטיביים.</li>
+    <li>ניגודיות צבעים תקינה בין טקסט לרקע.</li>
+    <li>טקסט ניתן להגדלה באמצעות הדפדפן ללא פגיעה בתצוגה.</li>
+    <li>הפחתת אנימציות אוטומטית למשתמשים שהגדירו העדפת צמצום תנועה.</li>
+    <li>האתר זמין בעברית ובערבית.</li>
+  </ul>
+  <h3>הסתייגות</h3>
+  <p>אנו ממשיכים לפעול לשיפור נגישות האתר באופן שוטף. ייתכן שיימצאו רכיבים שטרם הונגשו במלואם; נשמח לקבל פנייה ונטפל בה בהקדם.</p>
+  <h3>רכז הנגישות</h3>
+  <p>שניר שריקי</p>
+  <p>טלפון: <a href="tel:0534555501">053-4555501</a> · אימייל: <a href="mailto:saphrafavorites@gmail.com">saphrafavorites@gmail.com</a></p>
+  <p>הצהרת הנגישות עודכנה לאחרונה: יולי 2026.</p>`,
  privacy:`<h2>מדיניות פרטיות</h2>${PNOTE}
   <h3>איסוף מידע</h3><p>לצורך ביצוע הזמנה ואספקתה נאספים פרטים: שם, טלפון, כתובת ופרטי הזמנה.</p>
   <h3>שימוש במידע</h3><p>המידע משמש לעיבוד ההזמנה, אספקה, שירות לקוחות ויצירת קשר בנוגע להזמנה.</p>
