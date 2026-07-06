@@ -574,6 +574,8 @@ a{color:inherit}img{display:block}
   display:flex;align-items:center;justify-content:center;padding:10px;transition:.2s;box-shadow:var(--shadow)}
 .cattile img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply}
 .cattile .ph{font-size:26px}
+.cattile .ci-all{background:linear-gradient(160deg,var(--accent-soft),#fff);border-color:var(--border2)}
+.cattile .ci-all .ph{color:var(--accent-l);opacity:.9}
 .cattile span{font-size:12.5px;font-weight:600;color:var(--text)}
 .cattile:hover .ci{border-color:var(--accent-l);transform:translateY(-3px)}
 .cattile.active .ci{border-color:var(--accent);box-shadow:0 6px 18px rgba(124,58,237,.28)}
@@ -834,7 +836,6 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 <div class="herocount"><span id="heroCount"></span></div>
 <div class="cattiles" id="cattiles"></div>
-<nav class="catnav" id="catnav"></nav>
 
 <div class="search-wrap">
   <div class="search">
@@ -1149,13 +1150,8 @@ function swPill(v,on,oc){
 // ===== nav (rebuildable for language switch) =====
 const PRICE_KEYS=['p_u50','p_50_100','p_100_200','p_200p'];
 function buildNav(){
-  const cn=document.getElementById('catnav');
   const cats=catsInStock();
-  if(curCat!=='__all__'&&!cats.includes(curCat))curCat='__all__';   // קטגוריה שנבחרה אזלה → חזרה להכל
-  const mk=(l,v)=>`<button class="cat ${v===curCat?'active':''}" data-c="${v}">${l}</button>`;
-  cn.innerHTML=mk(t('all'),'__all__')+cats.map(c=>mk(catLabel(c),c)).join('');
-  cn.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;curCat=b.dataset.c;
-    [...cn.children].forEach(c=>c.classList.toggle('active',c.dataset.c===curCat));buildCatTiles();render()};
+  if(curCat!=='__all__'&&!cats.includes(curCat))curCat='__all__';   // קטגוריה שנבחרה אזלה → חזרה להכל (אריחי הקטגוריות הם הניווט היחיד)
 
   const bn=document.getElementById('brandnav');
   const brands=brandsInStock();
@@ -1173,20 +1169,19 @@ function buildNav(){
   buildCatTiles();
   initHeroDeco();
 }
-// ---- אריחי קטגוריות עם תמונה מייצגת (מוצר במלאי ממותג מוביל בקטגוריה) ----
+// ---- אריחי קטגוריות עם תמונה מייצגת — ניווט הקטגוריות היחיד (כולל אריח "הכל") ----
 function buildCatTiles(){
   const el=document.getElementById('cattiles');if(!el)return;
   const cats=catsInStock();
-  el.innerHTML=cats.map(c=>{
+  const allTile=`<button class="cattile ${curCat==='__all__'?'active':''}" data-c="__all__"><span class="ci ci-all"><span class="ph">✦</span></span><span>${t('all')}</span></button>`;
+  el.innerHTML=allTile+cats.map(c=>{
     const g=GROUPS.filter(x=>x.type===c&&!x._noimg&&(!STOCK_READY||x.variants.some(v=>STOCK[nbc(v.barcode)]>0)))
       .sort((a,b)=>prestige(a.brand)-prestige(b.brand))[0];
     const v=g?g.variants.find(x=>x.imgs&&x.imgs.length):null;
     const im=v?`<img src="${aesc(v.imgs[0])}" loading="lazy" alt="" onerror="this.style.display='none'">`:'<span class="ph">✦</span>';
     return `<button class="cattile ${curCat===c?'active':''}" data-c="${c}"><span class="ci">${im}</span><span>${catLabel(c)}</span></button>`;
   }).join('');
-  el.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;curCat=(curCat===b.dataset.c)?'__all__':b.dataset.c;
-    buildNav();render();
-    var g=document.getElementById('rescount');if(g)g.scrollIntoView({behavior:'smooth',block:'start'});};
+  el.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;curCat=b.dataset.c;buildNav();render();};
 }
 // ---- קולאז' מוצרים צף בהירו (דסקטופ): תמונות מוצרים במלאי ממותגי יוקרה ----
 function initHeroDeco(){
