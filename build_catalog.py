@@ -1286,7 +1286,8 @@ function initHeroDeco(){
 // זוגות [קובץ-לוגו, [שמות-מותג]] — מפתח החיפוש מנורמל (normText) כדי לעמוד בהבדלי גרש/פיסוק בין DB לקטלוג.
 const BRAND_LOGO_PAIRS=[
   ["brand-logos/elf.png",["אי.אל.אף"]],
-  ["brand-logos/rare-beauty.svg",["ריר ביוטי"]],
+  ["brand-logos/rare-beauty.svg",["ריר ביוטי","סוויט טות'"]],
+  ["brand-logos/patrick-ta.png",["פטריק טא"]],
   ["brand-logos/milk-makeup.png",["מילק מייקאפ"]],
   ["brand-logos/tatcha.svg",["טאצ'ה"]],
   ["brand-logos/glow-recipe.png",["Glow Recipe"]],
