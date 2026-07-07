@@ -566,16 +566,17 @@ a{color:inherit}img{display:block}
 @media(min-width:900px){.cattiles{justify-content:center}}
 .cattile{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;
   background:none;border:none;font-family:var(--font);padding:2px}
-.cattile .ci{width:118px;height:94px;border-radius:14px;background:var(--surface);border:1px solid var(--border2);
+.cattile .ci{width:76px;height:76px;border-radius:50%;background:var(--accent-soft);border:1px solid var(--border2);
   display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;transition:.2s;box-shadow:var(--shadow)}
 .cattile img{width:100%;height:100%;object-fit:cover;mix-blend-mode:normal}
-.cattile .ph{font-size:30px;color:var(--accent-l);opacity:.9}
+.cattile .ph{font-size:28px;color:var(--accent-l);opacity:.9}
 .cattile .ci-all{background:linear-gradient(160deg,var(--accent-soft),#fff);border-color:var(--border2)}
-.cattile span{font-size:13px;font-weight:600;color:var(--text)}
+.cattile .ci-sale{background:#171717;color:#fff;font-family:'Heebo';font-weight:900;font-size:15px;letter-spacing:.04em;display:flex;align-items:center;justify-content:center}
+.cattile span{font-size:12.5px;font-weight:600;color:var(--text)}
 .cattile:hover .ci{border-color:var(--accent-l);transform:translateY(-3px)}
 .cattile.active .ci{border-color:var(--accent);box-shadow:0 6px 18px rgba(0,0,0,.24)}
 .cattile.active span{color:var(--accent-d)}
-@media(max-width:640px){.cattile .ci{width:96px;height:78px}.cattile span{font-size:11.5px}}
+@media(max-width:640px){.cattile .ci{width:66px;height:66px}.cattile span{font-size:11.5px}}
 
 /* brand picker button + modal */
 .brandpick{display:flex;justify-content:center;padding:6px 16px 2px}
@@ -857,6 +858,78 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .wsbanner button{background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.5);color:#fff;
   font-family:var(--font);font-size:12.5px;font-weight:600;padding:4px 12px;border-radius:999px;cursor:pointer}
 .wsbanner button:hover{background:rgba(255,255,255,.34)}
+
+/* ===== homepage (Sephora-style) additions ===== */
+/* hero carousel */
+.hcar{position:relative;margin:8px 12px 0;border-radius:18px;overflow:hidden;max-width:1160px}
+@media(min-width:900px){.hcar{margin:8px auto 0}}
+.hslides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.hslides::-webkit-scrollbar{display:none}
+.hslide{flex:0 0 100%;scroll-snap-align:center;position:relative;height:300px;background:#111;display:flex;align-items:center;cursor:pointer}
+.hslide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.92}
+.hslide .scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.74),rgba(0,0,0,.45) 42%,rgba(0,0,0,.04) 75%)}
+.hslide .htext{position:relative;z-index:2;color:#fff;padding:0 34px;max-width:62%}
+.hslide .tag{display:inline-block;background:#fff;color:#111;font-size:11px;font-weight:700;letter-spacing:.06em;padding:3px 11px;border-radius:20px;margin-bottom:12px}
+.hslide h2{font-family:var(--script);font-weight:400;font-size:34px;line-height:1.12;margin-bottom:6px}
+.hslide p{font-size:14px;font-weight:300;opacity:.92;margin-bottom:16px;max-width:340px}
+.hslide .cta{background:#fff;color:#111;border:none;font-size:14px;font-weight:700;padding:11px 26px;border-radius:30px;cursor:pointer}
+.hdots{position:absolute;bottom:14px;inset-inline:0;display:flex;gap:7px;justify-content:center;z-index:3}
+.hdots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5);transition:.2s;cursor:pointer}
+.hdots i.on{background:#fff;width:20px;border-radius:6px}
+@media(max-width:640px){.hslide{height:230px}.hslide .htext{max-width:80%;padding:0 22px}.hslide h2{font-size:26px}.hslide p{font-size:12.5px}}
+/* service icons */
+.services{display:flex;justify-content:center;margin:20px 12px 4px;padding:14px 6px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);max-width:1160px}
+@media(min-width:900px){.services{margin:22px auto 4px}}
+.svc{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;padding:0 6px;position:relative}
+.svc + .svc::before{content:'';position:absolute;inset-inline-start:0;top:6px;bottom:6px;width:1px;background:var(--border)}
+.svc svg{width:29px;height:29px;stroke:#171717;stroke-width:1.4;fill:none}
+.svc b{font-size:12.5px;font-weight:700}
+.svc small{font-size:10.5px;color:var(--muted);line-height:1.3}
+@media(max-width:640px){.svc b{font-size:11px}.svc small{font-size:9.5px}.svc svg{width:25px;height:25px}}
+/* promo tiles */
+.promos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 12px 0;max-width:1160px}
+@media(min-width:900px){.promos{margin:18px auto 0}}
+.ptile{border-radius:16px;overflow:hidden;padding:20px;min-height:190px;display:flex;flex-direction:column;justify-content:center;position:relative;border:1px solid var(--border);cursor:pointer}
+.ptile.a{background:var(--accent-soft)}.ptile.b{background:#f7f7f7}
+.ptile .pimg{position:absolute;inset-inline-end:12px;bottom:12px;height:130px;object-fit:contain;border-radius:10px}
+.ptile h3{font-family:var(--script);font-weight:400;font-size:24px;line-height:1.15;max-width:60%;margin-bottom:4px}
+.ptile p{font-size:13px;color:var(--muted);max-width:55%;margin-bottom:14px}
+.ptile .cta{align-self:flex-start;background:#171717;color:#fff;border:none;font-size:13px;font-weight:700;padding:9px 22px;border-radius:30px;cursor:pointer}
+@media(max-width:640px){.promos{grid-template-columns:1fr}.ptile .pimg{height:110px}}
+/* section header */
+.shead{display:flex;align-items:center;justify-content:space-between;margin:26px 16px 12px;max-width:1160px}
+@media(min-width:900px){.shead{margin:26px auto 12px}}
+.shead h4{font-family:var(--script);font-weight:400;font-size:22px}
+.shead .more{font-size:13px;color:var(--muted);text-decoration:none;font-weight:600;background:none;border:none;cursor:pointer}
+/* brand logos row */
+.brandrow{display:flex;gap:30px;align-items:center;padding:6px 16px 4px;overflow-x:auto;scrollbar-width:none;max-width:1160px;margin:0 auto}
+.brandrow::-webkit-scrollbar{display:none}
+.brandrow img{height:34px;max-width:120px;object-fit:contain;flex:0 0 auto;cursor:pointer}
+.brandrow .btxt{flex:0 0 auto;cursor:pointer;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--accent-d);white-space:nowrap}
+/* recommended products carousel */
+.recs{display:flex;gap:14px;padding:4px 16px 6px;overflow-x:auto;scrollbar-width:none;max-width:1160px;margin:0 auto}
+.recs::-webkit-scrollbar{display:none}
+.pcard{flex:0 0 156px;background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;cursor:pointer}
+.pcard .pi{aspect-ratio:1/1;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;padding:12px}
+.pcard .pi img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:normal}
+.pcard .pb{padding:9px 11px 12px}
+.pcard .br{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--muted);text-transform:uppercase}
+.pcard .nm{font-size:12.5px;font-weight:500;line-height:1.3;margin:2px 0 6px;min-height:32px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pcard .pr{font-size:15px;font-weight:700}
+/* shop-all heading */
+.shopall{max-width:1160px;margin:28px auto 2px;padding:0 16px}
+.shopall h4{font-family:var(--script);font-weight:400;font-size:24px}
+/* bottom nav */
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:90;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:7px 4px calc(7px + env(safe-area-inset-bottom))}
+.bnav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:600;flex:1;font-family:var(--font)}
+.bnav svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.5;fill:none}
+.bnav button.on{color:#171717}
+.bnav button.wa{color:#25d366}.bnav button.wa svg{fill:#25d366;stroke:none}
+/* stacking with the fixed bottom nav */
+.cartbar{bottom:62px}
+.totop{bottom:130px}
+.wafloat{display:none}
+.wachat{bottom:80px;inset-inline-end:12px}
 </style>
 </head>
 <body>
@@ -874,16 +947,41 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   </svg>
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
-<header class="herobanner">
-  <div class="hero-deco l" id="heroDecoL"></div>
-  <div class="hero-deco r" id="heroDecoR"></div>
-  <div class="hero-inner">
-    <div class="hero-kicker">Beauty Favorites</div>
-    <h1 class="hero-title">Beauty Favorites</h1>
-    <div class="hero-line"></div>
-    <p class="hero-sub" id="heroSub">הקולקציה הנבחרת — איפור · טיפוח · שיער · בושם</p>
+<div class="hcar" id="hcar">
+  <div class="hslides" id="hslides">
+    <div class="hslide" data-cat="__all__">
+      <img src="hero.jpg" alt="" fetchpriority="high">
+      <div class="scrim"></div>
+      <div class="htext">
+        <span class="tag" id="hs1tag">חדש!</span>
+        <h2 id="hs1h">Beauty Favorites</h2>
+        <p id="hs1p">הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים המובילים בעולם.</p>
+        <button class="cta" id="hs1c">לגילוי הקולקציה</button>
+      </div>
+    </div>
+    <div class="hslide" data-cat="איפור">
+      <img src="cat/makeup.jpg" alt="" loading="lazy">
+      <div class="scrim"></div>
+      <div class="htext">
+        <span class="tag" id="hs2tag">איפור</span>
+        <h2 id="hs2h">המראה המושלם</h2>
+        <p id="hs2p">פאונדיישן, קונסילר, בלאש ושפתונים מהמותגים האהובים.</p>
+        <button class="cta" id="hs2c">לקטגוריית האיפור</button>
+      </div>
+    </div>
+    <div class="hslide" data-cat="בושם">
+      <img src="cat/fragrance.jpg" alt="" loading="lazy">
+      <div class="scrim"></div>
+      <div class="htext">
+        <span class="tag" id="hs3tag">בשמים</span>
+        <h2 id="hs3h">ניחוחות יוקרה</h2>
+        <p id="hs3p">מבחר בשמים מקוריים מבתי האופנה המובילים.</p>
+        <button class="cta" id="hs3c">לקטגוריית הבושם</button>
+      </div>
+    </div>
   </div>
-</header>
+  <div class="hdots" id="hdots"><i class="on"></i><i></i><i></i></div>
+</div>
 
 <div class="herocount"><span id="heroCount"></span></div>
 <div class="cattiles" id="cattiles"></div>
@@ -904,11 +1002,35 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <button class="plink" onclick="openWholesale()" id="pbWholesale">🔑 כניסת סיטונאי</button>
   </div>
 </div>
+
+<!-- service icons -->
+<div class="services">
+  <div class="svc"><svg viewBox="0 0 24 24"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="7" cy="17" r="1.6"/><circle cx="17.5" cy="17" r="1.6"/></svg><b id="svc1a">משלוח חינם</b><small id="svc1b">בקנייה מעל ₪299</small></div>
+  <div class="svc"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5l2 2M20 12a8 8 0 0 1-14 5l-2-2"/><path d="M20 4v5h-5M4 20v-5h5"/></svg><b id="svc2a">החזרות חינם</b><small id="svc2b">עד 30 יום</small></div>
+  <div class="svc"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><b id="svc3a">מוצרים מקוריים</b><small id="svc3b">100% מקורי</small></div>
+  <div class="svc"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M9 15h3"/></svg><b id="svc4a">תשלום מאובטח</b><small id="svc4b">הצפנה מלאה</small></div>
+</div>
+
+<!-- promo tiles -->
+<div class="promos">
+  <div class="ptile a" data-cat="טיפוח" onclick="goCat('טיפוח')"><h3 id="pt1h">מותגי הטיפוח האהובים</h3><button class="cta">לרכישה</button><img class="pimg" src="cat/skincare.jpg" alt="" loading="lazy"></div>
+  <div class="ptile b" data-cat="בושם" onclick="goCat('בושם')"><h3 id="pt2h">בשמים מקוריים</h3><p id="pt2p">מבתי האופנה המובילים</p><button class="cta">לרכישה</button><img class="pimg" src="cat/fragrance.jpg" alt="" loading="lazy"></div>
+</div>
+
+<!-- brand logos -->
+<div class="shead"><h4 id="brTitle">המותגים האהובים</h4><button class="more" onclick="openBrandModal()" id="brMore">לכל המותגים ›</button></div>
+<div class="brandrow" id="brandRow"></div>
+
+<!-- recommended -->
+<div class="shead"><h4 id="recTitle">מומלץ בשבילך</h4><button class="more" onclick="goShop()" id="recMore">לכל המוצרים ›</button></div>
+<div class="recs" id="recRow"></div>
+
 <div class="wsbanner" id="wsBanner" style="display:none">
   <span id="wsBannerTxt">מצב סיטונאי פעיל — מוצגים מחירי סיטונאי</span>
   <button onclick="wholesaleLogout()">יציאה</button>
 </div>
 
+<div class="shopall"><h4 id="shopAllT">כל המוצרים</h4></div>
 <div class="brandpick">
   <button class="brandpickbtn" id="brandPickBtn" onclick="openBrandModal()">
     <span class="bpi">🏷️</span><span id="brandPickLbl">כל המותגים</span><span class="bpchev">▾</span>
@@ -929,11 +1051,6 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 <div class="rescount" id="rescount"></div>
 <main class="grid" id="grid"></main>
 
-<div class="trustrow">
-  <span id="tr1">✔ מוצרים מקוריים בלבד</span>
-  <span id="tr2">🚚 אספקה עד 72 שעות</span>
-  <span id="tr3">💬 שירות אישי בוואטסאפ</span>
-</div>
 
 <footer class="sitefooter">
   <div class="fdisc" id="fDisc">מכירה עצמאית של מוצרים מקוריים · כל הסימנים המסחריים שייכים לבעליהם</div>
@@ -1041,6 +1158,14 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   </div>
 </div></div>
 
+<nav class="bnav" id="bnav">
+  <button class="on" onclick="goTop()"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v9h12v-9"/></svg><span id="nvHome">בית</span></button>
+  <button onclick="focusSearch()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span id="nvSearch">חיפוש</span></button>
+  <button onclick="showFavs()"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.3-9C1 8.5 3 5 6.5 5 8.7 5 10.5 6.4 12 8.4 13.5 6.4 15.3 5 17.5 5 21 5 23 8.5 21.3 12 19 16.4 12 21 12 21z"/></svg><span id="nvFav">מועדפים</span></button>
+  <button onclick="openOrder()"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.2 11h9.6l1.7-8H6.4"/></svg><span id="nvCart">עגלה</span></button>
+  <button class="wa" onclick="toggleWaChat()"><svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.2 4.79 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m4.52 11.99c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42h-.48c-.16 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29"/></svg><span id="nvWa">וואטסאפ</span></button>
+</nav>
+
 <script>
 const GROUPS = /*__GROUPS__*/;
 const BRAND_ALIASES={
@@ -1082,6 +1207,13 @@ const I18N={
   alert_empty:'העגלה ריקה',alert_fill:'נא למלא שם מלא וטלפון לפני שליחת ההזמנה',other:'العربية',
   f_disc:'מכירה עצמאית של מוצרים מקוריים · כל הסימנים המסחריים שייכים לבעליהם',
   hero_sub:'הקולקציה הנבחרת — איפור · טיפוח · שיער · בושם',
+  hs1tag:'חדש!', hs1p:'הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים המובילים בעולם.', hs1c:'לגילוי הקולקציה',
+  hs2tag:'איפור', hs2h:'המראה המושלם', hs2p:'פאונדיישן, קונסילר, בלאש ושפתונים מהמותגים האהובים.', hs2c:'לקטגוריית האיפור',
+  hs3tag:'בשמים', hs3h:'ניחוחות יוקרה', hs3p:'מבחר בשמים מקוריים מבתי האופנה המובילים.', hs3c:'לקטגוריית הבושם',
+  svc1a:'משלוח חינם', svc1b:'בקנייה מעל ₪299', svc2a:'החזרות חינם', svc2b:'עד 30 יום', svc3a:'מוצרים מקוריים', svc3b:'100% מקורי', svc4a:'תשלום מאובטח', svc4b:'הצפנה מלאה',
+  pt1h:'מותגי הטיפוח האהובים', pt2h:'בשמים מקוריים', pt2p:'מבתי האופנה המובילים', buy:'לרכישה',
+  br_title:'המותגים האהובים', br_more:'לכל המותגים ›', rec_title:'מומלץ בשבילך', rec_more:'לכל המוצרים ›', shop_all:'כל המוצרים',
+  nv_home:'בית', nv_search:'חיפוש', nv_fav:'מועדפים', nv_cart:'עגלה', nv_wa:'וואטסאפ',
   f_biz:'פרטי העסק',f_vat:'המחירים כוללים מע״מ · משלוחים לכל הארץ',f_info:'מידע ומדיניות',
   f_ship:'משלוחים ואספקה',f_ret:'החזרות וביטולים',f_terms:'תקנון',f_priv:'מדיניות פרטיות',
   f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ',
@@ -1118,6 +1250,13 @@ const I18N={
   alert_empty:'السلة فارغة',alert_fill:'يرجى تعبئة الاسم الكامل والهاتف قبل إرسال الطلب',other:'עברית',
   f_disc:'بيع مستقل لمنتجات أصلية · جميع العلامات التجارية ملك لأصحابها',
   hero_sub:'التشكيلة المختارة — مكياج · عناية · شعر · عطر',
+  hs1tag:'جديد!', hs1p:'التشكيلة المختارة — مكياج، عناية، شعر وعطر من أفضل الماركات العالمية.', hs1c:'اكتشفي التشكيلة',
+  hs2tag:'مكياج', hs2h:'الإطلالة المثالية', hs2p:'كريم أساس، كونسيلر، بلاشر وأحمر شفاه من الماركات المفضّلة.', hs2c:'إلى قسم المكياج',
+  hs3tag:'عطور', hs3h:'عطور فاخرة', hs3p:'تشكيلة عطور أصلية من أشهر دور الأزياء.', hs3c:'إلى قسم العطور',
+  svc1a:'شحن مجاني', svc1b:'للطلبات فوق ₪299', svc2a:'إرجاع مجاني', svc2b:'حتى 30 يوم', svc3a:'منتجات أصلية', svc3b:'أصلية 100%', svc4a:'دفع آمن', svc4b:'تشفير كامل',
+  pt1h:'ماركات العناية المفضّلة', pt2h:'عطور أصلية', pt2p:'من أشهر دور الأزياء', buy:'للشراء',
+  br_title:'الماركات المفضّلة', br_more:'كل الماركات ›', rec_title:'موصى به لك', rec_more:'كل المنتجات ›', shop_all:'كل المنتجات',
+  nv_home:'الرئيسية', nv_search:'بحث', nv_fav:'المفضلة', nv_cart:'السلة', nv_wa:'واتساب',
   f_biz:'تفاصيل العمل',f_vat:'الأسعار تشمل الضريبة · توصيل لكل البلاد',f_info:'معلومات وسياسات',
   f_ship:'الشحن والتوصيل',f_ret:'الإرجاع والإلغاء',f_terms:'شروط الاستخدام',f_priv:'سياسة الخصوصية',
   f_order:'الطلبات',f_free:'توصيل مجاني للطلبات فوق ₪299',f_eta:'التوصيل خلال 72 ساعة من استلام المندوب للطرد',f_wa:'اطلب عبر واتساب',
@@ -1164,6 +1303,16 @@ function applyStatic(){
   setText('fAccess',t('f_access'));setText('fClub',t('club_footer'));
   var wf=document.getElementById('waFloat');if(wf){wf.title=t('wa_q');wf.setAttribute('aria-label',t('wa_q'));}
   setText('waChatTitle',t('wa_help_title'));setText('waChatGreet',t('wa_help_greet'));setPh('waChatMsg',t('wa_help_ph'));setText('waChatSend',t('wa_send'));
+  // homepage sections (Sephora-style)
+  setText('hs1tag',t('hs1tag'));setText('hs1p',t('hs1p'));setText('hs1c',t('hs1c'));
+  setText('hs2tag',t('hs2tag'));setText('hs2h',t('hs2h'));setText('hs2p',t('hs2p'));setText('hs2c',t('hs2c'));
+  setText('hs3tag',t('hs3tag'));setText('hs3h',t('hs3h'));setText('hs3p',t('hs3p'));setText('hs3c',t('hs3c'));
+  setText('svc1a',t('svc1a'));setText('svc1b',t('svc1b'));setText('svc2a',t('svc2a'));setText('svc2b',t('svc2b'));
+  setText('svc3a',t('svc3a'));setText('svc3b',t('svc3b'));setText('svc4a',t('svc4a'));setText('svc4b',t('svc4b'));
+  setText('pt1h',t('pt1h'));setText('pt2h',t('pt2h'));setText('pt2p',t('pt2p'));
+  var _pb=document.querySelectorAll('.ptile .cta');for(var _i=0;_i<_pb.length;_i++)_pb[_i].textContent=t('buy');
+  setText('brTitle',t('br_title'));setText('brMore',t('br_more'));setText('recTitle',t('rec_title'));setText('recMore',t('rec_more'));setText('shopAllT',t('shop_all'));
+  setText('nvHome',t('nv_home'));setText('nvSearch',t('nv_search'));setText('nvFav',t('nv_fav'));setText('nvCart',t('nv_cart'));setText('nvWa',t('nv_wa'));
   updateWsUI();
   var lb=document.getElementById('langBtn');if(lb)lb.textContent=t('other');
 }
@@ -1242,7 +1391,52 @@ function buildNav(){
   updateBrandBtn();
 
   buildCatTiles();
-  initHeroDeco();
+  buildBrandRow();
+  buildRecs();
+}
+// ---- ניווט עמוד-הבית: קטגוריה/חנות/חיפוש/מועדפים ----
+function goShop(){var el=document.getElementById('shopAllT')||document.getElementById('grid');if(el){var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;window.scrollTo({top:y,behavior:'smooth'});}}
+function goCat(c){curCat=c;curBrand='__all__';favOnly=false;var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');buildNav();render();goShop();}
+function focusSearch(){window.scrollTo({top:0,behavior:'smooth'});setTimeout(function(){var q=document.getElementById('q');if(q)q.focus();},360);}
+function showFavs(){favOnly=true;var fc=document.getElementById('favchip');if(fc)fc.classList.add('active');render();goShop();}
+// ---- שורת לוגואי מותגים ----
+function buildBrandRow(){
+  var el=document.getElementById('brandRow');if(!el)return;
+  var bs=brandsInStock().filter(function(b){return brandLogo(b);});
+  bs.sort(function(a,b){return prestige(a)-prestige(b);});
+  bs=bs.slice(0,12);
+  el.innerHTML=bs.map(function(b){return '<img src="'+aesc(brandLogo(b))+'" alt="'+esc(b)+'" title="'+esc(b)+'" data-b="'+esc(b)+'" loading="lazy">';}).join('');
+  el.onclick=function(e){var im=e.target.closest('[data-b]');if(!im)return;pickBrand(im.getAttribute('data-b'));goShop();};
+}
+// ---- קרוסלת "מומלץ בשבילך" ----
+function buildRecs(){
+  var el=document.getElementById('recRow');if(!el)return;
+  function inStk(g){return !STOCK_READY||g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}
+  var pool=GROUPS.filter(function(g){return !g._noimg&&prestige(g.brand)<=2&&inStk(g);});
+  if(pool.length<6) pool=GROUPS.filter(function(g){return !g._noimg&&inStk(g);});
+  var pick=[],step=Math.max(1,Math.floor(pool.length/12));
+  for(var i=0;i<pool.length&&pick.length<12;i+=step) pick.push(pool[i]);
+  el.innerHTML=pick.map(function(g){
+    var v=g.variants.find(function(x){return x.imgs&&x.imgs.length;})||g.variants[0];
+    var img=(v&&v.imgs&&v.imgs.length)?'<img src="'+aesc(v.imgs[0])+'" loading="lazy" alt="">':'<span class="ph" style="font-size:34px">✦</span>';
+    var pr=Math.min.apply(null,g.variants.map(eff));
+    return '<div class="pcard" onclick="openPd('+g._i+')"><div class="pi">'+img+'</div><div class="pb"><div class="br">'+esc(g.brand)+'</div><div class="nm">'+esc(g.name_he)+'</div><div class="pr">₪'+pr+'</div></div></div>';
+  }).join('');
+}
+// ---- קרוסלת באנרים בהירו ----
+var _carInit=false;
+function initCarousel(){
+  if(_carInit)return; var slides=document.getElementById('hslides'),dots=document.getElementById('hdots'); if(!slides||!dots)return; _carInit=true;
+  var n=slides.children.length,idx=0,timer;
+  var rtl=getComputedStyle(slides).direction==='rtl';
+  function paint(){for(var j=0;j<dots.children.length;j++)dots.children[j].className=(j===idx?'on':'');}
+  function go(k){idx=(k+n)%n;slides.scrollTo({left:slides.clientWidth*idx*(rtl?-1:1),behavior:'smooth'});paint();}
+  function start(){timer=setInterval(function(){go(idx+1);},4800);}
+  function stop(){clearInterval(timer);}
+  for(var j=0;j<dots.children.length;j++){(function(jj){dots.children[jj].onclick=function(){stop();go(jj);start();};})(j);}
+  for(var s=0;s<slides.children.length;s++){(function(el){el.addEventListener('click',function(){var c=el.getAttribute('data-cat');if(c&&c!=='__all__')goCat(c);else goShop();});})(slides.children[s]);}
+  var t2;slides.addEventListener('scroll',function(){clearTimeout(t2);t2=setTimeout(function(){var k=Math.round(Math.abs(slides.scrollLeft)/slides.clientWidth);if(k!==idx){idx=k;paint();}},120);},{passive:true});
+  start();
 }
 // ---- אריחי קטגוריות עם תמונה מייצגת — ניווט הקטגוריות היחיד (כולל אריח "הכל") ----
 function buildCatTiles(){
@@ -1857,6 +2051,7 @@ window.addEventListener('scroll',()=>{
 
 applyStatic();
 render();
+initCarousel();
 if(SB){var _pb=document.getElementById('payBtn');if(_pb)_pb.style.display='';loadStock();}
 </script>
 </body>
