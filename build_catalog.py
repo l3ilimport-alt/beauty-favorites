@@ -525,10 +525,8 @@ a{color:inherit}img{display:block}
 .langbtn:hover{background:var(--accent-soft);transform:translateY(-50%) scale(1.04)}
 @media(max-width:640px){.brandbar img{height:46px}.brandbar{padding:11px 16px 7px}.langbtn{font-size:12px;padding:6px 11px;inset-inline-start:12px}}
 .herobanner{position:relative;width:100%;overflow:hidden;border-bottom:1px solid var(--border);
-  background:linear-gradient(135deg,#ece5fb 0%,#f6f1fd 38%,#faf8ff 62%,#efe7fc 100%)}
-.herobanner::before,.herobanner::after{content:'';position:absolute;border-radius:50%;pointer-events:none}
-.herobanner::before{width:340px;height:340px;top:-170px;left:-110px;background:radial-gradient(circle,rgba(168,85,247,.14),transparent 70%);animation:blobA 16s ease-in-out infinite}
-.herobanner::after{width:420px;height:420px;bottom:-230px;right:-130px;background:radial-gradient(circle,rgba(124,58,237,.12),transparent 70%);animation:blobB 20s ease-in-out infinite}
+  background:linear-gradient(rgba(250,248,255,.60),rgba(247,241,253,.72) 55%,rgba(239,231,252,.80)),url('hero.jpg') center/cover no-repeat}
+.herobanner::before,.herobanner::after{content:none}
 @keyframes blobA{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(34px,22px) scale(1.1)}}
 @keyframes blobB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-38px,-20px) scale(1.07)}}
 /* hero product collage (floating product cards, desktop only; images injected by JS from in-stock prestige brands) */
@@ -540,7 +538,6 @@ a{color:inherit}img{display:block}
 .hero-deco .hd1{top:44%;inset-inline-start:78px;width:78px;height:78px;animation-delay:1.6s;transform:rotate(5deg)}
 .hero-deco .hd2{top:70%;inset-inline-start:14px;width:70px;height:70px;animation-delay:3.1s;transform:rotate(-3deg)}
 @keyframes hdFloat{0%,100%{margin-top:0}50%{margin-top:-12px}}
-@media(min-width:860px){.hero-deco{display:block}}
 @media(prefers-reduced-motion:reduce){.herobanner::before,.herobanner::after,.hero-deco .hd{animation:none!important}}
 .hero-inner{max-width:860px;margin:0 auto;padding:58px 20px 54px;text-align:center;position:relative}
 .hero-kicker{font-family:var(--font);font-size:13px;font-weight:500;letter-spacing:7px;color:var(--accent-d);text-transform:uppercase}
@@ -599,18 +596,18 @@ a{color:inherit}img{display:block}
 .bm .bsearch input:focus{border-color:var(--accent-l);box-shadow:0 0 0 3px var(--accent-soft)}
 .bm .bsearch .ico{position:absolute;right:15px;top:50%;transform:translateY(-50%);color:var(--accent-l);font-size:17px}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
-.bcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;
-  background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px;min-height:96px;transition:.15s}
+.bcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px;min-height:106px;transition:.15s}
 .bcard:hover{border-color:var(--accent-l);box-shadow:var(--shadow);transform:translateY(-2px)}
 .bcard.on{border-color:var(--accent);box-shadow:0 4px 14px rgba(124,58,237,.24)}
-.bcard .blogo{height:38px;max-width:100%;object-fit:contain;mix-blend-mode:multiply}
-.bcard .bwm{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--accent-d);text-align:center;line-height:1.15}
+.bcard .blogo{height:48px;max-width:92%;object-fit:contain;mix-blend-mode:multiply}
+.bcard .bwm{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--accent-d);text-align:center;line-height:1.15}
 .bcard .bname{font-size:11px;font-weight:600;color:var(--muted);text-align:center;line-height:1.2}
 .bcard .bcount{font-size:10px;color:var(--accent-l);font-weight:700}
 .bcard.allb{background:linear-gradient(160deg,var(--accent-soft),#fff)}
 .bcard.allb .bwm{font-style:italic}
 .bm .bempty{text-align:center;color:var(--muted);padding:30px 10px;font-size:14px}
-@media(max-width:640px){.bgrid{grid-template-columns:repeat(3,1fr);gap:8px}.bcard{min-height:84px;padding:11px 7px}.bcard .blogo{height:30px}}
+@media(max-width:640px){.bgrid{grid-template-columns:repeat(3,1fr);gap:8px}.bcard{min-height:90px;padding:11px 7px}.bcard .blogo{height:38px}}
 
 /* low-stock urgency */
 .lowstock{font-size:11px;font-weight:700;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:1px 8px;align-self:flex-start}
@@ -1289,7 +1286,23 @@ function initHeroDeco(){
 // זוגות [קובץ-לוגו, [שמות-מותג]] — מפתח החיפוש מנורמל (normText) כדי לעמוד בהבדלי גרש/פיסוק בין DB לקטלוג.
 const BRAND_LOGO_PAIRS=[
   ["brand-logos/elf.png",["אי.אל.אף"]],
-  ["brand-logos/rare-beauty.webp",["ריר ביוטי"]],
+  ["brand-logos/rare-beauty.svg",["ריר ביוטי"]],
+  ["brand-logos/milk-makeup.png",["מילק מייקאפ"]],
+  ["brand-logos/tatcha.svg",["טאצ'ה"]],
+  ["brand-logos/glow-recipe.png",["Glow Recipe"]],
+  ["brand-logos/kosas.png",["קוסאס"]],
+  ["brand-logos/k18.png",["K18"]],
+  ["brand-logos/danessa-myricks.png",["דנסה מיריקס"]],
+  ["brand-logos/the-ordinary.png",["The Ordinary"]],
+  ["brand-logos/milani.png",["מילאני"]],
+  ["brand-logos/rhode.svg",["Rhode"]],
+  ["brand-logos/smashbox.webp",["סמאשבוקס"]],
+  ["brand-logos/it-cosmetics.webp",["איט קוסמטיקס"]],
+  ["brand-logos/olaplex.webp",["אולפלקס"]],
+  ["brand-logos/drunk-elephant.webp",["דראנק אלפנט"]],
+  ["brand-logos/gisou.webp",["Gisou"]],
+  ["brand-logos/mugler.webp",["Mugler"]],
+  ["brand-logos/rem-beauty.webp",["ר.אי.אם ביוטי","R.E.M."]],
   ["brand-logos/fenty.png",["פנטי ביוטי"]],
   ["brand-logos/benefit.svg",["בנפיט"]],
   ["brand-logos/too-faced.png",["טו פייסד"]],
