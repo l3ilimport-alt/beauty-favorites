@@ -525,7 +525,7 @@ a{color:inherit}img{display:block}
 .langbtn:hover{background:var(--accent-soft);transform:translateY(-50%) scale(1.04)}
 @media(max-width:640px){.brandbar img{height:46px}.brandbar{padding:11px 16px 7px}.langbtn{font-size:12px;padding:6px 11px;inset-inline-start:12px}}
 .herobanner{position:relative;width:100%;overflow:hidden;border-bottom:1px solid var(--border);
-  background:linear-gradient(rgba(250,248,255,.60),rgba(247,241,253,.72) 55%,rgba(239,231,252,.80)),url('hero.jpg') center/cover no-repeat}
+  background:linear-gradient(rgba(250,248,255,.34),rgba(247,241,253,.46) 55%,rgba(240,232,252,.56)),url('hero.jpg') center/cover no-repeat}
 .herobanner::before,.herobanner::after{content:none}
 @keyframes blobA{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(34px,22px) scale(1.1)}}
 @keyframes blobB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-38px,-20px) scale(1.07)}}
