@@ -937,7 +937,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
       <p>שניר שריקי – יבוא ושיווק מותגי שיער וקוסמטיקה</p>
       <p>עוסק מורשה: 040553562</p>
       <p>טלפון: <a href="tel:0534555501">053-4555501</a></p>
-      <p>אימייל: <a href="mailto:saphrafavorites@gmail.com">saphrafavorites@gmail.com</a></p>
+      <p>אימייל: <a href="mailto:beautyfavorites2026@gmail.com">beautyfavorites2026@gmail.com</a></p>
       <p id="fVat">המחירים כוללים מע״מ · משלוחים לכל הארץ</p>
     </div>
     <div class="fcol">
@@ -953,7 +953,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
       <p id="fShipFree">משלוח חינם בהזמנה מעל ₪299</p>
       <p id="fEta">אספקה עד 72 שעות מרגע איסוף ע״י השליח</p>
       <button class="flink" onclick="openWholesale()" id="fClub">💼 מועדון עסקים — מחירון סיטונאי</button>
-      <a class="fwa" href="https://wa.me/972547599923" id="fWa">הזמנה בוואטסאפ</a>
+      <a class="fwa" href="https://wa.me/972534555501" id="fWa">הזמנה בוואטסאפ</a>
     </div>
   </div>
   <div class="fcopy">© שניר שריקי · Beauty Favorites</div>
@@ -1020,7 +1020,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <h3 id="clubTitle">💼 מועדון העסקים</h3>
     <p id="clubSub" style="font-size:14px;line-height:1.7;color:#473d5e;margin:2px 0 16px">מספרה, מאפרת או חנות? הצטרפו למועדון העסקים שלנו וקבלו גישה למחירון סיטונאי מיוחד, שירות אישי והטבות לעסקים.</p>
     <a class="send" id="clubJoin" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none"
-       href="https://wa.me/972547599923?text=%D7%A9%D7%9C%D7%95%D7%9D%21%20%D7%90%D7%A0%D7%99%20%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F%2F%D7%AA%20%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3%20%D7%9C%D7%9E%D7%95%D7%A2%D7%93%D7%95%D7%9F%20%D7%94%D7%A2%D7%A1%D7%A7%D7%99%D7%9D%20%28%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F%20%D7%A1%D7%99%D7%98%D7%95%D7%A0%D7%90%D7%99%29">📲 הצטרפות בוואטסאפ</a>
+       href="https://wa.me/972534555501?text=%D7%A9%D7%9C%D7%95%D7%9D%21%20%D7%90%D7%A0%D7%99%20%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F%2F%D7%AA%20%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3%20%D7%9C%D7%9E%D7%95%D7%A2%D7%93%D7%95%D7%9F%20%D7%94%D7%A2%D7%A1%D7%A7%D7%99%D7%9D%20%28%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F%20%D7%A1%D7%99%D7%98%D7%95%D7%A0%D7%90%D7%99%29">📲 הצטרפות בוואטסאפ</a>
     <button class="send pay" id="clubHave" onclick="closeOv('clubModal');openWsCode()" style="margin-top:10px">🔑 יש לי קוד סיטונאי</button>
   </div>
 </div></div>
@@ -1679,7 +1679,7 @@ function renderTotals(){const {sub}=cartTotals();const d=discount(sub);const el=
     ${WHOLESALE?`<div class="l"><span>${t('vat')}</span><span>₪${vat}</span></div>`:`<div class="l"><span style="color:var(--muted);font-size:12px">${t('incl_vat')}</span><span></span></div>`}
     <div class="l grand"><span>${t('grand')}</span><b>₪${tot}</b></div>`;}
 
-const WA_NUMBER='972547599923';
+const WA_NUMBER='972534555501';
 function gv(id){var e=document.getElementById(id);return e?e.value.trim():''}
 function noteText(){   // עסק/עוסק-ח.פ/כתובת + הערת הלקוח + קופון — נשמר ב-orders.note (מוצג וניתן לחיפוש בבק אופיס)
   const biz=gv('buyer-biz'),bid=gv('buyer-id'),addr=gv('buyer-addr');
@@ -1794,8 +1794,8 @@ const POLICIES={
   <p>עוסק מורשה: 040553562</p>
   <h3>יצירת קשר</h3>
   <p>טלפון: <a href="tel:0534555501">053-4555501</a></p>
-  <p>אימייל: <a href="mailto:saphrafavorites@gmail.com">saphrafavorites@gmail.com</a></p>
-  <p>הזמנות בוואטסאפ: <a href="https://wa.me/972547599923">054-7599923</a></p>
+  <p>אימייל: <a href="mailto:beautyfavorites2026@gmail.com">beautyfavorites2026@gmail.com</a></p>
+  <p>הזמנות בוואטסאפ: <a href="https://wa.me/972534555501">053-4555501</a></p>
   <p>המחירים כוללים מע״מ · משלוחים לכל הארץ · משלוח חינם מעל ₪299</p>`,
  shipping:`<h2>משלוחים ואספקה</h2>${PNOTE}
   <p>ההזמנות נשלחות באמצעות חברת שליחויות (צ׳יטה).</p>
@@ -1806,7 +1806,7 @@ const POLICIES={
   <p>בהתאם לחוק הגנת הצרכן, התשמ״א-1981.</p>
   <h3>זכות ביטול</h3><p>ניתן לבטל עסקה ולהחזיר מוצר תוך 14 יום ממועד קבלתו.</p>
   <h3>תנאי ההחזרה</h3><ul><li>המוצר יוחזר חדש, באריזתו המקורית וללא שימוש.</li><li>מטעמי היגיינה, מוצרי קוסמטיקה/טיפוח שנפתחו או נעשה בהם שימוש — ייתכנו הגבלות החזרה בהתאם לחוק.</li><li>יש לצרף חשבונית/אישור רכישה.</li></ul>
-  <h3>אופן ההחזר</h3><p>ליצירת בקשת ביטול/החזרה: טלפון 053-4555501 או אימייל saphrafavorites@gmail.com. ההחזר הכספי יבוצע באמצעי התשלום המקורי בניכוי דמי ביטול כדין (אם חלים).</p>`,
+  <h3>אופן ההחזר</h3><p>ליצירת בקשת ביטול/החזרה: טלפון 053-4555501 או אימייל beautyfavorites2026@gmail.com. ההחזר הכספי יבוצע באמצעי התשלום המקורי בניכוי דמי ביטול כדין (אם חלים).</p>`,
  terms:`<h2>תקנון האתר</h2>${PNOTE}
   <h3>כללי</h3><p>האתר מופעל על ידי שניר שריקי – יבוא ושיווק מותגי שיער וקוסמטיקה (עוסק מורשה 040553562) ("העסק"). השימוש באתר ובהזמנה כפוף לתקנון זה.</p>
   <h3>המוצרים</h3><p>האתר מציע מוצרי קוסמטיקה וטיפוח מקוריים. תמונות המוצרים להמחשה בלבד וייתכנו הבדלי גוון/אריזה. המחירים בשקלים חדשים וכוללים מע״מ.</p>
@@ -1828,13 +1828,13 @@ const POLICIES={
   <p>אנו ממשיכים לפעול לשיפור נגישות האתר באופן שוטף. ייתכן שיימצאו רכיבים שטרם הונגשו במלואם; נשמח לקבל פנייה ונטפל בה בהקדם.</p>
   <h3>רכז הנגישות</h3>
   <p>שניר שריקי</p>
-  <p>טלפון: <a href="tel:0534555501">053-4555501</a> · אימייל: <a href="mailto:saphrafavorites@gmail.com">saphrafavorites@gmail.com</a></p>
+  <p>טלפון: <a href="tel:0534555501">053-4555501</a> · אימייל: <a href="mailto:beautyfavorites2026@gmail.com">beautyfavorites2026@gmail.com</a></p>
   <p>הצהרת הנגישות עודכנה לאחרונה: יולי 2026.</p>`,
  privacy:`<h2>מדיניות פרטיות</h2>${PNOTE}
   <h3>איסוף מידע</h3><p>לצורך ביצוע הזמנה ואספקתה נאספים פרטים: שם, טלפון, כתובת ופרטי הזמנה.</p>
   <h3>שימוש במידע</h3><p>המידע משמש לעיבוד ההזמנה, אספקה, שירות לקוחות ויצירת קשר בנוגע להזמנה.</p>
   <h3>העברה לצד שלישי</h3><p>המידע אינו נמכר. הוא עשוי להימסר לחברת השליחויות ולספק הסליקה אך ורק לצורך השלמת ההזמנה.</p>
-  <h3>יצירת קשר</h3><p>לעיון, עדכון או מחיקת פרטים: saphrafavorites@gmail.com.</p>`,
+  <h3>יצירת קשר</h3><p>לעיון, עדכון או מחיקת פרטים: beautyfavorites2026@gmail.com.</p>`,
 };
 function openPolicy(k){var b=document.getElementById('policyBody');if(b)b.innerHTML=POLICIES[k]||'';openOv('policyModal');}
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)closeOv(ov.id)}));
