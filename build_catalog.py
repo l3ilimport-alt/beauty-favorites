@@ -579,12 +579,14 @@ a{color:inherit}img{display:block}
 
 /* brand picker button + modal */
 .brandpick{display:flex;justify-content:center;padding:6px 16px 2px}
-.brandpickbtn{display:inline-flex;align-items:center;gap:9px;font-family:var(--font);font-size:14px;font-weight:600;
-  cursor:pointer;padding:9px 20px;border-radius:30px;border:1px solid var(--border2);background:var(--surface);
+.brandpickbtn{display:inline-flex;align-items:center;gap:9px;font-family:var(--font);font-size:14.5px;font-weight:700;
+  cursor:pointer;padding:10px 22px;border-radius:30px;border:1.5px solid var(--accent-l);background:var(--accent-soft);
   color:var(--accent-d);box-shadow:var(--shadow);transition:.18s}
-.brandpickbtn:hover{border-color:var(--accent-l);transform:translateY(-1px)}
+.brandpickbtn:hover{background:#ece2fe;border-color:var(--accent);transform:translateY(-1px)}
 .brandpickbtn .bpi{font-size:16px}
+.brandpickbtn .bpchev{font-size:12px;opacity:.75;margin-inline-start:1px}
 .brandpickbtn.on{background:var(--accent);color:#fff;border-color:transparent}
+.brandpickbtn.on .bpchev{opacity:.9}
 .brandpickbtn .clr{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
   background:rgba(255,255,255,.28);font-size:12px;line-height:1}
 .brandsheet{max-width:720px}
@@ -860,7 +862,6 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 <body>
 <div class="promobar" id="promobar">
   <span id="promo1">🚚 משלוח חינם מעל ₪299</span><span class="pdot">·</span>
-  <span id="promo2">🎁 10% הנחה עם קופון BEAUTY10</span><span class="pdot">·</span>
   <span id="promo3">⏱ אספקה עד 72 שעות</span>
 </div>
 <div class="brandbar">
@@ -904,7 +905,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 <div class="brandpick">
   <button class="brandpickbtn" id="brandPickBtn" onclick="openBrandModal()">
-    <span class="bpi">🏷️</span><span id="brandPickLbl">כל המותגים</span>
+    <span class="bpi">🏷️</span><span id="brandPickLbl">כל המותגים</span><span class="bpchev">▾</span>
   </button>
 </div>
 <div class="toolbar" id="prices"></div>
@@ -1152,7 +1153,7 @@ function applyStatic(){
   setText('pbBiz',t('f_biz'));setText('pbShip',t('pb_ship'));setText('pbRet',t('pb_ret'));setText('pbTerms',t('f_terms'));setText('pbPriv',t('pb_priv'));
   setText('wsTitle',t('ws_title'));setText('wsSub',t('ws_sub'));setPh('wsCode',t('ws_ph'));setText('wsGo',t('ws_go'));setText('wsBannerTxt',t('ws_active'));
   setText('brandModalTitle',t('brand_title'));setPh('brandSearch',t('brand_search'));if(typeof updateBrandBtn==='function')updateBrandBtn();
-  setText('promo1',t('promo_free'));setText('promo2',t('promo_coupon'));setText('promo3',t('promo_eta'));
+  setText('promo1',t('promo_free'));setText('promo3',t('promo_eta'));
   setText('tr1',t('tr_orig'));setText('tr2',t('tr_eta'));setText('tr3',t('tr_wa'));
   setText('clubTitle',t('club_title'));setText('clubSub',t('club_sub'));setText('clubJoin',t('club_join'));setText('clubHave',t('club_have'));
   setText('fAccess',t('f_access'));setText('fClub',t('club_footer'));
@@ -1273,7 +1274,7 @@ function initHeroDeco(){
 }
 // ---- פס פרומו: במובייל מציג הודעה אחת מתחלפת ----
 (function(){
-  const ids=['promo1','promo2','promo3'];let pi=0;
+  const ids=['promo1','promo3'];let pi=0;
   const e0=document.getElementById(ids[0]);if(e0)e0.classList.add('cur');
   setInterval(function(){
     if(window.innerWidth>640)return;
@@ -1286,7 +1287,7 @@ function initHeroDeco(){
 // זוגות [קובץ-לוגו, [שמות-מותג]] — מפתח החיפוש מנורמל (normText) כדי לעמוד בהבדלי גרש/פיסוק בין DB לקטלוג.
 const BRAND_LOGO_PAIRS=[
   ["brand-logos/elf.png",["אי.אל.אף"]],
-  ["brand-logos/rare-beauty.svg",["ריר ביוטי","סוויט טות'"]],
+  ["brand-logos/rare-beauty.svg",["ריר ביוטי"]],
   ["brand-logos/patrick-ta.png",["פטריק טא"]],
   ["brand-logos/milk-makeup.png",["מילק מייקאפ"]],
   ["brand-logos/tatcha.svg",["טאצ'ה"]],
