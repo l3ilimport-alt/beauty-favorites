@@ -908,7 +908,6 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <span class="bpi">🏷️</span><span id="brandPickLbl">כל המותגים</span><span class="bpchev">▾</span>
   </button>
 </div>
-<div class="toolbar" id="prices"></div>
 <div class="toolbar">
   <button class="chip favbtn" id="favchip" onclick="toggleFavOnly()">♥ המועדפים שלי</button>
   <button class="chip" id="resetchip" onclick="resetFilters()">↺ נקה הכל</button>
@@ -1234,11 +1233,6 @@ function buildNav(){
   if(curBrand!=='__all__'&&!brands.includes(curBrand))curBrand='__all__';   // מותג שנבחר אזל → חזרה להכל
   updateBrandBtn();
 
-  const pr=document.getElementById('prices');
-  const mp=(l,i)=>`<button class="chip ${i===curPrice?'active':''}" data-p="${i}">${l}</button>`;
-  pr.innerHTML=mp(t('all_prices'),-1)+PRICES.map((p,i)=>mp(t(PRICE_KEYS[i]),i)).join('');
-  pr.onclick=e=>{const b=e.target.closest('[data-p]');if(!b)return;curPrice=+b.dataset.p;
-    [...pr.children].forEach(c=>c.classList.toggle('active',+c.dataset.p===curPrice));render()};
   buildCatTiles();
   initHeroDeco();
 }
