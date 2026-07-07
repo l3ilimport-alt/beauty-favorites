@@ -541,9 +541,6 @@ a{color:inherit}img{display:block}
 .hero-deco .hd2{top:70%;inset-inline-start:14px;width:70px;height:70px;animation-delay:3.1s;transform:rotate(-3deg)}
 @keyframes hdFloat{0%,100%{margin-top:0}50%{margin-top:-12px}}
 @media(min-width:860px){.hero-deco{display:block}}
-/* וידאו הירו — דסקטופ בלבד (במובייל לא נטען כלל, לשמירת קצב+נתונים). המקור מוזרק ב-JS רק במסך רחב. */
-.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.18;pointer-events:none;display:none}
-@media(min-width:860px){.hero-video{display:block}}
 @media(prefers-reduced-motion:reduce){.herobanner::before,.herobanner::after,.hero-deco .hd{animation:none!important}}
 .hero-inner{max-width:860px;margin:0 auto;padding:58px 20px 54px;text-align:center;position:relative}
 .hero-kicker{font-family:var(--font);font-size:13px;font-weight:500;letter-spacing:7px;color:var(--accent-d);text-transform:uppercase}
@@ -624,11 +621,30 @@ a{color:inherit}img{display:block}
 .trustrow span{font-size:12.5px;font-weight:600;color:var(--accent-d);background:var(--surface);
   border:1px solid var(--border2);border-radius:30px;padding:8px 16px;box-shadow:var(--shadow)}
 
-/* floating WhatsApp help button */
-.wafloat{position:fixed;right:16px;bottom:84px;z-index:70;width:52px;height:52px;border-radius:50%;
-  background:#25d366;color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;
-  text-decoration:none;box-shadow:0 10px 26px rgba(37,211,102,.42);transition:.2s}
+/* floating WhatsApp launcher + chat popup */
+.wafloat{position:fixed;right:16px;bottom:84px;z-index:70;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;
+  background:#25d366;color:#fff;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 26px rgba(37,211,102,.42);transition:.2s}
 .wafloat:hover{transform:scale(1.08)}
+.wafloat svg{width:30px;height:30px;fill:#fff}
+.wachat{position:fixed;right:16px;bottom:150px;z-index:71;width:300px;max-width:calc(100vw - 32px);
+  background:var(--surface);border:1px solid var(--border2);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.22);
+  overflow:hidden;display:none;animation:waUp .22s cubic-bezier(.2,.8,.2,1)}
+.wachat.open{display:block}
+@keyframes waUp{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.wachat-head{background:#075e54;color:#fff;padding:12px 15px;display:flex;align-items:center;gap:9px}
+.wachat-head svg{width:22px;height:22px;fill:#fff;flex:0 0 auto}
+.wachat-head .wt{font-size:13.5px;font-weight:600;line-height:1.3}
+.wachat-head .wx{margin-inline-start:auto;background:none;border:none;color:#fff;font-size:19px;cursor:pointer;opacity:.85;line-height:1;padding:0}
+.wachat-body{padding:13px 14px}
+.wachat-body .wgreet{font-size:12.5px;color:var(--muted);margin-bottom:9px;line-height:1.5}
+.wachat-body textarea{width:100%;font-family:var(--font);font-size:14px;padding:10px 12px;border:1px solid var(--border2);
+  border-radius:12px;outline:none;background:var(--surface);color:var(--text);resize:vertical;min-height:62px}
+.wachat-body textarea:focus{border-color:#25d366;box-shadow:0 0 0 3px rgba(37,211,102,.16)}
+.wachat-send{width:100%;margin-top:10px;font-family:var(--font);font-size:15px;font-weight:700;color:#fff;border:none;
+  border-radius:12px;padding:12px;cursor:pointer;background:#25d366;display:flex;align-items:center;justify-content:center;gap:8px}
+.wachat-send svg{width:18px;height:18px;fill:#fff}
+.wachat-send:hover{background:#1fbe5a}
 
 /* category nav (primary) */
 .catnav{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:14px 16px 6px;max-width:760px;margin:0 auto}
@@ -855,8 +871,6 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
 <header class="herobanner">
-  <!-- וידאו הירו: catalog/hero.mp4 (נוזל ורוד אבסטרקטי, Pexels, רישיון מסחרי חופשי). המקור מוזרק ב-JS בדסקטופ בלבד. -->
-  <video class="hero-video" autoplay muted loop playsinline preload="auto"></video>
   <div class="hero-deco l" id="heroDecoL"></div>
   <div class="hero-deco r" id="heroDecoR"></div>
   <div class="hero-inner">
@@ -953,9 +967,21 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button id="viewOrderBtn" onclick="openOrder()">צפה בהזמנה ←</button>
 </div>
 <button class="totop" id="toTop" onclick="goTop()" aria-label="חזרה למעלה" title="חזרה למעלה">↑</button>
-<a class="wafloat" id="waFloat" target="_blank" rel="noopener"
-   href="https://wa.me/972547599923?text=%D7%A9%D7%9C%D7%95%D7%9D%21%20%D7%99%D7%A9%20%D7%9C%D7%99%20%D7%A9%D7%90%D7%9C%D7%94%20%D7%A2%D7%9C%20%D7%9E%D7%95%D7%A6%D7%A8%20%D7%91%D7%A7%D7%98%D7%9C%D7%95%D7%92"
-   aria-label="יש שאלה? דברו איתנו בוואטסאפ" title="יש שאלה? דברו איתנו בוואטסאפ">💬</a>
+<button class="wafloat" id="waFloat" onclick="toggleWaChat()" aria-label="יש שאלה? דברו איתנו בוואטסאפ" title="יש שאלה? דברו איתנו בוואטסאפ">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.2 4.79 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m0 18.15h-.01c-1.52 0-3.01-.41-4.3-1.18l-.31-.18-3.2.84.85-3.12-.2-.32a8.2 8.2 0 0 1-1.26-4.37c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.23 8.24m4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42h-.48c-.16 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29"/></svg>
+</button>
+<div class="wachat" id="waChat">
+  <div class="wachat-head">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.2 4.79 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m4.52 11.99c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42h-.48c-.16 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29"/></svg>
+    <span class="wt" id="waChatTitle">צריכים עזרה? כתבו לנו</span>
+    <button class="wx" onclick="toggleWaChat()" aria-label="סגור">✕</button>
+  </div>
+  <div class="wachat-body">
+    <div class="wgreet" id="waChatGreet">כתבו את ההודעה שלכם ונחזור אליכם מיד בוואטסאפ.</div>
+    <textarea id="waChatMsg" placeholder="ההודעה שלי…" onkeydown="if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))sendWaChat()"></textarea>
+    <button class="wachat-send" onclick="sendWaChat()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg><span id="waChatSend">שלח בוואטסאפ</span></button>
+  </div>
+</div>
 
 <div class="ov" id="pdModal"><div class="sheet"><button class="x" onclick="closePd()">✕</button><div id="pdContent"></div></div></div>
 
@@ -1064,6 +1090,8 @@ const I18N={
   f_access:'הצהרת נגישות',left_only:'נותרו רק {n} במלאי!',
   tr_orig:'✔ מוצרים מקוריים בלבד',tr_eta:'🚚 אספקה עד 72 שעות',tr_wa:'💬 שירות אישי בוואטסאפ',
   wa_q:'יש שאלה? דברו איתנו בוואטסאפ',
+  wa_help_title:'צריכים עזרה? כתבו לנו',wa_help_greet:'כתבו את ההודעה שלכם ונחזור אליכם מיד בוואטסאפ.',
+  wa_help_ph:'ההודעה שלי…',wa_send:'שלח בוואטסאפ',wa_default:'שלום! יש לי שאלה על מוצר בקטלוג',
   brand_title:'בחירת מותג',brand_search:'חיפוש מותג…'},
  ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',in_stock_short:'متوفر',reset_all:'مسح الكل',cons_rec:'موصى للمستهلك:',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
@@ -1098,6 +1126,8 @@ const I18N={
   f_access:'إعلان إمكانية الوصول',left_only:'بقي {n} فقط في المخزون!',
   tr_orig:'✔ منتجات أصلية فقط',tr_eta:'🚚 التوصيل خلال 72 ساعة',tr_wa:'💬 خدمة شخصية عبر واتساب',
   wa_q:'لديك سؤال؟ تواصلوا معنا عبر واتساب',
+  wa_help_title:'تحتاجون مساعدة؟ اكتبوا لنا',wa_help_greet:'اكتبوا رسالتكم وسنعود إليكم فوراً عبر واتساب.',
+  wa_help_ph:'رسالتي…',wa_send:'إرسال عبر واتساب',wa_default:'مرحباً! لديّ سؤال عن منتج في الكتالوج',
   brand_title:'اختيار الماركة',brand_search:'ابحث عن ماركة…'}
 };
 let LANG=localStorage.getItem('sf_lang')||'he';
@@ -1130,6 +1160,7 @@ function applyStatic(){
   setText('clubTitle',t('club_title'));setText('clubSub',t('club_sub'));setText('clubJoin',t('club_join'));setText('clubHave',t('club_have'));
   setText('fAccess',t('f_access'));setText('fClub',t('club_footer'));
   var wf=document.getElementById('waFloat');if(wf){wf.title=t('wa_q');wf.setAttribute('aria-label',t('wa_q'));}
+  setText('waChatTitle',t('wa_help_title'));setText('waChatGreet',t('wa_help_greet'));setPh('waChatMsg',t('wa_help_ph'));setText('waChatSend',t('wa_send'));
   updateWsUI();
   var lb=document.getElementById('langBtn');if(lb)lb.textContent=t('other');
 }
@@ -1311,6 +1342,17 @@ function renderBrandGrid(){
   grid.onclick=e=>{const c=e.target.closest('[data-b]');if(!c)return;pickBrand(c.dataset.b);};
 }
 function pickBrand(b){curBrand=b;closeOv('brandModal');buildNav();render();}
+
+// ===== כפתור וואטסאפ צף: חלון עם שדה הודעה שהלקוח ממלא ואז שולח =====
+function toggleWaChat(){const c=document.getElementById('waChat');if(!c)return;
+  const open=c.classList.toggle('open');
+  if(open){const m=document.getElementById('waChatMsg');setTimeout(function(){if(m)m.focus();},60);}}
+function sendWaChat(){const m=document.getElementById('waChatMsg');
+  const txt=((m&&m.value.trim())||t('wa_default'));
+  window.open('https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(txt),'_blank');
+  const c=document.getElementById('waChat');if(c)c.classList.remove('open');}
+document.addEventListener('click',function(e){var c=document.getElementById('waChat');
+  if(c&&c.classList.contains('open')&&!e.target.closest('#waChat')&&!e.target.closest('#waFloat'))c.classList.remove('open');});
 
 buildNav();
 function toggleFavOnly(){favOnly=!favOnly;document.getElementById('favchip').classList.toggle('active',favOnly);render()}
@@ -1793,8 +1835,6 @@ window.addEventListener('scroll',()=>{
 
 applyStatic();
 render();
-// וידאו הירו: הזרקת המקור רק בדסקטופ (מובייל לא מוריד את הקובץ)
-(function(){var v=document.querySelector('.hero-video');if(v&&window.matchMedia&&window.matchMedia('(min-width:860px)').matches){v.setAttribute('src','hero.mp4');if(v.load)v.load();}})();
 if(SB){var _pb=document.getElementById('payBtn');if(_pb)_pb.style.display='';loadStock();}
 </script>
 </body>
