@@ -2,42 +2,41 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1200px;height:630px;overflow:hidden;font-family:'Heebo',sans-serif}
 .card{width:1200px;height:630px;position:relative;
-  background:radial-gradient(130% 100% at 50% -20%, #efe5ff 0%, #faf8ff 55%, #f4eefe 100%);
+  background:radial-gradient(120% 100% at 50% -12%, #f4f4f4 0%, #ffffff 58%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.card::before{content:"";position:absolute;inset:26px;border:1.5px solid #d8c8f5;border-radius:28px;pointer-events:none}
-.mark{font-family:'Cormorant Garamond',serif;font-size:26px;letter-spacing:11px;color:#7c3aed;font-weight:600;text-transform:uppercase;margin-bottom:6px}
-h1{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:104px;line-height:1;letter-spacing:1px;
-  background:linear-gradient(90deg,#5b21b6,#a855f7);-webkit-background-clip:text;background-clip:text;color:transparent}
-.tag{font-size:25px;color:#6b6480;font-weight:300;margin-top:16px}
-.badge{margin-top:22px;display:inline-block;font-size:20px;font-weight:600;color:#7c3aed;
-  background:#fff;border:1.5px solid #d8c8f5;border-radius:40px;padding:9px 30px;box-shadow:0 8px 24px rgba(124,58,237,.14)}
-.strip{position:absolute;bottom:54px;left:0;right:0;display:flex;gap:18px;justify-content:center}
-.thumb{width:96px;height:96px;border-radius:18px;background:#fff;border:1px solid #ece3fb;
-  box-shadow:0 8px 22px rgba(91,33,182,.12);display:flex;align-items:center;justify-content:center;padding:9px}
-.thumb img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply}
-.dot{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%,#c9a8ff,#7c3aed);opacity:.16}
-.d1{width:160px;height:160px;top:-30px;right:90px}
-.d2{width:90px;height:90px;top:120px;left:120px;opacity:.12}
+.card::before{content:"";position:absolute;inset:28px;border:1.5px solid #171717;border-radius:26px;pointer-events:none}
+.mark{font-family:'Heebo',sans-serif;font-size:24px;letter-spacing:13px;color:#171717;font-weight:500;text-transform:uppercase;margin-bottom:2px;padding-inline-start:13px}
+.rule{width:150px;height:1.6px;background:#171717;margin:12px auto 4px;position:relative}
+.rule::before,.rule::after{content:"";position:absolute;top:-2px;width:6px;height:6px;border-radius:50%;background:#171717}
+.rule::before{left:-12px}.rule::after{right:-12px}
+h1{font-family:'Dancing Script',cursive;font-weight:700;font-size:130px;line-height:1;color:#171717;margin-top:-4px}
+.tag{font-size:25px;color:#555;font-weight:300;margin-top:14px}
+.badge{margin-top:22px;display:inline-block;font-size:20px;font-weight:600;color:#171717;
+  background:#fff;border:1.5px solid #171717;border-radius:40px;padding:9px 30px}
+.strip{position:absolute;bottom:56px;left:0;right:0;display:flex;gap:18px;justify-content:center}
+.thumb{width:94px;height:94px;border-radius:18px;background:#f7f7f7;border:1px solid #e6e6e6;
+  box-shadow:0 8px 22px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;padding:9px}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain}
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="dot d1"></div><div class="dot d2"></div>
-  <div class="mark">Beauty · Curated</div>
+  <div class="mark">Beauty &middot; Curated</div>
+  <div class="rule"></div>
   <h1>Beauty Favorites</h1>
-  <div class="tag">הקולקציה הנבחרת — איפור · טיפוח · שיער מהמותגים האהובים</div>
+  <div class="tag">הקולקציה הנבחרת — איפור · טיפוח · שיער · בושם מהמותגים המובילים</div>
   <div class="badge">✦ הקטלוג הדיגיטלי</div>
   <div class="strip">
-    <div class="thumb"><img src="images/1001-hourglass-graphik-eyeshadow-palette-vista/01.jpg"></div>
     <div class="thumb"><img src="images/101-armani-my-way-intense/01.jpg"></div>
-    <div class="thumb"><img src="images/02-maybelline-age-rewind-120/01.jpg"></div>
-    <div class="thumb"><img src="images/1731-huda-beauty-topaz-obsessions-eyeshadow-palette/01.jpg"></div>
-    <div class="thumb"><img src="images/26-brow-freeze-styling-wax/01.jpg"></div>
+    <div class="thumb"><img src="images/239-dior-lip-glow-000-clear/01.jpg"></div>
+    <div class="thumb"><img src="images/152-charlotte-tilbury-concealer-mix/01.jpg"></div>
+    <div class="thumb"><img src="images/1381-nars-blush-orgasm-0-17-oz/01.jpg"></div>
+    <div class="thumb"><img src="images/1656-tatcha-the-clarifying-clay-mask-exfoliating-po/01.jpg"></div>
   </div>
 </div>
 </body>
