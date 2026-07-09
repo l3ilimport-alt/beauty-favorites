@@ -105,7 +105,7 @@ IMGDIR = os.path.join(CAT, "images")
 OVERRIDES = os.path.join(CAT, "catalog_overrides.json")
 ORDER_FILE = os.path.join(ROOT, "הזמנה 1.xlsx")
 
-SITE_URL = "https://l3ilimport-alt.github.io/beauty-favorites"
+SITE_URL = "https://beautyfavorites.co.il"
 
 # ---- brand normalization ----
 BRAND_MAP = {
