@@ -360,6 +360,8 @@ def main():
             "shade": p.get("shade") or "",
             "barcode": p.get("barcode") or "",
             "desc": p.get("description") or "",
+            "summary": p.get("summary") or "",
+            "summary_ar": p.get("summary_ar") or "",
             "features": p.get("key_features") or [],
             "ingredients": p.get("ingredients") or "",
             "usage": p.get("usage") or "",
@@ -389,6 +391,8 @@ def main():
                 "sale": p["sale"], "was": p.get("was"), "size": p["size"], "barcode": p["barcode"], "imgs": p["imgs"],
                 "desc": p["desc"], "features": p["features"], "ingredients": p["ingredients"],
                 "usage": p["usage"], "badges": p["badges"], "color": p.get("color")}
+        if p.get("summary"): d["summary"] = p["summary"]
+        if p.get("summary_ar"): d["summary_ar"] = p["summary_ar"]
         if p.get("desc_ar"): d["desc_ar"] = p["desc_ar"]
         if p.get("features_ar"): d["features_ar"] = p["features_ar"]
         if p.get("usage_ar"): d["usage_ar"] = p["usage_ar"]
@@ -769,6 +773,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .pd-sw .dot{display:inline-block;width:13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.12);margin-inline-end:6px;vertical-align:middle}
 .pd h4{font-family:var(--script);font-size:17px;font-weight:400;letter-spacing:0;color:var(--accent-d);margin:16px 0 5px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 .pd p,.pd li{font-size:13.5px;line-height:1.6;color:#444444;font-weight:300}
+.pd .pd-lead{font-size:14.5px;line-height:1.55;color:#171717;font-weight:600;margin:14px 0 2px;padding:11px 13px;background:var(--card2,#f6f5f3);border-radius:10px;border-inline-start:3px solid var(--accent,#171717)}
 .pd ul{padding-right:18px;margin-top:4px}
 .pd .barc{font-size:12px;color:var(--muted);margin-top:14px;font-family:monospace;direction:ltr;text-align:right}
 .pd .cta{width:100%;margin-top:18px;font-family:var(--font);font-size:16px;font-weight:600;color:#fff;border:none;border-radius:14px;padding:14px;cursor:pointer;background:linear-gradient(90deg,var(--accent-d),var(--accent));box-shadow:0 8px 22px rgba(0,0,0,.28)}
@@ -1759,6 +1764,7 @@ function renderPd(g){
   const gal=v.imgs.length?v.imgs.map(s=>`<img src="${aesc(s)}" loading="lazy" data-l="${aesc(g.name_he[0]||'✦')}" onerror="imgErr(this)">`).join(''):`<div class="ph">${esc(g.name_he[0]||'✦')}</div>`;
   // Arabic copy when LANG=ar (fallback to Hebrew per field)
   const _dsc=(LANG==='ar'&&v.desc_ar)?v.desc_ar:v.desc;
+  const _sum=(LANG==='ar'&&v.summary_ar)?v.summary_ar:v.summary;
   const _fts=(LANG==='ar'&&v.features_ar&&v.features_ar.length)?v.features_ar:v.features;
   const _usg=(LANG==='ar'&&v.usage_ar)?v.usage_ar:v.usage;
   const feats=(_fts&&_fts.length)?`<h4>${t('feats')}</h4><ul>${_fts.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'';
@@ -1788,6 +1794,7 @@ function renderPd(g){
       ${shades}
       ${pr}
       <button class="pdfav ${FAVS.has(g.gid)?'on':''}" id="pdFav" onclick="toggleFavFromModal('${g.gid}')"><span class="h">♥</span><span class="t">${FAVS.has(g.gid)?t('fav_remove'):t('fav_add')}</span></button>
+      ${_sum?`<p class="pd-lead">${esc(_sum)}</p>`:''}
       ${_dsc?`<h4>${t('desc')}</h4><p>${esc(_dsc)}</p>`:''}
       ${contents}
       ${feats}${ing}${use}
