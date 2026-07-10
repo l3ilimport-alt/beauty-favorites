@@ -1779,7 +1779,7 @@ function renderPd(g){
   const pr=`<div class="pr">₪${eff(v)}${_was}</div>`+((_pc!=null&&_pc>0)?`<div class="pr-cons">${t('cons_rec')} ₪${_pc}</div>`:'')+lowStockHtml(v);
   const bdg=(v.badges||[]).map(b=>`<span class="tag" style="color:#fff;background:${b==='sale'?'#171717':b==='vegan'?'#3d3a35':'var(--accent)'};border:none">${t('b_'+b)||b}</span>`).join('');
   // similar: other groups, same brand first then same type
-  const sim=GROUPS.filter(x=>x.gid!==g.gid&&(x.brand===g.brand||x.type===g.type))
+  const sim=GROUPS.filter(x=>x.gid!==g.gid&&(x.brand===g.brand||x.type===g.type)&&(!STOCK_READY||x.variants.some(v=>STOCK[nbc(v.barcode)]>0)))
     .sort((a,b)=>(a.brand===g.brand?0:1)-(b.brand===g.brand?0:1)).slice(0,8);
   const simHtml=sim.length?`<div class="sim"><h4>${t('similar')}</h4><div class="sim-row">${sim.map(x=>{const xv=selV(x);
     const im=xv.imgs.length?`<img src="${aesc(xv.imgs[0])}" onerror="this.style.visibility='hidden'">`:'<span class="ph" style="font-size:26px">✦</span>';
