@@ -598,6 +598,7 @@ a{color:inherit}img{display:block}
 
 /* brand picker button + modal */
 .brandpick{display:flex;justify-content:center;padding:6px 16px 2px}
+@media(max-width:640px){.brandpick{padding:16px 16px 14px}}   /* ריווח לכפתור "כל המותגים" במובייל — צפוף מדי בלעדיו */
 .brandpickbtn{display:inline-flex;align-items:center;gap:10px;font-family:var(--font);font-size:12.5px;font-weight:500;letter-spacing:.16em;
   cursor:pointer;padding:11px 30px;border-radius:3px;border:1px solid var(--accent);background:transparent;
   color:var(--accent);box-shadow:none;transition:.25s ease}
