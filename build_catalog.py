@@ -1226,6 +1226,7 @@ const I18N={
   items:'מוצרים',in_stock_count:'מוצרים במלאי',cart_items:'פריטים',empty:'לא נמצאו מוצרים מתאימים 🔍',
   view_order:'צפה בהזמנה ←',totop:'חזרה למעלה',
   c_איפור:'איפור',c_טיפוח:'טיפוח',c_שיער:'שיער',c_בושם:'בושם',c_מארזים:'מארזים',c_ציפורניים:'ציפורניים',c_אביזרים:'אביזרים',c_ציוד:'ציוד',c_אחר:'אחר',
+  cat_hot:'🔥 לוהטים',
   b_sale:'מבצע',b_new:'חדש',b_bestseller:'רב-מכר',b_soldout:'אזל',b_limited:'מהדורה מוגבלת',b_vegan:'טבעוני',
   shades:'גוונים',feats:'מאפיינים עיקריים',ingredients:'רכיבים',usage:'אופן שימוש',contents_h:'מה כלול במבחר',
   pick_shade:'בחר גוון',similar:'מוצרים דומים',desc:'תיאור',barcode:'ברקוד:',
@@ -1269,6 +1270,7 @@ const I18N={
   items:'منتج',in_stock_count:'منتجات متوفرة',cart_items:'عناصر',empty:'لم يتم العثور على منتجات مطابقة 🔍',
   view_order:'عرض الطلب ←',totop:'العودة للأعلى',
   c_איפור:'مكياج',c_טיפוח:'العناية بالبشرة',c_שיער:'العناية بالشعر',c_בושם:'عطر',c_מארזים:'مجموعات',c_ציפורניים:'العناية بالأظافر',c_אביזרים:'إكسسوارات',c_ציוד:'معدات',c_אחר:'أخرى',
+  cat_hot:'🔥 الأكثر رواجاً',
   b_sale:'تخفيض',b_new:'جديد',b_bestseller:'الأكثر مبيعاً',b_soldout:'نفد',b_limited:'إصدار محدود',b_vegan:'نباتي',
   shades:'ألوان',feats:'أبرز المزايا',ingredients:'المكوّنات',usage:'طريقة الاستخدام',contents_h:'ما الذي تشمله التشكيلة',
   pick_shade:'اختر اللون',similar:'منتجات مشابهة',desc:'الوصف',barcode:'باركود:',
@@ -1375,6 +1377,9 @@ const BADGE_ORDER=['sale','bestseller','new','limited','soldout','vegan'];
 const CATS=['איפור','טיפוח','שיער','בושם','מארזים','ציפורניים','אביזרים','ציוד'].filter(t=>GROUPS.some(g=>g.type===t));
 // תמונת קטגוריה ייעודית (נחתכה מהקולאז' של דף הכניסה); קטגוריה ללא תמונה כאן → נפילה לתמונת מוצר מייצג
 const CAT_IMG={'איפור':'cat/makeup.jpg','טיפוח':'cat/skincare.jpg','שיער':'cat/hair.jpg','בושם':'cat/fragrance.jpg','אביזרים':'cat/accessories.jpg'};
+// "לוהטים" — מוצרי הזמנה 1010 (רשימה נבחרת): קטגוריה וירטואלית + מקור לקרוסלת "מומלץ בשבילך"
+const HOT_SKUS=new Set(['3548752203166','3548752227018','3548752215862','194251146065','607845058946','5056446616171','5060332320264','5060696179447','5056446655385','850018802888','602004162984','602004106643','602004140128','602004127068','602004111807','651986023424','651986009459','810912032613','810912034150','810912032576','843628141126','840026678681','840026678278','840122909801','840122900044','840122906664','840122906619','840122906442','840122906572','8720986613484','810052962818','810052960012','858511001128','609332859128','609332832572','609332830486','609332834040','609332834149','609332828056','609332859753','609332570658','609332848023','609332813465','609332847590','609332852457','609332216433']);
+function isHot(g){return g.variants.some(v=>HOT_SKUS.has(nbc(v.barcode)));}
 // קטגוריות להצגה: רק כאלה עם מוצר במלאי (עד שהמלאי נטען — כולן)
 function catsInStock(){
   if(!STOCK_READY)return CATS;
@@ -1418,7 +1423,7 @@ function swPill(v,on,oc){
 const PRICE_KEYS=['p_u50','p_50_100','p_100_200','p_200p'];
 function buildNav(){
   const cats=catsInStock();
-  if(curCat!=='__all__'&&!cats.includes(curCat))curCat='__all__';   // קטגוריה שנבחרה אזלה → חזרה להכל (אריחי הקטגוריות הם הניווט היחיד)
+  if(curCat!=='__all__'&&curCat!=='__hot__'&&!cats.includes(curCat))curCat='__all__';   // קטגוריה שנבחרה אזלה → חזרה להכל (אריחי הקטגוריות הם הניווט היחיד)
 
   const brands=brandsInStock();
   if(curBrand!=='__all__'&&!brands.includes(curBrand))curBrand='__all__';   // מותג שנבחר אזל → חזרה להכל
@@ -1446,10 +1451,16 @@ function buildBrandRow(){
 function buildRecs(){
   var el=document.getElementById('recRow');if(!el)return;
   function inStk(g){return !STOCK_READY||g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}
-  var pool=GROUPS.filter(function(g){return !g._noimg&&prestige(g.brand)<=2&&inStk(g);});
-  if(pool.length<6) pool=GROUPS.filter(function(g){return !g._noimg&&inStk(g);});
-  var pick=[],step=Math.max(1,Math.floor(pool.length/12));
-  for(var i=0;i<pool.length&&pick.length<12;i+=step) pick.push(pool[i]);
+  // עדיפות ראשונה: מוצרי "לוהטים" (הזמנה 1010) במלאי ועם תמונה — מותגי יוקרה קודם
+  var pick=GROUPS.filter(function(g){return !g._noimg&&isHot(g)&&inStk(g);})
+    .sort(function(a,b){return prestige(a.brand)-prestige(b.brand)||a.brand.localeCompare(b.brand,'he');})
+    .slice(0,12);
+  if(pick.length<12){
+    var pool=GROUPS.filter(function(g){return !g._noimg&&prestige(g.brand)<=2&&inStk(g)&&pick.indexOf(g)<0;});
+    if(pool.length<6) pool=GROUPS.filter(function(g){return !g._noimg&&inStk(g)&&pick.indexOf(g)<0;});
+    var step=Math.max(1,Math.floor(pool.length/12));
+    for(var i=0;i<pool.length&&pick.length<12;i+=step) pick.push(pool[i]);
+  }
   el.innerHTML=pick.map(function(g){
     var v=g.variants.find(function(x){return x.imgs&&x.imgs.length;})||g.variants[0];
     var img=(v&&v.imgs&&v.imgs.length)?'<img src="'+aesc(v.imgs[0])+'" loading="lazy" alt="">':'<span class="ph" style="font-size:34px">✦</span>';
@@ -1477,7 +1488,12 @@ function buildCatTiles(){
   const el=document.getElementById('cattiles');if(!el)return;
   const cats=catsInStock();
   const allTile=`<button class="cattile ${curCat==='__all__'?'active':''}" data-c="__all__"><span class="ci"><img src="cat/all.jpg" loading="lazy" alt="" onerror="this.parentNode.classList.add('ci-all');this.outerHTML='<span class=&quot;ph&quot;>✦</span>'"></span><span>${t('all')}</span></button>`;
-  el.innerHTML=allTile+cats.map(c=>{
+  const hg=GROUPS.filter(x=>isHot(x)&&!x._noimg&&(!STOCK_READY||x.variants.some(v=>STOCK[nbc(v.barcode)]>0)))
+    .sort((a,b)=>prestige(a.brand)-prestige(b.brand))[0];
+  const hv=hg?hg.variants.find(x=>x.imgs&&x.imgs.length):null;
+  const hotIm=hv?`<img src="${aesc(hv.imgs[0])}" loading="lazy" alt="" onerror="this.style.display='none'">`:'<span class="ph">🔥</span>';
+  const hotTile=hg?`<button class="cattile ${curCat==='__hot__'?'active':''}" data-c="__hot__"><span class="ci">${hotIm}</span><span>${t('cat_hot')}</span></button>`:'';
+  el.innerHTML=allTile+hotTile+cats.map(c=>{
     let im;
     if(CAT_IMG[c]){
       im=`<img src="${CAT_IMG[c]}" loading="lazy" alt="" onerror="this.style.display='none'">`;
@@ -1664,7 +1680,8 @@ function matchQ(g,q){
 function visible(){
   const q=document.getElementById('q').value.trim().toLowerCase();
   let r=GROUPS.filter(g=>{
-    if(curCat!=='__all__'&&g.type!==curCat)return false;
+    if(curCat==='__hot__'){if(!isHot(g))return false;}
+    else if(curCat!=='__all__'&&g.type!==curCat)return false;
     if(curBrand!=='__all__'&&g.brand!==curBrand)return false;
     if(curPrice>=0){const pr=PRICES[curPrice];if(!(g.minp>=pr.mn&&g.minp<pr.mx))return false}
     if(favOnly&&!FAVS.has(g.gid))return false;
