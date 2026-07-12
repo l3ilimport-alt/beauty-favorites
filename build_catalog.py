@@ -1510,6 +1510,7 @@ function initHeroDeco(){
 // ===== בורר מותגים (כפתור + חלון גדול) =====
 // זוגות [קובץ-לוגו, [שמות-מותג]] — מפתח החיפוש מנורמל (normText) כדי לעמוד בהבדלי גרש/פיסוק בין DB לקטלוג.
 const BRAND_LOGO_PAIRS=[
+  ["brand-logos/sephora.svg",["ספורה","ספורה קולקשן"]],
   ["brand-logos/nyx.jpg",["NYX"]],
   ["brand-logos/loreal.svg",["לוריאל","לוריאל פריז","לוריאל פריס"]],
   ["brand-logos/laura-mercier.png",["לורה מרסייה"]],
