@@ -720,8 +720,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .card .imgbox{position:relative;aspect-ratio:1/1;background:linear-gradient(160deg,#fafafa,#f2f2f2);display:flex;align-items:center;justify-content:center;padding:14px}
 .card .imgbox img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply}
 .ph{font-family:'Cormorant Garamond',serif;font-size:46px;color:var(--accent-l);opacity:.5}
-.fav{position:absolute;top:9px;left:9px;z-index:3;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.86);backdrop-filter:blur(4px);cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;color:#cbcbcb;transition:.15s;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.fav:hover{transform:scale(1.12)}.fav.on{color:#171717}
+.fav{position:absolute;top:9px;left:9px;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:#fff;backdrop-filter:blur(4px);cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;color:#8a8a8a;transition:.15s;box-shadow:0 2px 10px rgba(0,0,0,.14)}
+.fav:hover{transform:scale(1.12)}.fav.on{color:#171717;border-color:rgba(0,0,0,.2)}
 .bdgs{position:absolute;top:9px;right:9px;z-index:3;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
 .bdg{font-size:10px;font-weight:700;color:#fff;padding:2px 8px;border-radius:20px;letter-spacing:.3px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
 .bdg.sale{background:#171717}.bdg.new{background:#171717}.bdg.bestseller{background:var(--accent)}
