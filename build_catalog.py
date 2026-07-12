@@ -1016,11 +1016,14 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <div class="svc"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M9 15h3"/></svg><b id="svc4a">תשלום מאובטח</b><small id="svc4b">הצפנה מלאה</small></div>
 </div>
 
-<!-- promo tiles -->
+<!-- promo tiles — הוסתרו זמנית לבקשת המשתמש (2026-07-12) עד שיוחלט תוכן; להחזרה: הסר את הערת ה-HTML -->
+<!--
 <div class="promos">
   <div class="ptile a" data-cat="טיפוח" onclick="goCat('טיפוח')"><h3 id="pt1h">מותגי הטיפוח האהובים</h3><button class="cta">לרכישה</button><img class="pimg" src="cat/skincare.jpg" alt="" loading="lazy"></div>
   <div class="ptile b" data-cat="בושם" onclick="goCat('בושם')"><h3 id="pt2h">בשמים מקוריים</h3><p id="pt2p">מבתי האופנה המובילים</p><button class="cta">לרכישה</button><img class="pimg" src="cat/fragrance.jpg" alt="" loading="lazy"></div>
 </div>
+-->
+
 
 <!-- brand logos -->
 <div class="shead"><h4 id="brTitle">המותגים האהובים</h4><button class="more" onclick="openBrandModal()" id="brMore">לכל המותגים ›</button></div>
