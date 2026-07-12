@@ -445,7 +445,7 @@ def main():
             else:
                 barcode_seen[bc] = v["id"]
 
-    og_image = (SITE_URL.rstrip("/") + "/og-image.png?v=bw3") if SITE_URL else "og-image.png?v=bw3"
+    og_image = (SITE_URL.rstrip("/") + "/og-image.png?v=bw4") if SITE_URL else "og-image.png?v=bw4"
 
     # ---- חיבור Supabase: מוזרק לדף כ-window.SUPA. ריק → הקטלוג עובד במצב וואטסאפ-טקסט בלבד ----
     supa_cfg = {"url": "", "anon": ""}
