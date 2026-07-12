@@ -126,10 +126,22 @@ BRAND_MAP = {
     "Saie": "SAIE", "סאיי": "SAIE",
     "SEPHORA": "ספורה", "Sephora Collection": "ספורה",
     "אוארגלאס": "האורגלאס",
+    # איחוד כפילויות איות (2026-07-12)
+    "אורבן דיקיי": "אורבן דקיי",
+    "סול דה ז'ניירו": "סול דה ז'נרו",
+    "דה אורדינרי": "The Ordinary",
+    "וואן/סייז": "ONE/SIZE", "וואן סייז (ONE/SIZE)": "ONE/SIZE",
+    "קיהל'ס": "קילס",
 }
 def norm_brand(b):
     if not b: return "אחר"
     return BRAND_MAP.get(b.strip(), b.strip())
+# גזירת מותג משם המוצר כשהמותג חסר/"אחר" (מוצרי קליטה חדשים בפורמט "מותג – שם")
+def brand_from_name(name):
+    for sep in ("–", "—", " - "):
+        if name and sep in name:
+            return norm_brand(name.split(sep)[0].strip())
+    return "אחר"
 
 # ---- product type (category) ----
 FRAG = ["perfume", "fragrance", "eau de", "edp", "edt", "parfum", "בושם", "או דה"]
@@ -338,6 +350,8 @@ def main():
                 imgs.append(f"images/{pid}/{f}")
 
         brand = norm_brand(p.get("brand"))
+        if brand == "אחר":                          # מותג חסר → נסה לגזור משם המוצר
+            brand = brand_from_name(p.get("name_he") or "")
         ov = overrides.get(str(p.get("barcode") or ""), {})
         badges = list(ov.get("badges") or [])
         sale = whole_price(ov.get("sale_price")) if ov.get("sale_price") not in (None, "") else None
@@ -911,6 +925,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .brandrow::-webkit-scrollbar{display:none}
 .brandrow img{height:34px;max-width:120px;object-fit:contain;flex:0 0 auto;cursor:pointer}
 .brandrow .btxt{flex:0 0 auto;cursor:pointer;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--accent-d);white-space:nowrap}
+@media(max-width:640px){.brandrow{padding-bottom:20px}}   /* ריווח מובטח לפני "מומלץ בשבילך" במובייל (padding לא קורס עם margin) */
 /* recommended products carousel */
 .recs{display:flex;gap:14px;padding:4px 16px 6px;overflow-x:auto;scrollbar-width:none;max-width:1160px;margin:0 auto}
 .recs::-webkit-scrollbar{display:none}
@@ -1495,6 +1510,14 @@ function initHeroDeco(){
 // ===== בורר מותגים (כפתור + חלון גדול) =====
 // זוגות [קובץ-לוגו, [שמות-מותג]] — מפתח החיפוש מנורמל (normText) כדי לעמוד בהבדלי גרש/פיסוק בין DB לקטלוג.
 const BRAND_LOGO_PAIRS=[
+  ["brand-logos/nyx.jpg",["NYX"]],
+  ["brand-logos/loreal.svg",["לוריאל","לוריאל פריז","לוריאל פריס"]],
+  ["brand-logos/laura-mercier.png",["לורה מרסייה"]],
+  ["brand-logos/kiehls.svg",["קילס","קיהל'ס"]],
+  ["brand-logos/airspun.png",["איירספן"]],
+  ["brand-logos/haus-labs.svg",["האוס לאבס ביי ליידי גאגא","האוס לאבס"]],
+  ["brand-logos/made-by-mitchell.png",["מייד ביי מיטשל"]],
+  ["brand-logos/sabrina-carpenter.svg",["סברינה קרפנטר"]],
   ["brand-logos/elf.png",["אי.אל.אף"]],
   ["brand-logos/rare-beauty.svg",["ריר ביוטי"]],
   ["brand-logos/patrick-ta.png",["פטריק טא"]],
