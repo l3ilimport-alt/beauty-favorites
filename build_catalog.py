@@ -2034,7 +2034,7 @@ async function loadStock(){
   try{
     const page=1000; let from=0;        // עוקף את תקרת 1000 השורות של PostgREST
     for(;;){
-      const {data,error}=await SB.from('products').select('barcode,stock,active,price_x3,price_consumer').range(from,from+page-1);
+      const {data,error}=await SB.from('products').select('barcode,stock,active,price_x3,price_consumer').eq('active',true).gt('stock',0).range(from,from+page-1);   // רק פעילים+במלאי (~319) — פי 6 פחות נתונים מסופאבייס לכל כניסה
       if(error)throw error;
       (data||[]).forEach(p=>{const n=nbc(p.barcode);if(n){STOCK[n]=p.active?p.stock:0;
         if(p.price_x3!=null)PRICE_WS[n]=Number(p.price_x3);
