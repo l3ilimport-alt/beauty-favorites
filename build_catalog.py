@@ -209,6 +209,35 @@ def whole_price(x):
     except (TypeError, ValueError):
         return x
 
+# --- ניקוי ביטויים פנימיים (שפת מחקר/בקרה) מטקסט מוצג ללקוח ---
+# מוחק את המשפט/הסוגר הפוגע בלבד ושומר תוכן אמיתי. שדות "גודל" מתאפסים לגמרי.
+_INTERNAL_MARKERS = [
+    "טעון אימות", "טעונה אימות", "טעון בדיקה", "לא אומת", "לא אומתה", "טרם אומת",
+    "לא נמצא", "לא נמצאה התאמה", "לא זוהה", "לא ידוע", "קוד ספק", "פריט פנימי",
+    "בדף שנבדק", "בדף שנבדקה", "יש לאמת", "צריך לבדוק", "לברר מול",
+    "לאמת מול", "לאימות מול", "אומת מול", "מקורות קמעונאיים",
+    "מהאתר הרשמי", "מן האתר הרשמי", "רשימה מתוך מקורות",
+]
+
+def _has_internal(v):
+    return isinstance(v, str) and any(m in v for m in _INTERNAL_MARKERS)
+
+def strip_internal(text):
+    """מסיר משפטים/סוגריים עם שפה פנימית, שומר את שאר הטקסט. מחזיר '' אם לא נשאר תוכן."""
+    if not isinstance(text, str) or not text.strip():
+        return text
+    if not _has_internal(text):
+        return text
+    # 1) הסרת סוגריים שמכילים סמן פנימי:  (… טעון אימות)
+    text = re.sub(r'\s*[\(（][^)）]*(?:' + '|'.join(map(re.escape, _INTERNAL_MARKERS)) + r')[^)）]*[\)）]', '', text)
+    # 2) הסרת סיפא "– טעון אימות" / "- לא אומת …" עד סוף/מפריד
+    text = re.sub(r'\s*[–—-]\s*[^.;\n]*(?:' + '|'.join(map(re.escape, _INTERNAL_MARKERS)) + r')[^.;\n]*', '', text)
+    # 3) פיצול למשפטים והשמטת אלו שמכילים סמן פנימי
+    parts = re.split(r'(?<=[.!?;])\s+|\n+', text)
+    kept = [p for p in parts if not _has_internal(p)]
+    out = re.sub(r'\s{2,}', ' ', ' '.join(kept)).strip(' .;–—-')
+    return out
+
 def detect_vegan(p):
     t = " ".join(str(p.get(k) or "") for k in ("ingredients", "description", "key_features")).lower()
     return "vegan" in t or "טבעוני" in t
@@ -370,18 +399,18 @@ def main():
             "price": whole_price(p.get("price_ils")),
             "sale": sale,
             "was": was,
-            "size": p.get("size") or "",
-            "shade": p.get("shade") or "",
+            "size": strip_internal(p.get("size") or ""),
+            "shade": ("" if _has_internal(p.get("shade")) else (p.get("shade") or "")),
             "barcode": p.get("barcode") or "",
-            "desc": p.get("description") or "",
-            "summary": p.get("summary") or "",
-            "summary_ar": p.get("summary_ar") or "",
-            "features": p.get("key_features") or [],
-            "ingredients": p.get("ingredients") or "",
-            "usage": p.get("usage") or "",
-            "desc_ar": p.get("description_ar") or "",
-            "features_ar": p.get("features_ar") or [],
-            "usage_ar": p.get("usage_ar") or "",
+            "desc": strip_internal(p.get("description") or ""),
+            "summary": strip_internal(p.get("summary") or ""),
+            "summary_ar": strip_internal(p.get("summary_ar") or ""),
+            "features": [strip_internal(f) for f in (p.get("key_features") or []) if strip_internal(f)],
+            "ingredients": strip_internal(p.get("ingredients") or ""),
+            "usage": strip_internal(p.get("usage") or ""),
+            "desc_ar": strip_internal(p.get("description_ar") or ""),
+            "features_ar": [strip_internal(f) for f in (p.get("features_ar") or []) if strip_internal(f)],
+            "usage_ar": strip_internal(p.get("usage_ar") or ""),
             "contents": p.get("contents") or [],
             "imgs": imgs,
             "badges": badges,
