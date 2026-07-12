@@ -1003,7 +1003,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <div class="hdots" id="hdots"><i class="on"></i><i></i><i></i></div>
 </div>
 
-<div class="herocount"><span id="heroCount"></span></div>
+<!-- מונה "X מוצרים במלאי" הוסר לבקשת המשתמש (2026-07-12); updateHeroCount עמיד לאלמנט חסר -->
+
 <div class="cattiles" id="cattiles"></div>
 
 <div class="search-wrap">
