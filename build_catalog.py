@@ -462,6 +462,7 @@ def main():
     out = TEMPLATE.replace("/*__GROUPS__*/", json.dumps(groups, ensure_ascii=False))
     out = out.replace("__COUNT__", str(len(groups)))
     out = out.replace("__OG_IMAGE__", og_image)
+    out = out.replace("__SITE_URL__", SITE_URL.rstrip("/"))
     out = out.replace("__SUPABASE_CONFIG__", json.dumps(supa_cfg, ensure_ascii=False))
     with open(os.path.join(CAT, "index.html"), "w", encoding="utf-8") as f:
         f.write(out)
@@ -494,6 +495,14 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="he_IL">
+<meta property="og:url" content="__SITE_URL__/">
+<meta property="og:site_name" content="Beauty Favorites">
+<link rel="canonical" href="__SITE_URL__/">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#7c3aed">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Store","name":"Beauty Favorites","url":"__SITE_URL__/","image":"__OG_IMAGE__","logo":"__SITE_URL__/logo.svg","description":"הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים האהובים","telephone":"+972-53-4555501","email":"beautyfavorites2026@gmail.com","priceRange":"₪₪","areaServed":"IL","currenciesAccepted":"ILS"}
+</script>
 <!-- חיבור Supabase (anon ציבורי). אם לא הוגדר — הקטלוג נופל חזרה למצב וואטסאפ-טקסט בלבד. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>window.SUPA=__SUPABASE_CONFIG__;</script>
@@ -1708,9 +1717,9 @@ function cardHtml(g){
     shades=`<div class="shrow" onclick="event.stopPropagation()">${g.variants.map((vv,k)=>swPill(vv,k===idx,`pickV('${g.gid}',${k})`)).join('')}</div>`;
   }
   const nInStock=STOCK_READY?g.variants.filter(vv=>STOCK[nbc(vv.barcode)]>0).length:0;
-  return `<div class="card" id="card-${g.gid}" onclick="openPd(${g._i})">
+  return `<div class="card" id="card-${g.gid}" role="button" tabindex="0" aria-label="${esc(g.name_he||'')} — לפרטים" onclick="openPd(${g._i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPd(${g._i})}">
       <div class="imgbox">
-        <button class="fav ${fav}" onclick="event.stopPropagation();toggleFav('${g.gid}',this)">♥</button>
+        <button class="fav ${fav}" aria-label="הוסף למועדפים" onclick="event.stopPropagation();toggleFav('${g.gid}',this)">♥</button>
         ${badgesHtml(v)}${img}
       </div>
       <div class="body">
@@ -1723,8 +1732,8 @@ function cardHtml(g){
         <div class="foot">
           ${priceHtml(v)}
           ${isSold(v)?`<span class="soldpill">${t('sold_out')}</span>`
-            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><input class="cardqin" type="number" inputmode="numeric" min="1" value="${qty}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter')this.blur()" onchange="event.stopPropagation();cartSetQty('${v.id}',Math.max(1,parseInt(this.value)||1))"><button onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
-                 :`<button class="add" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button>`}
+            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button aria-label="הקטן כמות" onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><input class="cardqin" type="number" inputmode="numeric" min="1" value="${qty}" aria-label="כמות" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter')this.blur()" onchange="event.stopPropagation();cartSetQty('${v.id}',Math.max(1,parseInt(this.value)||1))"><button aria-label="הגדל כמות" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
+                 :`<button class="add" aria-label="הוסף לסל" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button>`}
         </div>
       </div>
     </div>`;
@@ -2022,8 +2031,25 @@ async function payNow(){
   }catch(e){console.error(e);alert(t('err_order'));setBusy(btn,false);}
 }
 
-function openOv(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden'}
-function closeOv(id){document.getElementById(id).classList.remove('open');document.body.style.overflow=''}
+var __ovReturnFocus=null;
+function openOv(id){
+  __ovReturnFocus=document.activeElement;
+  const m=document.getElementById(id); m.classList.add('open'); document.body.style.overflow='hidden';
+  m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true');
+  const head=m.querySelector('h3,h4'); if(head){if(!head.id)head.id=id+'-h'; m.setAttribute('aria-labelledby',head.id);}
+  const sheet=m.querySelector('.sheet')||m; sheet.setAttribute('tabindex','-1');
+  setTimeout(function(){const f=m.querySelector('input:not([type=hidden]),.x,button,[tabindex]'); (f||sheet).focus();},40);
+}
+function closeOv(id){
+  const m=document.getElementById(id); m.classList.remove('open'); document.body.style.overflow='';
+  if(__ovReturnFocus&&__ovReturnFocus.focus){try{__ovReturnFocus.focus();}catch(e){}} __ovReturnFocus=null;
+}
+// סגירת החלון הפתוח העליון ב-Escape (נגישות מקלדת)
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape')return;
+  const open=[...document.querySelectorAll('.ov.open')];
+  if(open.length)closeOv(open[open.length-1].id);
+});
 // ===== store policies (Israeli e-commerce; review with a lawyer) =====
 const PNOTE='';  /* internal template/lawyer note removed — not customer-facing */
 const POLICIES={
@@ -2076,6 +2102,10 @@ const POLICIES={
 };
 function openPolicy(k){var b=document.getElementById('policyBody');if(b)b.innerHTML=POLICIES[k]||'';openOv('policyModal');}
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)closeOv(ov.id)}));
+// ---- תוויות נגישות חד-פעמיות ----
+document.querySelectorAll('.ov .x, .wachat .wx').forEach(b=>{if(!b.getAttribute('aria-label'))b.setAttribute('aria-label','סגור');});
+(function(){var q=document.getElementById('q');if(q&&!q.getAttribute('aria-label'))q.setAttribute('aria-label','חיפוש מוצר, מותג או ברקוד');
+  var bs=document.getElementById('brandSearch');if(bs)bs.setAttribute('aria-label','חיפוש מותג');})();
 document.addEventListener('touchstart',()=>{if(![...document.querySelectorAll('.ov')].some(o=>o.classList.contains('open')))document.body.style.overflow=''},{passive:true});
 
 function goTop(){window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0;}
