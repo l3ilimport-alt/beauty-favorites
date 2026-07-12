@@ -843,6 +843,10 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .send{width:100%;margin-top:14px;font-family:var(--font);font-size:16px;font-weight:700;color:#fff;border:none;border-radius:14px;padding:15px;cursor:pointer;background:linear-gradient(90deg,#16a34a,#15803d);box-shadow:0 8px 22px rgba(22,163,74,.28)}
 .send.pay{background:linear-gradient(90deg,var(--accent-d),var(--accent));box-shadow:0 8px 22px rgba(0,0,0,.28)}
 .send:disabled{opacity:.6;cursor:progress}
+.send.locked{opacity:.5;cursor:not-allowed;box-shadow:none;filter:grayscale(.25)}
+.agree{display:flex;gap:9px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--text);line-height:1.55;cursor:pointer}
+.agree input{width:18px;height:18px;margin-top:1px;flex:0 0 auto;accent-color:var(--accent-d);cursor:pointer}
+.agree a{color:var(--accent-d);text-decoration:underline;font-weight:600}
 .soldpill{font-size:12px;font-weight:700;color:#b91c1c;background:#fee2e2;border-radius:9px;padding:6px 10px;white-space:nowrap}
 .hint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px}
 
@@ -1025,6 +1029,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <div class="ac" id="ac" role="listbox"></div>
   </div>
   <div class="policybar">
+    <button class="plink" onclick="openPolicy('about')" id="pbAbout">אודות</button>
     <button class="plink" onclick="openPolicy('contact')" id="pbBiz">פרטי העסק</button>
     <button class="plink" onclick="openPolicy('shipping')" id="pbShip">משלוחים</button>
     <button class="plink" onclick="openPolicy('returns')" id="pbRet">החזרות</button>
@@ -1099,6 +1104,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     </div>
     <div class="fcol">
       <h4 id="fInfoT">מידע ומדיניות</h4>
+      <button class="flink" onclick="openPolicy('about')" id="fAbout">אודות</button>
       <button class="flink" onclick="openPolicy('shipping')" id="fShip">משלוחים ואספקה</button>
       <button class="flink" onclick="openPolicy('returns')" id="fRet">החזרות וביטולים</button>
       <button class="flink" onclick="openPolicy('terms')" id="fTerms">תקנון</button>
@@ -1156,6 +1162,10 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
       <input class="fld" id="buyer-phone" type="tel" placeholder="טלפון *">
       <textarea class="notes" id="notes" placeholder="הערות להזמנה (אופציונלי)…"></textarea>
     </div>
+    <label class="agree" id="agreeWrap">
+      <input type="checkbox" id="agreeTerms" onchange="syncAgree()">
+      <span id="agreeTxt">קראתי ואני מסכים/ה ל<a href="#" onclick="openPolicy('terms');return false">תקנון</a> ול<a href="#" onclick="openPolicy('privacy');return false">מדיניות הפרטיות</a></span>
+    </label>
     <button class="send pay" id="payBtn" onclick="payNow()" style="display:none">שלם עכשיו 💳</button>
     <button class="send" id="sendBtn" onclick="submitWhatsApp()">שלח הזמנה לאישור (וואטסאפ)</button>
     <div class="hint" id="sendHint">ההזמנה תיפתח ב-WhatsApp עם מספר ההזמנה</div>
@@ -1240,6 +1250,9 @@ const I18N={
   coupon_ok:'✓ קופון הוחל: ',coupon_bad:'קוד קופון לא תקין',off:'הנחה',
   ws_enter:'🔑 כניסת סיטונאי',ws_exit:'יציאה ממצב סיטונאי',ws_title:'כניסת סיטונאי',ws_sub:'הזן קוד סיטונאי כדי לראות מחירי סיטונאי.',ws_ph:'קוד סיטונאי',ws_go:'כניסה',ws_bad:'קוד שגוי',ws_unavailable:'לא זמין כרגע',ws_active:'מצב סיטונאי פעיל — מוצגים מחירי סיטונאי',
   alert_empty:'העגלה ריקה',alert_fill:'נא למלא שם מלא וטלפון לפני שליחת ההזמנה',other:'العربية',
+  alert_terms:'יש לאשר את התקנון ומדיניות הפרטיות לפני שליחת ההזמנה',
+  agree_txt:'קראתי ואני מסכים/ה ל<a href="#" onclick="openPolicy(\'terms\');return false">תקנון</a> ול<a href="#" onclick="openPolicy(\'privacy\');return false">מדיניות הפרטיות</a>',
+  f_about:'אודות',
   f_disc:'מכירה עצמאית של מוצרים מקוריים · כל הסימנים המסחריים שייכים לבעליהם',
   hero_sub:'הקולקציה הנבחרת — איפור · טיפוח · שיער · בושם',
   hs1tag:'חדש!', hs1p:'הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים המובילים בעולם.', hs1c:'לגילוי הקולקציה',
@@ -1284,6 +1297,9 @@ const I18N={
   coupon_ok:'✓ تم تطبيق الكوبون: ',coupon_bad:'رمز كوبون غير صالح',off:'خصم',
   ws_enter:'🔑 دخول الجملة',ws_exit:'الخروج من وضع الجملة',ws_title:'دخول الجملة',ws_sub:'أدخل رمز الجملة لرؤية أسعار الجملة.',ws_ph:'رمز الجملة',ws_go:'دخول',ws_bad:'رمز غير صحيح',ws_unavailable:'غير متاح حالياً',ws_active:'وضع الجملة مُفعّل — تُعرض أسعار الجملة',
   alert_empty:'السلة فارغة',alert_fill:'يرجى تعبئة الاسم الكامل والهاتف قبل إرسال الطلب',other:'עברית',
+  alert_terms:'يجب الموافقة على شروط الاستخدام وسياسة الخصوصية قبل إرسال الطلب',
+  agree_txt:'قرأت وأوافق على <a href="#" onclick="openPolicy(\'terms\');return false">شروط الاستخدام</a> و<a href="#" onclick="openPolicy(\'privacy\');return false">سياسة الخصوصية</a>',
+  f_about:'حول المتجر',
   f_disc:'بيع مستقل لمنتجات أصلية · جميع العلامات التجارية ملك لأصحابها',
   hero_sub:'التشكيلة المختارة — مكياج · عناية · شعر · عطر',
   hs1tag:'جديد!', hs1p:'التشكيلة المختارة — مكياج، عناية، شعر وعطر من أفضل الماركات العالمية.', hs1c:'اكتشفي التشكيلة',
@@ -1326,11 +1342,12 @@ function applyStatic(){
   setPh('buyer-name',t('full_name'));setPh('buyer-biz',t('biz_name'));setPh('buyer-id',t('biz_id'));
   setPh('buyer-addr',t('ship_addr'));setPh('buyer-phone',t('phone'));setPh('notes',t('notes_ph'));
   setText('sendBtn',t('send_order'));setText('sendHint',t('send_hint'));setText('payBtn',t('pay_now'));
+  var _ag=document.getElementById('agreeTxt');if(_ag)_ag.innerHTML=t('agree_txt');
   setText('heroSub',t('hero_sub'));
   setText('fDisc',t('f_disc'));setText('fBizT',t('f_biz'));setText('fVat',t('f_vat'));setText('fInfoT',t('f_info'));
-  setText('fShip',t('f_ship'));setText('fRet',t('f_ret'));setText('fTerms',t('f_terms'));setText('fPriv',t('f_priv'));
+  setText('fAbout',t('f_about'));setText('fShip',t('f_ship'));setText('fRet',t('f_ret'));setText('fTerms',t('f_terms'));setText('fPriv',t('f_priv'));
   setText('fOrderT',t('f_order'));setText('fShipFree',t('f_free'));setText('fEta',t('f_eta'));setText('fWa',t('f_wa'));
-  setText('pbBiz',t('f_biz'));setText('pbShip',t('pb_ship'));setText('pbRet',t('pb_ret'));setText('pbTerms',t('f_terms'));setText('pbPriv',t('pb_priv'));
+  setText('pbAbout',t('f_about'));setText('pbBiz',t('f_biz'));setText('pbShip',t('pb_ship'));setText('pbRet',t('pb_ret'));setText('pbTerms',t('f_terms'));setText('pbPriv',t('pb_priv'));
   setText('wsTitle',t('ws_title'));setText('wsSub',t('ws_sub'));setPh('wsCode',t('ws_ph'));setText('wsGo',t('ws_go'));setText('wsBannerTxt',t('ws_active'));
   setText('brandModalTitle',t('brand_title'));setPh('brandSearch',t('brand_search'));if(typeof updateBrandBtn==='function')updateBrandBtn();
   setText('promo1',t('promo_free'));setText('promo3',t('promo_eta'));
@@ -1916,7 +1933,7 @@ function updateWsUI(){var b=document.getElementById('wsBanner');if(b)b.style.dis
   var pb=document.getElementById('pbWholesale');if(pb)pb.textContent=WHOLESALE?t('ws_exit'):t('club_link');}
 function repriceCart(){Object.keys(CART).forEach(function(vid){var m=VMAP[vid];if(m)CART[vid].price=eff(m.v);});}   // עדכון מחירי פריטים בסל למצב הפעיל
 
-function openOrder(){renderOrder();openOv('orderModal')}
+function openOrder(){renderOrder();syncAgree();openOv('orderModal')}
 function closeOrder(){closeOv('orderModal')}
 function renderOrder(){
   const keys=Object.keys(CART);window._K=keys;const body=document.getElementById('omBody');
@@ -2003,10 +2020,13 @@ async function loadStock(){
 function cartItems(){      // [{sku, qty}] עבור create_order (sku = ברקוד מנורמל, תואם DB)
   return Object.keys(CART).map(vid=>{const m=VMAP[vid];return {sku:nbc(m&&m.v.barcode),qty:CART[vid].qty,sold:m&&isSold(m.v)};}).filter(it=>it.sku&&!it.sold).map(({sku,qty})=>({sku,qty}));
 }
+function syncAgree(){var c=document.getElementById('agreeTerms');var ok=!!(c&&c.checked);['sendBtn','payBtn'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.toggle('locked',!ok);});}
 function validateBuyer(){
   if(!Object.keys(CART).length){alert(t('alert_empty'));return false;}
   const name=gv('buyer-name'),phone=gv('buyer-phone');
   if(!name||!phone){alert(t('alert_fill'));document.getElementById(!name?'buyer-name':'buyer-phone').focus();return false;}
+  var ag=document.getElementById('agreeTerms');
+  if(!ag||!ag.checked){alert(t('alert_terms'));var w=document.getElementById('agreeWrap');if(w)w.scrollIntoView({block:'center'});if(ag)ag.focus();return false;}
   return true;
 }
 function setBusy(btn,on){if(!btn)return;if(on){btn.dataset.l=btn.textContent;btn.disabled=true;btn.textContent=t('sending');}else{btn.disabled=false;if(btn.dataset.l)btn.textContent=btn.dataset.l;}}
@@ -2070,6 +2090,11 @@ document.addEventListener('keydown',function(e){
 // ===== store policies (Israeli e-commerce; review with a lawyer) =====
 const PNOTE='';  /* internal template/lawyer note removed — not customer-facing */
 const POLICIES={
+ about:`<h2>אודות</h2>
+  <p><b>Beauty Favorites</b> היא חנות אונליין לייבוא ושיווק מוצרי קוסמטיקה, איפור, טיפוח ובושם <b>מקוריים</b> מהמותגים המובילים בעולם.</p>
+  <h3>מי אנחנו</h3><p>העסק מופעל על ידי שניר שריקי – יבוא ושיווק מותגי שיער וקוסמטיקה (עוסק מורשה 040553562). אנו מתמחים באספקת מוצרי יופי מקוריים במחירים משתלמים — ללקוחות פרטיים ולעסקים (מספרות, מאפרות וחנויות).</p>
+  <h3>תחום העיסוק</h3><p>מכירה קמעונאית וסיטונאית של מוצרי איפור, טיפוח העור, טיפוח השיער, בשמים ואביזרי יופי. כל המוצרים מקוריים ומגיעים ממקורות מורשים בלבד.</p>
+  <h3>יצירת קשר</h3><p>טלפון ווואטסאפ: <a href="tel:0534555501">053-4555501</a> · אימייל: <a href="mailto:beautyfavorites2026@gmail.com">beautyfavorites2026@gmail.com</a></p>`,
  contact:`<h2>פרטי העסק ויצירת קשר</h2>
   <p><b>שניר שריקי</b> – יבוא ושיווק מותגי שיער וקוסמטיקה</p>
   <p>עוסק מורשה: 040553562</p>
