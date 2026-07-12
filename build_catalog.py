@@ -445,7 +445,7 @@ def main():
             else:
                 barcode_seen[bc] = v["id"]
 
-    og_image = (SITE_URL.rstrip("/") + "/og-image.png?v=bw2") if SITE_URL else "og-image.png?v=bw2"
+    og_image = (SITE_URL.rstrip("/") + "/og-image.png?v=bw3") if SITE_URL else "og-image.png?v=bw3"
 
     # ---- חיבור Supabase: מוזרק לדף כ-window.SUPA. ריק → הקטלוג עובד במצב וואטסאפ-טקסט בלבד ----
     supa_cfg = {"url": "", "anon": ""}
@@ -1505,7 +1505,7 @@ function buildCatTiles(){
     }
     return `<button class="cattile ${curCat===c?'active':''}" data-c="${c}"><span class="ci">${im}</span><span>${catLabel(c)}</span></button>`;
   }).join('');
-  el.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;curCat=b.dataset.c;buildNav();render();};
+  el.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;goCat(b.dataset.c);};
 }
 // ---- קולאז' מוצרים צף בהירו (דסקטופ): תמונות מוצרים במלאי ממותגי יוקרה ----
 function initHeroDeco(){
