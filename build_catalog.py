@@ -1938,10 +1938,7 @@ function applyCoupon(){const code=document.getElementById('coupon').value.trim()
 function discount(sub){if(!activeCoupon)return 0;if(activeCoupon.type==='percent')return Math.round(sub*activeCoupon.val/100);return Math.min(sub,activeCoupon.val);}
 function couponLabel(code){const c=COUPONS[code];if(!c)return'';return c.type==='percent'?(c.val+'% '+t('off')):('₪'+c.val+' '+t('off'));}
 
-/* ===== מצב סיטונאי (קוד משותף, אימות מול hash מ-app_settings) ===== */
-async function sha256hex(str){const norm=String(str).trim().toUpperCase();
-  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(norm));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+/* ===== מצב סיטונאי (אימות בצד השרת — המחירים לא נמצאים בדפדפן ללא קוד תקף) ===== */
 function openWholesale(){if(WHOLESALE){wholesaleLogout();return;}
   openOv('clubModal');}   // מועדון עסקים: קודם מסך שיווקי (הצטרפות בוואטסאפ / יש לי קוד)
 function openWsCode(){
@@ -1949,13 +1946,16 @@ function openWsCode(){
   openOv('wsModal');setTimeout(function(){var el=document.getElementById('wsCode');if(el)el.focus();},60);}
 async function submitWholesale(){const code=document.getElementById('wsCode').value.trim();const msg=document.getElementById('wsMsg');
   if(!code){msg.textContent='';msg.className='cmsg';return;}
-  if(!WS_HASH){msg.textContent=t('ws_unavailable');msg.className='cmsg err';return;}
-  const h=await sha256hex(code);
-  if(h===WS_HASH){setWholesale(true);closeOv('wsModal');}
+  if(!SB){msg.textContent=t('ws_unavailable');msg.className='cmsg err';return;}
+  msg.textContent='…';msg.className='cmsg';
+  const ok=await loadWholesalePrices(code);   // השרת מאמת ומחזיר מחירים רק אם הקוד נכון
+  if(ok){WS_CODE=code;try{localStorage.setItem('wholesale_code',code);localStorage.removeItem('wholesale_unlocked');}catch(e){}
+    setWholesale(true);closeOv('wsModal');}
   else{msg.textContent=t('ws_bad');msg.className='cmsg err';}}
 function wholesaleLogout(){setWholesale(false);}
 function setWholesale(on){WHOLESALE=on;
-  try{if(on)localStorage.setItem('wholesale_unlocked','1');else localStorage.removeItem('wholesale_unlocked');}catch(e){}
+  if(!on){WS_CODE=null;PRICE_WS={};}
+  try{if(!on)localStorage.removeItem('wholesale_code');}catch(e){}
   updateWsUI();repriceCart();renderCart();render();
   if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 function updateWsUI(){var b=document.getElementById('wsBanner');if(b)b.style.display=WHOLESALE?'flex':'none';
@@ -2022,8 +2022,8 @@ const SB=(window.SUPA&&window.SUPA.url&&window.SUPA.anon&&window.supabase)
   ? window.supabase.createClient(window.SUPA.url,window.SUPA.anon) : null;
 var STOCK={}, PRICE_WS={}, PRICE_CONS={};   // ברקוד-מנורמל -> מלאי / מחיר סיטונאי / מחיר צרכן (var=hoisted כדי ש-eff לא יזרוק בטעינה)
 var STOCK_READY=false;
-var WHOLESALE=(function(){try{return localStorage.getItem('wholesale_unlocked')==='1';}catch(e){return false;}})();  // מצב סיטונאי פעיל?
-var WS_HASH=null;   // hash קוד-הסיטונאי מ-app_settings (לאימות בצד-לקוח)
+var WS_CODE=(function(){try{return localStorage.getItem('wholesale_code')||null;}catch(e){return null;}})();  // הקוד השמור (אומת בשרת)
+var WHOLESALE=!!WS_CODE;   // מצב סיטונאי פעיל? (המחירים מגיעים מהשרת רק עם קוד תקף)
 function priceMap(){return WHOLESALE?PRICE_WS:PRICE_CONS;}   // המפה הפעילה לפי המצב
 function hasConsPrice(v){var m=PRICE_CONS[nbc(v&&v.barcode)];return m!=null&&m>0;}   // יש מחיר צרכן?
 function nbc(x){return String(x||'').replace(/\D/g,'');}      // ברקוד → ספרות בלבד (תואם sku ב-DB)
@@ -2034,17 +2034,27 @@ async function loadStock(){
   try{
     const page=1000; let from=0;        // עוקף את תקרת 1000 השורות של PostgREST
     for(;;){
-      const {data,error}=await SB.from('products').select('barcode,stock,active,price_x3,price_consumer').eq('active',true).gt('stock',0).range(from,from+page-1);   // רק פעילים+במלאי (~319) — פי 6 פחות נתונים מסופאבייס לכל כניסה
+      const {data,error}=await SB.from('catalog_products').select('barcode,stock,active,price_consumer').range(from,from+page-1);   // תצוגה ציבורית מצומצמת (~319): בלי עלות/סיטונאי — אלה נשלפים רק עם קוד תקף
       if(error)throw error;
       (data||[]).forEach(p=>{const n=nbc(p.barcode);if(n){STOCK[n]=p.active?p.stock:0;
-        if(p.price_x3!=null)PRICE_WS[n]=Number(p.price_x3);
         if(p.price_consumer!=null)PRICE_CONS[n]=Number(p.price_consumer);}});
       if(!data||data.length<page)break;
       from+=page;
     }
-    try{const {data:s}=await SB.from('app_settings').select('value').eq('key','wholesale_code_hash').maybeSingle();WS_HASH=(s&&s.value)||null;}catch(e){}   // hash קוד סיטונאי
+    if(WS_CODE){const ok=await loadWholesalePrices(WS_CODE);   // שחזור מצב סיטונאי: המחירים מהשרת, רק אם הקוד עדיין תקף
+      if(!ok){WHOLESALE=false;WS_CODE=null;try{localStorage.removeItem('wholesale_code');}catch(e){}}}
     STOCK_READY=true; pruneUnavailableCart(); updateWsUI(); repriceCart(); buildNav(); renderCart(); render();    // ציור מחדש + תמחור סל למצב הפעיל (סיטונאי/צרכן) אחרי טעינת מחירים
   }catch(e){console.warn('טעינת מלאי נכשלה:',e);}
+}
+async function loadWholesalePrices(code){   // מחירי סיטונאי — רק מהשרת, תמורת קוד תקף
+  if(!SB||!code)return false;
+  try{
+    const {data,error}=await SB.rpc('wholesale_prices',{p_code:code});
+    if(error)throw error;
+    if(!data||!data.length)return false;
+    data.forEach(r=>{const n=nbc(r.barcode);if(n&&r.price_x3!=null)PRICE_WS[n]=Number(r.price_x3);});
+    return true;
+  }catch(e){console.warn('שליפת מחירי סיטונאי נכשלה:',e);return false;}
 }
 function cartItems(){      // [{sku, qty}] עבור create_order (sku = ברקוד מנורמל, תואם DB)
   return Object.keys(CART).map(vid=>{const m=VMAP[vid];return {sku:nbc(m&&m.v.barcode),qty:CART[vid].qty,sold:m&&isSold(m.v)};}).filter(it=>it.sku&&!it.sold).map(({sku,qty})=>({sku,qty}));
@@ -2065,7 +2075,8 @@ async function createOrder(channel){   // קריאה אחת ל-create_order → 
   const {data,error}=await SB.rpc('create_order',{
     p_customer_name:gv('buyer-name'),p_customer_phone:gv('buyer-phone'),
     p_customer_email:'',p_customer_type:gv('buyer-biz')?'barber':'retail',
-    p_channel:channel,p_note:noteText(),p_items:items});
+    p_channel:channel,p_note:noteText(),p_items:items,
+    p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null});   // התמחור נקבע בשרת: קוד תקף = סיטונאי, אחרת צרכן
   if(error){console.error(error);alert(t('err_order'));return null;}
   const row=Array.isArray(data)?data[0]:data;
   return row?{id:row.order_id,total:row.order_total}:null;
