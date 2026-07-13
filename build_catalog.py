@@ -1179,7 +1179,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <div class="om">
     <h3 id="omTitle">ההזמנה שלי</h3>
     <div id="omBody"></div>
-    <div class="coupon"><input id="coupon" type="text" placeholder="קוד קופון" oninput="applyCoupon()"><button id="couponBtn" onclick="applyCoupon()">החל</button></div>
+    <div class="coupon"><input id="coupon" type="text" placeholder="קוד קופון" oninput="couponEdited()" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCoupon();}"><button id="couponBtn" onclick="applyCoupon()">החל</button></div>
     <div class="cmsg" id="cmsg"></div>
     <div class="totals" id="totals"></div>
     <div class="form">
@@ -1929,14 +1929,28 @@ function renderCart(){const {qty,sub}=cartTotals();const bar=document.getElement
   document.getElementById('cartsum').innerHTML=`${qty} ${t('cart_items')} · <b>₪${sub}</b>`;}
 function pruneUnavailableCart(){Object.keys(CART).forEach(vid=>{const m=VMAP[vid];if(m&&isSold(m.v))delete CART[vid];});}
 
-const COUPONS={'BEAUTY10':{type:'percent',val:10,label:'10% הנחה'},'FAV20':{type:'fixed',val:20,label:'₪20 הנחה'}};
-let activeCoupon=null;
-function applyCoupon(){const code=document.getElementById('coupon').value.trim().toUpperCase();const msg=document.getElementById('cmsg');
+/* קופונים: מאומתים בשרת (check_coupon) — אין רשימה בדפדפן, וההנחה נצרבת גם בהזמנה עצמה */
+let activeCoupon=null;      // {code,kind,value} מאומת מהשרת
+let _cpnSeq=0;              // מונע תוצאה ישנה מלדרוס הקלדה חדשה
+function couponEdited(){    // הקלדה בשדה: מנקה קופון שהוחל אם הטקסט השתנה (אימות רק בכפתור/Enter)
+  const code=document.getElementById('coupon').value.trim().toUpperCase();const msg=document.getElementById('cmsg');
+  if(!code||(activeCoupon&&code!==activeCoupon.code)){_cpnSeq++;activeCoupon=null;msg.textContent='';msg.className='cmsg';renderTotals();}}
+async function applyCoupon(){const code=document.getElementById('coupon').value.trim().toUpperCase();const msg=document.getElementById('cmsg');
+  const seq=++_cpnSeq;
   if(!code){activeCoupon=null;msg.textContent='';msg.className='cmsg';renderTotals();return}
-  if(COUPONS[code]){activeCoupon={code,...COUPONS[code]};msg.textContent=t('coupon_ok')+couponLabel(code);msg.className='cmsg ok';}
-  else{activeCoupon=null;msg.textContent=t('coupon_bad');msg.className='cmsg err';}renderTotals();}
-function discount(sub){if(!activeCoupon)return 0;if(activeCoupon.type==='percent')return Math.round(sub*activeCoupon.val/100);return Math.min(sub,activeCoupon.val);}
-function couponLabel(code){const c=COUPONS[code];if(!c)return'';return c.type==='percent'?(c.val+'% '+t('off')):('₪'+c.val+' '+t('off'));}
+  if(!SB){activeCoupon=null;msg.textContent=t('coupon_bad');msg.className='cmsg err';renderTotals();return}
+  msg.textContent='…';msg.className='cmsg';
+  try{
+    const {data,error}=await SB.rpc('check_coupon',{p_code:code,p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null});
+    if(seq!==_cpnSeq)return;   // הוקלד קוד אחר בינתיים
+    const row=Array.isArray(data)?data[0]:data;
+    if(!error&&row&&row.code){activeCoupon={code:row.code,kind:row.kind,value:Number(row.value)};
+      msg.textContent=t('coupon_ok')+couponLabel();msg.className='cmsg ok';}
+    else{activeCoupon=null;msg.textContent=t('coupon_bad');msg.className='cmsg err';}
+  }catch(e){if(seq!==_cpnSeq)return;activeCoupon=null;msg.textContent=t('coupon_bad');msg.className='cmsg err';}
+  renderTotals();}
+function discount(sub){if(!activeCoupon)return 0;if(activeCoupon.kind==='percent')return Math.round(sub*activeCoupon.value/100);return Math.min(sub,activeCoupon.value);}
+function couponLabel(){const c=activeCoupon;if(!c)return'';return c.kind==='percent'?(c.value+'% '+t('off')):('₪'+c.value+' '+t('off'));}
 
 /* ===== מצב סיטונאי (אימות בצד השרת — המחירים לא נמצאים בדפדפן ללא קוד תקף) ===== */
 function openWholesale(){if(WHOLESALE){wholesaleLogout();return;}
@@ -1957,6 +1971,7 @@ function setWholesale(on){WHOLESALE=on;
   if(!on){WS_CODE=null;PRICE_WS={};}
   try{if(!on)localStorage.removeItem('wholesale_code');}catch(e){}
   updateWsUI();repriceCart();renderCart();render();
+  if(activeCoupon)applyCoupon();   // אימות-מחדש של הקופון בשרת — קהל היעד תלוי במצב (צרכן/סיטונאי)
   if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 function updateWsUI(){var b=document.getElementById('wsBanner');if(b)b.style.display=WHOLESALE?'flex':'none';
   var pb=document.getElementById('pbWholesale');if(pb)pb.textContent=WHOLESALE?t('ws_exit'):t('club_link');}
@@ -2076,7 +2091,8 @@ async function createOrder(channel){   // קריאה אחת ל-create_order → 
     p_customer_name:gv('buyer-name'),p_customer_phone:gv('buyer-phone'),
     p_customer_email:'',p_customer_type:gv('buyer-biz')?'barber':'retail',
     p_channel:channel,p_note:noteText(),p_items:items,
-    p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null});   // התמחור נקבע בשרת: קוד תקף = סיטונאי, אחרת צרכן
+    p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null,     // התמחור נקבע בשרת: קוד תקף = סיטונאי, אחרת צרכן
+    p_coupon_code:activeCoupon?activeCoupon.code:null});    // הקופון מאומת ונצרב בשרת (total כבר כולל את ההנחה)
   if(error){console.error(error);alert(t('err_order'));return null;}
   const row=Array.isArray(data)?data[0]:data;
   return row?{id:row.order_id,total:row.order_total}:null;
