@@ -474,7 +474,7 @@ def main():
             else:
                 barcode_seen[bc] = v["id"]
 
-    og_image = (SITE_URL.rstrip("/") + "/og-image.png?v=bw4") if SITE_URL else "og-image.png?v=bw4"
+    og_image = (SITE_URL.rstrip("/") + "/og-image.png?v=bf1") if SITE_URL else "og-image.png?v=bf1"
 
     # ---- חיבור Supabase: מוזרק לדף כ-window.SUPA. ריק → הקטלוג עובד במצב וואטסאפ-טקסט בלבד ----
     supa_cfg = {"url": "", "anon": ""}
@@ -530,7 +530,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta name="robots" content="index,follow">
 <meta name="theme-color" content="#7c3aed">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"Store","name":"Beauty Favorites","url":"__SITE_URL__/","image":"__OG_IMAGE__","logo":"__SITE_URL__/logo.svg","description":"הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים האהובים","telephone":"+972-53-4555501","email":"beautyfavorites2026@gmail.com","priceRange":"₪₪","areaServed":"IL","currenciesAccepted":"ILS"}
+{"@context":"https://schema.org","@type":"Store","name":"Beauty Favorites","url":"__SITE_URL__/","image":"__OG_IMAGE__","logo":"__SITE_URL__/logo-bf.png","description":"הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים האהובים","telephone":"+972-53-4555501","email":"beautyfavorites2026@gmail.com","priceRange":"₪₪","areaServed":"IL","currenciesAccepted":"ILS"}
 </script>
 <!-- חיבור Supabase (anon ציבורי). אם לא הוגדר — הקטלוג נופל חזרה למצב וואטסאפ-טקסט בלבד. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -538,8 +538,8 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="__OG_IMAGE__">
 <meta name="theme-color" content="#171717">
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="apple-touch-icon" href="favicon.svg">
+<link rel="icon" type="image/png" href="favicon-bf.png">
+<link rel="apple-touch-icon" href="favicon-bf.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Cormorant+Garamond:wght@500;600&family=Dancing+Script:wght@500;600;700&family=Gveret+Levin+AlefAlefAlef&family=Suez+One&display=swap" rel="stylesheet">
 <style>
@@ -933,6 +933,9 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .hslide .htext{position:relative;z-index:2;color:#fff;padding:0 34px;max-width:62%}
 .hslide .tag{display:inline-block;background:#fff;color:#111;font-size:11px;font-weight:700;letter-spacing:.06em;padding:3px 11px;border-radius:20px;margin-bottom:12px}
 .hslide h2{font-family:var(--script);font-weight:400;font-size:34px;line-height:1.12;margin-bottom:6px}
+.hslide h2#hs1h{font-family:'Cormorant Garamond',serif;font-weight:600;text-transform:uppercase;letter-spacing:.13em;font-size:30px}
+.hslide .bfsub{display:block;font-family:'Heebo',sans-serif;font-size:12px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:#f7c6cb;text-shadow:0 1px 10px rgba(0,0,0,.55);margin:4px 0 10px}
+.hslide h2#hs1h{text-shadow:0 1px 12px rgba(0,0,0,.35)}
 .hslide p{font-size:14px;font-weight:300;opacity:.92;margin-bottom:16px;max-width:340px}
 .hslide .cta{background:#fff;color:#111;border:none;font-size:14px;font-weight:700;padding:11px 26px;border-radius:30px;cursor:pointer}
 .hdots{position:absolute;bottom:14px;inset-inline:0;display:flex;gap:7px;justify-content:center;z-index:3}
@@ -1001,13 +1004,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <span id="promo3">⏱ אספקה עד 72 שעות</span>
 </div>
 <div class="brandbar">
-  <svg class="brandlogo" viewBox="0 0 360 150" width="158" height="66" onclick="goTop()" style="cursor:pointer" role="img" aria-label="Beauty Favorites">
-    <text x="180" y="48" text-anchor="middle" font-family="'Heebo',Arial,sans-serif" font-size="23" font-weight="500" letter-spacing="13" fill="#171717">BEAUTY</text>
-    <line x1="122" y1="64" x2="238" y2="64" stroke="#888888" stroke-width="1.3"/>
-    <circle cx="115" cy="64" r="2" fill="#888888"/>
-    <circle cx="245" cy="64" r="2" fill="#888888"/>
-    <text x="180" y="128" text-anchor="middle" font-family="'Dancing Script','Cormorant Garamond',cursive" font-size="64" font-weight="700" fill="#171717">Favorites</text>
-  </svg>
+  <img class="brandlogo" src="logo-bf.png" width="140" height="68" onclick="goTop()" style="cursor:pointer" alt="Beauty Favorites — Beauty &amp; Skincare">
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
 <div class="hcar" id="hcar">
@@ -1018,6 +1015,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
       <div class="htext">
         <span class="tag" id="hs1tag">חדש!</span>
         <h2 id="hs1h">Beauty Favorites</h2>
+        <span class="bfsub">Beauty &amp; Skincare</span>
         <p id="hs1p">הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים המובילים בעולם.</p>
         <button class="cta" id="hs1c">לגילוי הקולקציה</button>
       </div>
