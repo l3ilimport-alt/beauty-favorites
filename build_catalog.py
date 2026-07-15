@@ -1273,6 +1273,8 @@ const I18N={
   ship_addr:'עיר וכתובת למשלוח',phone:'טלפון *',notes_ph:'הערות להזמנה (אופציונלי)…',
   send_order:'שלח הזמנה לאישור (וואטסאפ)',send_hint:'ההזמנה תיפתח ב-WhatsApp עם מספר ההזמנה',
   pay_now:'שלם עכשיו 💳',sold_out:'אזל',sending:'שולח…',err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',
+  pay_ok:'התשלום התקבל בהצלחה! 🎉 הזמנה מספר {id} אושרה — פרטי אישור נשלחו אליך. תודה שקנית בביוטי פייבוריטס!',
+  pay_fail:'התשלום לא הושלם. ההזמנה שלך ({id}) שמורה אצלנו — אפשר לנסות שוב או לפנות אלינו בוואטסאפ 053-4555501.',
   cart_empty:'העגלה ריקה',subtotal:'סכום ביניים',discount:'הנחה',vat:'מע"מ 18%',grand:'סה"כ לתשלום',incl_vat:'המחירים כוללים מע"מ',
   coupon_ok:'✓ קופון הוחל: ',coupon_bad:'קוד קופון לא תקין',off:'הנחה',
   ws_enter:'🔑 כניסת סיטונאי',ws_exit:'יציאה ממצב סיטונאי',ws_title:'כניסת סיטונאי',ws_sub:'הזן קוד סיטונאי כדי לראות מחירי סיטונאי.',ws_ph:'קוד סיטונאי',ws_go:'כניסה',ws_bad:'קוד שגוי',ws_unavailable:'לא זמין כרגע',ws_active:'מצב סיטונאי פעיל — מוצגים מחירי סיטונאי',
@@ -1320,6 +1322,8 @@ const I18N={
   ship_addr:'المدينة والعنوان للتوصيل',phone:'الهاتف *',notes_ph:'ملاحظات على الطلب (اختياري)…',
   send_order:'إرسال الطلب للموافقة (واتساب)',send_hint:'سيُفتح الطلب في WhatsApp مع رقم الطلب',
   pay_now:'ادفع الآن 💳',sold_out:'نفد',sending:'جارٍ الإرسال…',err_order:'حدث خطأ في إنشاء الطلب. حاول مرة أخرى.',
+  pay_ok:'تم استلام الدفع بنجاح! 🎉 تم تأكيد الطلب رقم {id} — تم إرسال تفاصيل التأكيد إليك. شكراً لتسوقك في بيوتي فيفوريتس!',
+  pay_fail:'لم تكتمل عملية الدفع. طلبك ({id}) محفوظ لدينا — يمكنك المحاولة مرة أخرى أو التواصل معنا عبر واتساب 053-4555501.',
   cart_empty:'السلة فارغة',subtotal:'المجموع الفرعي',discount:'خصم',vat:'ضريبة 18%',grand:'الإجمالي للدفع',incl_vat:'الأسعار تشمل الضريبة',
   coupon_ok:'✓ تم تطبيق الكوبون: ',coupon_bad:'رمز كوبون غير صالح',off:'خصم',
   ws_enter:'🔑 دخول الجملة',ws_exit:'الخروج من وضع الجملة',ws_title:'دخول الجملة',ws_sub:'أدخل رمز الجملة لرؤية أسعار الجملة.',ws_ph:'رمز الجملة',ws_go:'دخول',ws_bad:'رمز غير صحيح',ws_unavailable:'غير متاح حالياً',ws_active:'وضع الجملة مُفعّل — تُعرض أسعار الجملة',
@@ -2215,6 +2219,16 @@ applyStatic();
 render();
 initCarousel();
 if(SB){var _pb=document.getElementById('payBtn');if(_pb)_pb.style.display='';loadStock();}
+// חזרה מדף התשלום של פיי פלוס (?pay=success/failure&order=N) — הודעה וניקוי הכתובת
+(function(){
+  try{
+    var q=new URLSearchParams(location.search), st=q.get('pay');
+    if(!st)return;
+    var oid=q.get('order')||'';
+    history.replaceState(null,'',location.pathname);
+    setTimeout(function(){alert(t(st==='success'?'pay_ok':'pay_fail').replace('{id}','#'+oid));},300);
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
