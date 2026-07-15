@@ -1187,6 +1187,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
       <input class="fld" id="buyer-id" type="text" placeholder="מספר עוסק מורשה / ח.פ / ת.ז">
       <input class="fld" id="buyer-addr" type="text" placeholder="עיר וכתובת למשלוח">
       <input class="fld" id="buyer-phone" type="tel" placeholder="טלפון *">
+      <input class="fld" id="buyer-email" type="email" placeholder="אימייל — לקבלת אישור וחשבונית (חובה בתשלום באתר)">
       <textarea class="notes" id="notes" placeholder="הערות להזמנה (אופציונלי)…"></textarea>
     </div>
     <label class="agree" id="agreeWrap">
@@ -1271,6 +1272,7 @@ const I18N={
   my_order:'ההזמנה שלי',coupon_ph:'קוד קופון',apply:'החל',buyer_details:'פרטי המזמין',
   full_name:'שם מלא *',biz_name:'שם העסק / החנות (לחשבונית)',biz_id:'מספר עוסק מורשה / ח.פ / ת.ז',
   ship_addr:'עיר וכתובת למשלוח',phone:'טלפון *',notes_ph:'הערות להזמנה (אופציונלי)…',
+  email_ph:'אימייל — לקבלת אישור וחשבונית (חובה בתשלום באתר)',alert_email:'לתשלום באתר צריך כתובת אימייל — אליה נשלח את האישור והחשבונית.',
   send_order:'שלח הזמנה לאישור (וואטסאפ)',send_hint:'ההזמנה תיפתח ב-WhatsApp עם מספר ההזמנה',
   pay_now:'שלם עכשיו 💳',sold_out:'אזל',sending:'שולח…',err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',
   pay_ok:'התשלום התקבל בהצלחה! 🎉 הזמנה מספר {id} אושרה — פרטי אישור נשלחו אליך. תודה שקנית בביוטי פייבוריטס!',
@@ -1320,6 +1322,7 @@ const I18N={
   my_order:'طلبي',coupon_ph:'رمز الكوبون',apply:'تطبيق',buyer_details:'تفاصيل مقدّم الطلب',
   full_name:'الاسم الكامل *',biz_name:'اسم العمل / المتجر (للفاتورة)',biz_id:'رقم السجل التجاري / الهوية',
   ship_addr:'المدينة والعنوان للتوصيل',phone:'الهاتف *',notes_ph:'ملاحظات على الطلب (اختياري)…',
+  email_ph:'البريد الإلكتروني — لاستلام التأكيد والفاتورة (إلزامي للدفع في الموقع)',alert_email:'للدفع في الموقع يلزم بريد إلكتروني — سنرسل إليه التأكيد والفاتورة.',
   send_order:'إرسال الطلب للموافقة (واتساب)',send_hint:'سيُفتح الطلب في WhatsApp مع رقم الطلب',
   pay_now:'ادفع الآن 💳',sold_out:'نفد',sending:'جارٍ الإرسال…',err_order:'حدث خطأ في إنشاء الطلب. حاول مرة أخرى.',
   pay_ok:'تم استلام الدفع بنجاح! 🎉 تم تأكيد الطلب رقم {id} — تم إرسال تفاصيل التأكيد إليك. شكراً لتسوقك في بيوتي فيفوريتس!',
@@ -1371,7 +1374,7 @@ function applyStatic(){
   setText('omTitle',t('my_order'));setPh('coupon',t('coupon_ph'));setText('couponBtn',t('apply'));
   setText('buyerTitle',t('buyer_details'));
   setPh('buyer-name',t('full_name'));setPh('buyer-biz',t('biz_name'));setPh('buyer-id',t('biz_id'));
-  setPh('buyer-addr',t('ship_addr'));setPh('buyer-phone',t('phone'));setPh('notes',t('notes_ph'));
+  setPh('buyer-addr',t('ship_addr'));setPh('buyer-phone',t('phone'));setPh('buyer-email',t('email_ph'));setPh('notes',t('notes_ph'));
   setText('sendBtn',t('send_order'));setText('sendHint',t('send_hint'));setText('payBtn',t('pay_now'));
   var _ag=document.getElementById('agreeTxt');if(_ag)_ag.innerHTML=t('agree_txt');
   setText('heroSub',t('hero_sub'));
@@ -2077,10 +2080,13 @@ function cartItems(){      // [{sku, qty}] עבור create_order (sku = ברקו
   return Object.keys(CART).map(vid=>{const m=VMAP[vid];return {sku:nbc(m&&m.v.barcode),qty:CART[vid].qty,sold:m&&isSold(m.v)};}).filter(it=>it.sku&&!it.sold).map(({sku,qty})=>({sku,qty}));
 }
 function syncAgree(){var c=document.getElementById('agreeTerms');var ok=!!(c&&c.checked);['sendBtn','payBtn'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.toggle('locked',!ok);});}
-function validateBuyer(){
+function validateBuyer(needEmail){
   if(!Object.keys(CART).length){alert(t('alert_empty'));return false;}
   const name=gv('buyer-name'),phone=gv('buyer-phone');
   if(!name||!phone){alert(t('alert_fill'));document.getElementById(!name?'buyer-name':'buyer-phone').focus();return false;}
+  // אימייל חובה רק בתשלום באתר — אליו נשלחים אישור פיי פלוס והחשבונית
+  if(needEmail){const em=gv('buyer-email');
+    if(!em||em.indexOf('@')<1||em.indexOf('.')<0){alert(t('alert_email'));document.getElementById('buyer-email').focus();return false;}}
   var ag=document.getElementById('agreeTerms');
   if(!ag||!ag.checked){alert(t('alert_terms'));var w=document.getElementById('agreeWrap');if(w)w.scrollIntoView({block:'center'});if(ag)ag.focus();return false;}
   return true;
@@ -2091,7 +2097,7 @@ async function createOrder(channel){   // קריאה אחת ל-create_order → 
   if(!items.length){alert(t('err_order'));return null;}
   const {data,error}=await SB.rpc('create_order',{
     p_customer_name:gv('buyer-name'),p_customer_phone:gv('buyer-phone'),
-    p_customer_email:'',p_customer_type:gv('buyer-biz')?'barber':'retail',
+    p_customer_email:gv('buyer-email')||'',p_customer_type:gv('buyer-biz')?'barber':'retail',
     p_channel:channel,p_note:noteText(),p_items:items,
     p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null,     // התמחור נקבע בשרת: קוד תקף = סיטונאי, אחרת צרכן
     p_coupon_code:activeCoupon?activeCoupon.code:null});    // הקופון מאומת ונצרב בשרת (total כבר כולל את ההנחה)
@@ -2113,7 +2119,7 @@ async function submitWhatsApp(){
 }
 // ב) "שלם עכשיו" — create_order(channel='payment') ואז create-checkout → הפניה ללינק התשלום
 async function payNow(){
-  if(!validateBuyer())return;
+  if(!validateBuyer(true))return;
   if(!SB)return;
   const btn=document.getElementById('payBtn');setBusy(btn,true);
   const ord=await createOrder('payment');
