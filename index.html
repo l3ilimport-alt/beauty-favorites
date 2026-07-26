@@ -410,26 +410,20 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .wsbanner button:hover{background:rgba(255,255,255,.34)}
 
 /* ===== homepage (Sephora-style) additions ===== */
-/* hero carousel */
-.hcar{position:relative;margin:8px 12px 0;border-radius:18px;overflow:hidden;max-width:1160px}
-@media(min-width:900px){.hcar{margin:8px auto 0}}
-.hslides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
-.hslides::-webkit-scrollbar{display:none}
-.hslide{flex:0 0 100%;scroll-snap-align:center;position:relative;height:300px;background:#111;display:flex;align-items:center;cursor:pointer}
-.hslide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.92}
-.hslide .scrim{position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.74),rgba(0,0,0,.45) 42%,rgba(0,0,0,.04) 75%)}
-.hslide .htext{position:relative;z-index:2;color:#fff;padding:0 34px;max-width:62%}
-.hslide .tag{display:inline-block;background:#fff;color:#111;font-size:11px;font-weight:700;letter-spacing:.06em;padding:3px 11px;border-radius:20px;margin-bottom:12px}
-.hslide h2{font-family:var(--script);font-weight:400;font-size:34px;line-height:1.12;margin-bottom:6px}
-.hslide h2#hs1h{font-family:'Cormorant Garamond',serif;font-weight:600;text-transform:uppercase;letter-spacing:.13em;font-size:30px}
-.hslide .bfsub{display:block;font-family:'Heebo',sans-serif;font-size:12px;font-weight:500;letter-spacing:.32em;text-transform:uppercase;color:#f7c6cb;text-shadow:0 1px 10px rgba(0,0,0,.55);margin:4px 0 10px}
-.hslide h2#hs1h{text-shadow:0 1px 12px rgba(0,0,0,.35)}
-.hslide p{font-size:14px;font-weight:300;opacity:.92;margin-bottom:16px;max-width:340px}
-.hslide .cta{background:#fff;color:#111;border:none;font-size:14px;font-weight:700;padding:11px 26px;border-radius:30px;cursor:pointer}
-.hdots{position:absolute;bottom:14px;inset-inline:0;display:flex;gap:7px;justify-content:center;z-index:3}
-.hdots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5);transition:.2s;cursor:pointer}
-.hdots i.on{background:#fff;width:20px;border-radius:6px}
-@media(max-width:640px){.hslide{height:230px}.hslide .htext{max-width:80%;padding:0 22px}.hslide h2{font-size:26px}.hslide p{font-size:12.5px}}
+/* hero entry banner (single image, replaced the 3-slide carousel 2026-07-26) */
+.ebanner{position:relative;display:block;margin:8px 12px 0;border-radius:18px;overflow:hidden;max-width:1160px;cursor:pointer;background:#120b0e;line-height:0}
+@media(min-width:900px){.ebanner{margin:8px auto 0}}
+.ebanner img{display:block;width:100%;height:auto}
+/* the pink pill is baked into the artwork — this is the real, clickable/focusable hotspot on top of it */
+.ehot{position:absolute;border:none;padding:0;background:transparent;border-radius:999px;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;transition:box-shadow .18s,transform .18s}
+.ehot span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ehot:hover{transform:scale(1.03);box-shadow:0 0 0 3px rgba(255,255,255,.45)}
+.ehot:focus-visible{outline:none;box-shadow:0 0 0 3px #fff}
+.ehot.d{left:78.29%;top:63.6%;width:16.46%;height:8.56%}
+.ehot.m{display:none;left:32.5%;top:84.81%;width:35.08%;height:5.39%}
+@media(max-width:640px){.ehot.d{display:none}.ehot.m{display:block}}
+@media(prefers-reduced-motion:reduce){.ehot:hover{transform:none}}
 /* service icons */
 .services{display:flex;justify-content:center;margin:20px 12px 4px;padding:14px 6px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);max-width:1160px}
 @media(min-width:900px){.services{margin:22px auto 4px}}
@@ -495,41 +489,16 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <img class="brandlogo" src="logo-bf.png" width="140" height="68" onclick="goTop()" style="cursor:pointer" alt="Beauty Favorites — Beauty &amp; Skincare">
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
-<div class="hcar" id="hcar">
-  <div class="hslides" id="hslides">
-    <div class="hslide" data-cat="__all__">
-      <img src="hero.jpg" alt="" fetchpriority="high">
-      <div class="scrim"></div>
-      <div class="htext">
-        <span class="tag" id="hs1tag">חדש!</span>
-        <h2 id="hs1h">Beauty Favorites</h2>
-        <span class="bfsub">Beauty &amp; Skincare</span>
-        <p id="hs1p">הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים המובילים בעולם.</p>
-        <button class="cta" id="hs1c">לגילוי הקולקציה</button>
-      </div>
-    </div>
-    <div class="hslide" data-cat="איפור">
-      <img src="cat/makeup.jpg" alt="" loading="lazy">
-      <div class="scrim"></div>
-      <div class="htext">
-        <span class="tag" id="hs2tag">איפור</span>
-        <h2 id="hs2h">המראה המושלם</h2>
-        <p id="hs2p">פאונדיישן, קונסילר, בלאש ושפתונים מהמותגים האהובים.</p>
-        <button class="cta" id="hs2c">לקטגוריית האיפור</button>
-      </div>
-    </div>
-    <div class="hslide" data-cat="בושם">
-      <img src="cat/fragrance.jpg" alt="" loading="lazy">
-      <div class="scrim"></div>
-      <div class="htext">
-        <span class="tag" id="hs3tag">בשמים</span>
-        <h2 id="hs3h">ניחוחות יוקרה</h2>
-        <p id="hs3p">מבחר בשמים מקוריים מבתי האופנה המובילים.</p>
-        <button class="cta" id="hs3c">לקטגוריית הבושם</button>
-      </div>
-    </div>
-  </div>
-  <div class="hdots" id="hdots"><i class="on"></i><i></i><i></i></div>
+<div class="ebanner" id="ebanner" onclick="goRecs()">
+  <picture>
+    <source media="(max-width:640px)" srcset="banner-mobile.webp" type="image/webp">
+    <source media="(max-width:640px)" srcset="banner-mobile.jpg">
+    <source srcset="banner-desktop.webp" type="image/webp">
+    <img src="banner-desktop.jpg" width="1981" height="794" fetchpriority="high"
+         alt="המועדפים של עולם הביוטי במקום אחד — מוצרים מקוריים מהמותגים האהובים בעולם">
+  </picture>
+  <button class="ehot d" onclick="event.stopPropagation();goRecs()"><span id="ebtnD">למומלצים שלנו</span></button>
+  <button class="ehot m" onclick="event.stopPropagation();goRecs()"><span id="ebtnM">למומלצים שלנו</span></button>
 </div>
 
 <!-- מונה "X מוצרים במלאי" הוסר לבקשת המשתמש (2026-07-12); updateHeroCount עמיד לאלמנט חסר -->
@@ -774,9 +743,7 @@ const I18N={
   f_about:'אודות',
   f_disc:'מכירה עצמאית של מוצרים מקוריים · כל הסימנים המסחריים שייכים לבעליהם',
   hero_sub:'הקולקציה הנבחרת — איפור · טיפוח · שיער · בושם',
-  hs1tag:'חדש!', hs1p:'הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים המובילים בעולם.', hs1c:'לגילוי הקולקציה',
-  hs2tag:'איפור', hs2h:'המראה המושלם', hs2p:'פאונדיישן, קונסילר, בלאש ושפתונים מהמותגים האהובים.', hs2c:'לקטגוריית האיפור',
-  hs3tag:'בשמים', hs3h:'ניחוחות יוקרה', hs3p:'מבחר בשמים מקוריים מבתי האופנה המובילים.', hs3c:'לקטגוריית הבושם',
+  ebtn:'למומלצים שלנו',
   svc1a:'משלוח חינם', svc1b:'בקנייה מעל ₪299', svc2a:'החזרות חינם', svc2b:'עד 30 יום', svc3a:'מוצרים מקוריים', svc3b:'100% מקורי', svc4a:'תשלום מאובטח', svc4b:'הצפנה מלאה',
   pt1h:'מותגי הטיפוח האהובים', pt2h:'בשמים מקוריים', pt2p:'מבתי האופנה המובילים', buy:'לרכישה',
   br_title:'המותגים האהובים', br_more:'לכל המותגים ›', rec_title:'מומלץ בשבילך', rec_more:'לכל המוצרים ›', shop_all:'כל המוצרים',
@@ -824,9 +791,7 @@ const I18N={
   f_about:'حول المتجر',
   f_disc:'بيع مستقل لمنتجات أصلية · جميع العلامات التجارية ملك لأصحابها',
   hero_sub:'التشكيلة المختارة — مكياج · عناية · شعر · عطر',
-  hs1tag:'جديد!', hs1p:'التشكيلة المختارة — مكياج، عناية، شعر وعطر من أفضل الماركات العالمية.', hs1c:'اكتشفي التشكيلة',
-  hs2tag:'مكياج', hs2h:'الإطلالة المثالية', hs2p:'كريم أساس، كونسيلر، بلاشر وأحمر شفاه من الماركات المفضّلة.', hs2c:'إلى قسم المكياج',
-  hs3tag:'عطور', hs3h:'عطور فاخرة', hs3p:'تشكيلة عطور أصلية من أشهر دور الأزياء.', hs3c:'إلى قسم العطور',
+  ebtn:'إلى توصياتنا',
   svc1a:'شحن مجاني', svc1b:'للطلبات فوق ₪299', svc2a:'إرجاع مجاني', svc2b:'حتى 30 يوم', svc3a:'منتجات أصلية', svc3b:'أصلية 100%', svc4a:'دفع آمن', svc4b:'تشفير كامل',
   pt1h:'ماركات العناية المفضّلة', pt2h:'عطور أصلية', pt2p:'من أشهر دور الأزياء', buy:'للشراء',
   br_title:'الماركات المفضّلة', br_more:'كل الماركات ›', rec_title:'موصى به لك', rec_more:'كل المنتجات ›', shop_all:'كل المنتجات',
@@ -879,9 +844,7 @@ function applyStatic(){
   var wf=document.getElementById('waFloat');if(wf){wf.title=t('wa_q');wf.setAttribute('aria-label',t('wa_q'));}
   setText('waChatTitle',t('wa_help_title'));setText('waChatGreet',t('wa_help_greet'));setPh('waChatMsg',t('wa_help_ph'));setText('waChatSend',t('wa_send'));
   // homepage sections (Sephora-style)
-  setText('hs1tag',t('hs1tag'));setText('hs1p',t('hs1p'));setText('hs1c',t('hs1c'));
-  setText('hs2tag',t('hs2tag'));setText('hs2h',t('hs2h'));setText('hs2p',t('hs2p'));setText('hs2c',t('hs2c'));
-  setText('hs3tag',t('hs3tag'));setText('hs3h',t('hs3h'));setText('hs3p',t('hs3p'));setText('hs3c',t('hs3c'));
+  setText('ebtnD',t('ebtn'));setText('ebtnM',t('ebtn'));
   setText('svc1a',t('svc1a'));setText('svc1b',t('svc1b'));setText('svc2a',t('svc2a'));setText('svc2b',t('svc2b'));
   setText('svc3a',t('svc3a'));setText('svc3b',t('svc3b'));setText('svc4a',t('svc4a'));setText('svc4b',t('svc4b'));
   setText('pt1h',t('pt1h'));setText('pt2h',t('pt2h'));setText('pt2p',t('pt2p'));
@@ -976,6 +939,11 @@ function buildNav(){
 function goShop(){var el=document.getElementById('shopAllT')||document.getElementById('grid');if(el){var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;window.scrollTo({top:y,behavior:'smooth'});}}
 function goCat(c){curCat=c;curBrand='__all__';favOnly=false;var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');buildNav();render();goShop();}
 function focusSearch(){window.scrollTo({top:0,behavior:'smooth'});setTimeout(function(){var q=document.getElementById('q');if(q)q.focus();},360);}
+// כפתור הבאנר → מגלגל אל "מומלץ בשבילך" (נופל חזרה לכל המוצרים אם הקטע ריק/חסר)
+function goRecs(){var row=document.getElementById('recRow'),el=document.getElementById('recTitle');
+  if(!el||!row||!row.children.length){goShop();return;}
+  var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;
+  window.scrollTo({top:y,behavior:'smooth'});}
 function showFavs(){favOnly=true;var fc=document.getElementById('favchip');if(fc)fc.classList.add('active');render();goShop();}
 // ---- שורת לוגואי מותגים ----
 function buildBrandRow(){
@@ -1006,21 +974,6 @@ function buildRecs(){
     var pr=Math.min.apply(null,g.variants.map(eff));
     return '<div class="pcard" onclick="openPd('+g._i+')"><div class="pi">'+img+'</div><div class="pb"><div class="br">'+esc(g.brand)+'</div><div class="nm">'+esc(g.name_he)+'</div><div class="pr">₪'+pr+'</div></div></div>';
   }).join('');
-}
-// ---- קרוסלת באנרים בהירו ----
-var _carInit=false;
-function initCarousel(){
-  if(_carInit)return; var slides=document.getElementById('hslides'),dots=document.getElementById('hdots'); if(!slides||!dots)return; _carInit=true;
-  var n=slides.children.length,idx=0,timer;
-  var rtl=getComputedStyle(slides).direction==='rtl';
-  function paint(){for(var j=0;j<dots.children.length;j++)dots.children[j].className=(j===idx?'on':'');}
-  function go(k){idx=(k+n)%n;slides.scrollTo({left:slides.clientWidth*idx*(rtl?-1:1),behavior:'smooth'});paint();}
-  function start(){timer=setInterval(function(){go(idx+1);},4800);}
-  function stop(){clearInterval(timer);}
-  for(var j=0;j<dots.children.length;j++){(function(jj){dots.children[jj].onclick=function(){stop();go(jj);start();};})(j);}
-  for(var s=0;s<slides.children.length;s++){(function(el){el.addEventListener('click',function(){var c=el.getAttribute('data-cat');if(c&&c!=='__all__')goCat(c);else goShop();});})(slides.children[s]);}
-  var t2;slides.addEventListener('scroll',function(){clearTimeout(t2);t2=setTimeout(function(){var k=Math.round(Math.abs(slides.scrollLeft)/slides.clientWidth);if(k!==idx){idx=k;paint();}},120);},{passive:true});
-  start();
 }
 // ---- אריחי קטגוריות עם תמונה מייצגת — ניווט הקטגוריות היחיד (כולל אריח "הכל") ----
 function buildCatTiles(){
@@ -1725,7 +1678,6 @@ window.addEventListener('scroll',()=>{
 
 applyStatic();
 render();
-initCarousel();
 if(SB){var _pb=document.getElementById('payBtn');if(_pb)_pb.style.display='';loadStock();}
 // חזרה מדף התשלום של פיי פלוס (?pay=success/failure&order=N) — הודעה וניקוי הכתובת
 (function(){
