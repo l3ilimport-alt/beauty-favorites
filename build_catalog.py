@@ -971,7 +971,12 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 /* hero entry banner (single image, replaced the 3-slide carousel 2026-07-26) */
 .ebanner{position:relative;display:block;margin:8px 12px 0;border-radius:18px;overflow:hidden;max-width:1160px;cursor:pointer;background:#120b0e;line-height:0}
 @media(min-width:900px){.ebanner{margin:8px auto 0}}
+.ebanner picture{display:block}
 .ebanner img{display:block;width:100%;height:auto}
+/* גרסת הדסקטופ והמובייל מתחלפות בעיצוב בלבד (ולא ב-media של <picture>) — כך התמונה והכפתור
+   שמעליה מתחלפים תמיד יחד; בורר המקורות נשאר רק לבחירת פורמט ווב-פי, שאינה תלויה ברוחב המסך */
+.ebanner .eb-m{display:none}
+@media(max-width:640px){.ebanner .eb-d{display:none}.ebanner .eb-m{display:block}}
 /* the pink pill is baked into the artwork — this is the real, clickable/focusable hotspot on top of it */
 .ehot{position:absolute;border:none;padding:0;background:transparent;border-radius:999px;cursor:pointer;
   -webkit-tap-highlight-color:transparent;transition:box-shadow .18s,transform .18s}
@@ -1048,12 +1053,14 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
 <div class="ebanner" id="ebanner" onclick="goRecs()">
-  <picture>
-    <source media="(max-width:640px)" srcset="banner-mobile.webp" type="image/webp">
-    <source media="(max-width:640px)" srcset="banner-mobile.jpg">
+  <picture class="eb-d">
     <source srcset="banner-desktop.webp" type="image/webp">
     <img src="banner-desktop.jpg" width="1981" height="794" fetchpriority="high"
          alt="המועדפים של עולם הביוטי במקום אחד — מוצרים מקוריים מהמותגים האהובים בעולם">
+  </picture>
+  <picture class="eb-m">
+    <source srcset="banner-mobile.webp" type="image/webp">
+    <img src="banner-mobile.jpg" width="1000" height="1333" alt="" aria-hidden="true">
   </picture>
   <button class="ehot d" onclick="event.stopPropagation();goRecs()"><span id="ebtnD">למומלצים שלנו</span></button>
   <button class="ehot m" onclick="event.stopPropagation();goRecs()"><span id="ebtnM">למומלצים שלנו</span></button>
