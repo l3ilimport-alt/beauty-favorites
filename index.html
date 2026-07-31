@@ -885,7 +885,7 @@ const BADGE_ORDER=['sale','bestseller','new','limited','soldout','vegan'];
 
 const CATS=['איפור','טיפוח','שיער','בושם','מארזים','ציפורניים','אביזרים','ציוד'].filter(t=>GROUPS.some(g=>g.type===t));
 // תמונת קטגוריה ייעודית (נחתכה מהקולאז' של דף הכניסה); קטגוריה ללא תמונה כאן → נפילה לתמונת מוצר מייצג
-const CAT_IMG={'איפור':'cat/makeup.jpg','טיפוח':'cat/skincare.jpg','שיער':'cat/hair.jpg','בושם':'cat/fragrance.jpg','אביזרים':'cat/accessories.jpg'};
+const CAT_IMG={'איפור':'cat/makeup.jpg?v=2','טיפוח':'cat/skincare.jpg?v=2','שיער':'cat/hair.jpg?v=2','בושם':'cat/fragrance.jpg?v=2','מארזים':'cat/sets.jpg?v=2','אביזרים':'cat/accessories.jpg?v=2'};
 // "לוהטים" — מוצרי הזמנה 1010 (רשימה נבחרת): קטגוריה וירטואלית + מקור לקרוסלת "מומלץ בשבילך"
 const HOT_SKUS=new Set(['3548752203166','3548752227018','3548752215862','194251146065','607845058946','5056446616171','5060332320264','5060696179447','5056446655385','850018802888','602004162984','602004106643','602004140128','602004127068','602004111807','651986023424','651986009459','810912032613','810912034150','810912032576','843628141126','840026678681','840026678278','840122909801','840122900044','840122906664','840122906619','840122906442','840122906572','8720986613484','810052962818','810052960012','858511001128','609332859128','609332832572','609332830486','609332834040','609332834149','609332828056','609332859753','609332570658','609332848023','609332813465','609332847590','609332852457','609332216433']);
 function isHot(g){return g.variants.some(v=>HOT_SKUS.has(nbc(v.barcode)));}
@@ -986,7 +986,7 @@ function buildRecs(){
 function buildCatTiles(){
   const el=document.getElementById('cattiles');if(!el)return;
   const cats=catsInStock();
-  const allTile=`<button class="cattile ${curCat==='__all__'?'active':''}" data-c="__all__"><span class="ci"><img src="cat/all.jpg" loading="lazy" alt="" onerror="this.parentNode.classList.add('ci-all');this.outerHTML='<span class=&quot;ph&quot;>✦</span>'"></span><span>${t('all')}</span></button>`;
+  const allTile=`<button class="cattile ${curCat==='__all__'?'active':''}" data-c="__all__"><span class="ci"><img src="cat/all.jpg?v=2" loading="lazy" alt="" onerror="this.parentNode.classList.add('ci-all');this.outerHTML='<span class=&quot;ph&quot;>✦</span>'"></span><span>${t('all')}</span></button>`;
   const hg=GROUPS.filter(x=>isHot(x)&&!x._noimg&&(!STOCK_READY||x.variants.some(v=>STOCK[nbc(v.barcode)]>0)))
     .sort((a,b)=>prestige(a.brand)-prestige(b.brand))[0];
   const hv=hg?hg.variants.find(x=>x.imgs&&x.imgs.length):null;
