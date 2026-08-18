@@ -1751,9 +1751,21 @@ function buildHay(g){
   g.variants.forEach(v=>{s+=' '+(v.shade||'')+' '+(v.barcode||'')+' '+(v.desc||'')+' '+((v.features||[]).join(' '))+' '+(v.usage||'')+' '+(v.desc_ar||'')+' '+((v.features_ar||[]).join(' '))+' '+(v.usage_ar||'');});
   return expandSearch(s);
 }
+// חיפוש מק"ט/ברקוד: שאילתה של ספרות בלבד (4+) נבדקת מול הברקודים בלבד ולא מול
+// תיאורים — אחרת קידומת יצרן כמו 6093 מחזירה מאות תוצאות. התאמה מהסוף (הספרות
+// שהלקוח מקליד הן תמיד האחרונות שהוא רואה) או הכלה, וגם מק"ט מלא עם/בלי ספרת בידוק.
+function bcMatch(g,d){
+  return g.variants.some(v=>{
+    const b=String(v.barcode||'').replace(/\D/g,'');
+    if(!b)return false;
+    return b===d||b.endsWith(d)||b.includes(d);
+  });
+}
 function matchQ(g,q){
   q=normText(q);
   if(!q)return true;
+  const d=q.replace(/\s/g,'');
+  if(/^\d{4,}$/.test(d))return bcMatch(g,d);
   const hay=g._hay||(g._hay=buildHay(g));
   return hay.includes(q)||q.split(' ').every(term=>hay.includes(term));
 }
@@ -1771,6 +1783,15 @@ function visible(){
     return matchQ(g,q);
   });
   const s=document.getElementById('sort').value;
+  // חיפוש מק"ט: התאמה מדויקת קודמת, אחריה התאמה מהסוף, ורק אז הכלה חלקית
+  const dq=normText(q).replace(/\s/g,'');
+  if(/^\d{4,}$/.test(dq)){
+    const rank=g=>Math.min(...g.variants.map(v=>{
+      const b=String(v.barcode||'').replace(/\D/g,'');
+      return b===dq?0:(b.endsWith(dq)?1:2);
+    }));
+    return r.sort((a,b)=>rank(a)-rank(b)||a.name_he.localeCompare(b.name_he,'he'));
+  }
   // cards without an image always sink to the bottom (regardless of sort)
   const byImg=(a,b)=> (a._noimg?1:0)-(b._noimg?1:0);
   if(s==='price-asc')r.sort((a,b)=>byImg(a,b)||a.minp-b.minp);
