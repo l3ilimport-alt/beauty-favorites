@@ -124,13 +124,35 @@ def fetch_db_content():
                 headers={"apikey": key, "Authorization": "Bearer " + key})
             page = json.load(urllib.request.urlopen(req, timeout=30))
             for r in page:
-                bc = re.sub(r"\D", "", str(r.get("barcode") or ""))
+                bc = _nbc(r.get("barcode"))          # אותו נירמול כמו בצד הקורא — כולל הסרת אפסים מובילים
                 if bc:
                     out[bc] = r
             if len(page) < 1000:
                 break
             offset += 1000
-        print(f"🔗 תוכן מהמסד: {len(out)} מוצרים (הבק אופיס דורס טקסטים)")
+        # מחיר הצרכן החי — נצרב בקובץ כדי שהמחיר שנראה לפני שהמסד נטען יהיה הנכון.
+        # בלי זה נשאר המחיר הישן מקובץ הידע, והלקוח רואה לרגע מחיר נמוך ושגוי.
+        npx = 0
+        try:
+            offset = 0
+            while True:
+                req = urllib.request.Request(
+                    f"{url}/rest/v1/catalog_products?select=barcode,price_consumer"
+                    f"&limit=1000&offset={offset}",
+                    headers={"apikey": key, "Authorization": "Bearer " + key})
+                page = json.load(urllib.request.urlopen(req, timeout=30))
+                for r in page:
+                    bc = _nbc(r.get("barcode"))
+                    pc = r.get("price_consumer")
+                    if bc and pc not in (None, "") and float(pc) > 0:
+                        out.setdefault(bc, {})["_live_price"] = float(pc)
+                        npx += 1
+                if len(page) < 1000:
+                    break
+                offset += 1000
+        except Exception as e:
+            print(f"⚠️  מחירים חיים לא נשלפו ({e}) — נשאר המחיר מקובץ הידע")
+        print(f"🔗 תוכן מהמסד: {len(out)} מוצרים (הבק אופיס דורס טקסטים) · {npx} מחירי צרכן חיים")
         return out
     except Exception as e:
         print(f"⚠️  אין שכבת תוכן מהמסד ({e}) — בונה מקבצי הידע בלבד")
@@ -149,6 +171,8 @@ def overlay_db_content(p, db_row):
     if val("brand"):        p["brand"] = val("brand")
     if val("category"):     p["category_refined"] = val("category")
     if val("main_category"): p["category_main"] = val("main_category")
+    if db_row.get("_live_price"):        # המחיר החי גובר על המחיר שבקובץ הידע
+        p["price_ils"] = db_row["_live_price"]
     return p
 
 # ---- brand normalization ----
