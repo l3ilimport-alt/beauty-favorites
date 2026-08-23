@@ -515,6 +515,9 @@ def main():
         if p.get("features_ar"): d["features_ar"] = p["features_ar"]
         if p.get("usage_ar"): d["usage_ar"] = p["usage_ar"]
         if p.get("contents"): d["contents"] = p["contents"]
+        if p.get("contents_ar"): d["contents_ar"] = p["contents_ar"]
+        if p.get("ingredients_ar"): d["ingredients_ar"] = p["ingredients_ar"]
+        if p.get("shade_ar"): d["shade_ar"] = p["shade_ar"]
         return d
     def make_group(members, base_he):
         members = sorted(members, key=lambda m: (m["shade"] or m["name_he"]))
@@ -818,7 +821,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 /* grid */
 .rescount{max-width:1160px;margin:8px auto 0;padding:0 20px;font-size:12.5px;color:var(--muted);font-weight:500;text-align:right}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:18px;max-width:1160px;margin:8px auto 40px;padding:0 18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;max-width:1160px;margin:8px auto 40px;padding:0 18px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:.22s;position:relative}
 .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h);border-color:var(--border2)}
 .card .imgbox{position:relative;aspect-ratio:1/1;background:linear-gradient(160deg,#fafafa,#f2f2f2);display:flex;align-items:center;justify-content:center;padding:14px}
@@ -921,6 +924,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .om{padding:8px 20px 24px}
 .om h3{font-family:var(--script);font-size:24px;font-weight:400;letter-spacing:0;margin:6px 0 12px;text-align:center}
 .om-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.om-row .om-img{width:46px;height:46px;flex:0 0 46px;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:8px;padding:3px}
+@media(max-width:640px){.om-row .om-img{width:40px;height:40px;flex-basis:40px}}
 .om-row .nm{flex:1;font-size:13.5px;font-weight:500}
 .om-row .nm small{display:block;color:var(--muted);font-weight:300;font-size:11.5px}
 .qy{display:flex;align-items:center;border:1px solid var(--border2);border-radius:10px;overflow:hidden}
@@ -1234,11 +1239,10 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <div class="form">
       <h4 id="buyerTitle">פרטי המזמין</h4>
       <input class="fld" id="buyer-name" type="text" placeholder="שם מלא *">
-      <input class="fld" id="buyer-biz" type="text" placeholder="שם העסק / החנות (לחשבונית)">
-      <input class="fld" id="buyer-id" type="text" placeholder="מספר עוסק מורשה / ח.פ / ת.ז">
-      <input class="fld" id="buyer-addr" type="text" placeholder="עיר וכתובת למשלוח">
       <input class="fld" id="buyer-phone" type="tel" placeholder="טלפון *">
+      <input class="fld" id="buyer-addr" type="text" placeholder="עיר וכתובת למשלוח">
       <input class="fld" id="buyer-email" type="email" placeholder="אימייל — לקבלת אישור וחשבונית (חובה בתשלום באתר)">
+      <input class="fld" id="buyer-id" type="text" placeholder="מספר עוסק מורשה / ח.פ / ת.ז">
       <textarea class="notes" id="notes" placeholder="הערות להזמנה (אופציונלי)…"></textarea>
     </div>
     <label class="agree" id="agreeWrap">
@@ -1420,7 +1424,7 @@ function applyStatic(){
   var tt=document.getElementById('toTop');if(tt){tt.title=t('totop');tt.setAttribute('aria-label',t('totop'));}
   setText('omTitle',t('my_order'));setPh('coupon',t('coupon_ph'));setText('couponBtn',t('apply'));
   setText('buyerTitle',t('buyer_details'));
-  setPh('buyer-name',t('full_name'));setPh('buyer-biz',t('biz_name'));setPh('buyer-id',t('biz_id'));
+  setPh('buyer-name',t('full_name'));setPh('buyer-id',t('biz_id'));
   setPh('buyer-addr',t('ship_addr'));setPh('buyer-phone',t('phone'));setPh('buyer-email',t('email_ph'));setPh('notes',t('notes_ph'));
   setText('sendBtn',t('send_order'));setText('sendHint',t('send_hint'));setText('payBtn',t('pay_now'));
   var _ag=document.getElementById('agreeTxt');if(_ag)_ag.innerHTML=t('agree_txt');
@@ -1510,9 +1514,10 @@ function defaultV(g){
 function curIdx(g){var s=sel[g.gid];return s!=null?s:defaultV(g);}
 function selV(g){return g.variants[curIdx(g)];}
 function swPill(v,on,oc){
-  var so=isSold(v), oc2=so?'out':'', tip=aesc(v.shade)+(so?' — '+t('sold_out'):'');
+  var _sh=(LANG==='ar'&&v.shade_ar)?v.shade_ar:v.shade;
+  var so=isSold(v), oc2=so?'out':'', tip=aesc(_sh)+(so?' — '+t('sold_out'):'');
   if(v.color)return `<button class="sw ${on?'on':''} ${oc2}" style="background:${v.color}" title="${tip}" aria-label="${tip}" onclick="event.stopPropagation();${oc}"></button>`;
-  return `<button class="sw txt ${on?'on':''} ${oc2}" title="${tip}" onclick="event.stopPropagation();${oc}">${esc(v.shade)}</button>`;
+  return `<button class="sw txt ${on?'on':''} ${oc2}" title="${tip}" onclick="event.stopPropagation();${oc}">${esc(_sh)}</button>`;
 }
 
 // ===== nav (rebuildable for language switch) =====
@@ -1948,8 +1953,10 @@ function renderPd(g){
   const _fts=(LANG==='ar'&&v.features_ar&&v.features_ar.length)?v.features_ar:v.features;
   const _usg=(LANG==='ar'&&v.usage_ar)?v.usage_ar:v.usage;
   const feats=(_fts&&_fts.length)?`<h4>${t('feats')}</h4><ul>${_fts.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'';
-  const contents=(v.contents&&v.contents.length)?`<h4>${t('contents_h')}</h4><div class="bndl">${v.contents.map(c=>`<details><summary>${esc(c.n||c.name||'')}</summary><p>${esc(c.d||c.desc||'')}</p></details>`).join('')}</div>`:'';
-  const ing=v.ingredients?`<h4>${t('ingredients')}</h4><p>${esc(v.ingredients)}</p>`:'';
+  const _cts=(LANG==='ar'&&v.contents_ar&&v.contents_ar.length)?v.contents_ar:v.contents;
+  const contents=(_cts&&_cts.length)?`<h4>${t('contents_h')}</h4><div class="bndl">${_cts.map(c=>`<details><summary>${esc(c.n||c.name||'')}</summary><p>${esc(c.d||c.desc||'')}</p></details>`).join('')}</div>`:'';
+  const _ing=(LANG==='ar'&&v.ingredients_ar)?v.ingredients_ar:v.ingredients;
+  const ing=_ing?`<h4>${t('ingredients')}</h4><p>${esc(_ing)}</p>`:'';
   const use=_usg?`<h4>${t('usage')}</h4><p>${esc(_usg)}</p>`:'';
   let shades='';
   if(g.variants.length>1){const idx=curIdx(g);
@@ -2061,7 +2068,10 @@ function closeOrder(){closeOv('orderModal')}
 function renderOrder(){
   const keys=Object.keys(CART);window._K=keys;const body=document.getElementById('omBody');
   if(!keys.length){body.innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">'+t('cart_empty')+'</p>';renderTotals();return}
-  body.innerHTML=keys.map((k,idx)=>{const it=CART[k];return `<div class="om-row">
+  body.innerHTML=keys.map((k,idx)=>{const it=CART[k];
+    const _m=VMAP[k], _im=(_m&&_m.v.imgs&&_m.v.imgs[0])||'';   // תמונת המוצר הראשונה
+    return `<div class="om-row">
+    ${_im?`<img class="om-img" src="${_im}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`:'<span class="om-img"></span>'}
     <div class="nm">${esc(it.name)}<small>${esc(it.brand)}${it.size?' · '+esc(it.size):''}</small></div>
     <div class="qy"><button data-i="${idx}" data-a="dec">−</button><input class="qin" type="number" inputmode="numeric" min="1" data-qi="${idx}" value="${it.qty}"><button data-i="${idx}" data-a="inc">+</button></div>
     <div class="lt">₪${it.qty*it.price}</div>
@@ -2086,10 +2096,9 @@ function renderTotals(){const {sub}=cartTotals();const d=discount(sub);const el=
 const WA_NUMBER='972534555501';
 function gv(id){var e=document.getElementById(id);return e?e.value.trim():''}
 function noteText(){   // עסק/עוסק-ח.פ/כתובת + הערת הלקוח + קופון — נשמר ב-orders.note (מוצג וניתן לחיפוש בבק אופיס)
-  const biz=gv('buyer-biz'),bid=gv('buyer-id'),addr=gv('buyer-addr');
+  const bid=gv('buyer-id'),addr=gv('buyer-addr');
   let n='';
-  if(biz)n+=`עסק: ${biz}`;
-  if(bid)n+=(n?' | ':'')+`עוסק/ח.פ: ${bid}`;
+  if(bid)n+=`עוסק/ח.פ: ${bid}`;
   if(addr)n+=(n?' | ':'')+`כתובת: ${addr}`;
   const notes=gv('notes');if(notes)n=(n?n+' | ':'')+notes;
   if(activeCoupon){const d=discount(cartTotals().sub);if(d)n=(n?n+' | ':'')+`קופון ${activeCoupon.code} (−₪${d})`;}
@@ -2099,8 +2108,8 @@ function buildOrderText(orderId){
   const keys=Object.keys(CART);if(!keys.length)return '';
   let msg='*הזמנה חדשה — Beauty Favorites*\n';
   if(orderId)msg+=`מס׳ הזמנה: #${orderId}\n`;
-  const name=gv('buyer-name'),biz=gv('buyer-biz'),bid=gv('buyer-id'),addr=gv('buyer-addr'),phone=gv('buyer-phone');
-  if(name)msg+=`\nשם: ${name}`;if(biz)msg+=`\nעסק: ${biz}`;if(bid)msg+=`\nעוסק/ח.פ: ${bid}`;
+  const name=gv('buyer-name'),bid=gv('buyer-id'),addr=gv('buyer-addr'),phone=gv('buyer-phone');
+  if(name)msg+=`\nשם: ${name}`;if(bid)msg+=`\nעוסק/ח.פ: ${bid}`;
   if(addr)msg+=`\nכתובת: ${addr}`;if(phone)msg+=`\nטלפון: ${phone}`;msg+='\n\n';
   let sub=0;keys.forEach(k=>{const it=CART[k];const lt=it.qty*it.price;sub+=lt;
     msg+=`• ${it.name}${it.size?' ('+it.size+')':''} ×${it.qty} = ₪${lt}\n`});
@@ -2171,7 +2180,7 @@ async function createOrder(channel){   // קריאה אחת ל-create_order → 
   if(!items.length){alert(t('err_order'));return null;}
   const {data,error}=await SB.rpc('create_order',{
     p_customer_name:gv('buyer-name'),p_customer_phone:gv('buyer-phone'),
-    p_customer_email:gv('buyer-email')||'',p_customer_type:gv('buyer-biz')?'barber':'retail',
+    p_customer_email:gv('buyer-email')||'',p_customer_type:gv('buyer-id')?'barber':'retail',
     p_channel:channel,p_note:noteText(),p_items:items,
     p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null,     // התמחור נקבע בשרת: קוד תקף = סיטונאי, אחרת צרכן
     p_coupon_code:activeCoupon?activeCoupon.code:null});    // הקופון מאומת ונצרב בשרת (total כבר כולל את ההנחה)
