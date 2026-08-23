@@ -924,9 +924,10 @@ function defaultV(g){
 function curIdx(g){var s=sel[g.gid];return s!=null?s:defaultV(g);}
 function selV(g){return g.variants[curIdx(g)];}
 function swPill(v,on,oc){
-  var so=isSold(v), oc2=so?'out':'', tip=aesc(v.shade)+(so?' — '+t('sold_out'):'');
+  var _sh=(LANG==='ar'&&v.shade_ar)?v.shade_ar:v.shade;
+  var so=isSold(v), oc2=so?'out':'', tip=aesc(_sh)+(so?' — '+t('sold_out'):'');
   if(v.color)return `<button class="sw ${on?'on':''} ${oc2}" style="background:${v.color}" title="${tip}" aria-label="${tip}" onclick="event.stopPropagation();${oc}"></button>`;
-  return `<button class="sw txt ${on?'on':''} ${oc2}" title="${tip}" onclick="event.stopPropagation();${oc}">${esc(v.shade)}</button>`;
+  return `<button class="sw txt ${on?'on':''} ${oc2}" title="${tip}" onclick="event.stopPropagation();${oc}">${esc(_sh)}</button>`;
 }
 
 // ===== nav (rebuildable for language switch) =====
@@ -1362,8 +1363,10 @@ function renderPd(g){
   const _fts=(LANG==='ar'&&v.features_ar&&v.features_ar.length)?v.features_ar:v.features;
   const _usg=(LANG==='ar'&&v.usage_ar)?v.usage_ar:v.usage;
   const feats=(_fts&&_fts.length)?`<h4>${t('feats')}</h4><ul>${_fts.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'';
-  const contents=(v.contents&&v.contents.length)?`<h4>${t('contents_h')}</h4><div class="bndl">${v.contents.map(c=>`<details><summary>${esc(c.n||c.name||'')}</summary><p>${esc(c.d||c.desc||'')}</p></details>`).join('')}</div>`:'';
-  const ing=v.ingredients?`<h4>${t('ingredients')}</h4><p>${esc(v.ingredients)}</p>`:'';
+  const _cts=(LANG==='ar'&&v.contents_ar&&v.contents_ar.length)?v.contents_ar:v.contents;
+  const contents=(_cts&&_cts.length)?`<h4>${t('contents_h')}</h4><div class="bndl">${_cts.map(c=>`<details><summary>${esc(c.n||c.name||'')}</summary><p>${esc(c.d||c.desc||'')}</p></details>`).join('')}</div>`:'';
+  const _ing=(LANG==='ar'&&v.ingredients_ar)?v.ingredients_ar:v.ingredients;
+  const ing=_ing?`<h4>${t('ingredients')}</h4><p>${esc(_ing)}</p>`:'';
   const use=_usg?`<h4>${t('usage')}</h4><p>${esc(_usg)}</p>`:'';
   let shades='';
   if(g.variants.length>1){const idx=curIdx(g);
