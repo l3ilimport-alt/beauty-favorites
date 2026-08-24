@@ -317,7 +317,10 @@ def detect_vegan(p):
 
 # ---- order-file filter ----
 def _nbc(x):
-    s = re.sub(r"\D", "", str(x or "")); return s.lstrip("0") or s
+    """ברקוד → מפתח השוואה. אלפאנומרי נשמר (יש מותגים עם אותיות בברקוד, למשל
+    ויקטוריהס סיקרט); ספרות בלבד מתנהג בדיוק כמו קודם — הסרת אפסים מובילים."""
+    s = re.sub(r"[^0-9A-Za-z]", "", str(x or "")).upper()
+    return (s.lstrip("0") or s) if s.isdigit() else s
 def _ndesc(x):
     return re.sub(r"\s+", " ", str(x or "").strip().lower())
 def load_order_keys():
@@ -486,7 +489,10 @@ def main():
             "desc_ar": strip_internal(p.get("description_ar") or ""),
             "features_ar": [strip_internal(f) for f in (p.get("features_ar") or []) if strip_internal(f)],
             "usage_ar": strip_internal(p.get("usage_ar") or ""),
+            "ingredients_ar": strip_internal(p.get("ingredients_ar") or ""),
+            "shade_ar": ("" if _has_internal(p.get("shade")) else (p.get("shade_ar") or "")),
             "contents": p.get("contents") or [],
+            "contents_ar": p.get("contents_ar") or [],
             "imgs": imgs,
             "badges": badges,
             "color": p.get("shade_hex") or shade_color(p.get("shade") or "", is_complexion(p)),
@@ -2129,7 +2135,7 @@ var WS_CODE=(function(){try{return localStorage.getItem('wholesale_code')||null;
 var WHOLESALE=!!WS_CODE;   // מצב סיטונאי פעיל? (המחירים מגיעים מהשרת רק עם קוד תקף)
 function priceMap(){return WHOLESALE?PRICE_WS:PRICE_CONS;}   // המפה הפעילה לפי המצב
 function hasConsPrice(v){var m=PRICE_CONS[nbc(v&&v.barcode)];return m!=null&&m>0;}   // יש מחיר צרכן?
-function nbc(x){return String(x||'').replace(/\D/g,'');}      // ברקוד → ספרות בלבד (תואם sku ב-DB)
+function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}   // ברקוד → מפתח השוואה. אותיות נשמרות — יש מותגים עם ברקוד אלפאנומרי (ויקטוריהס סיקרט)
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
 function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
 async function loadStock(){
