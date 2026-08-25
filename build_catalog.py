@@ -963,6 +963,12 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .agree input{width:18px;height:18px;margin-top:1px;flex:0 0 auto;accent-color:var(--accent-d);cursor:pointer}
 .agree a{color:var(--accent-d);text-decoration:underline;font-weight:600}
 .soldpill{font-size:12px;font-weight:700;color:#b91c1c;background:#fee2e2;border-radius:9px;padding:6px 10px;white-space:nowrap}
+/* מוצר שכל הגוונים שלו אזלו — נשאר בקטלוג, מעומעם, עם תג ברור */
+.card.sold .imgbox img{filter:grayscale(.75);opacity:.55}
+.card.sold .body{opacity:.82}
+.soldflag{position:absolute;z-index:3;bottom:10px;left:50%;transform:translateX(-50%);background:#b91c1c;color:#fff;font-size:11.5px;font-weight:800;letter-spacing:.4px;border-radius:999px;padding:5px 14px;box-shadow:0 2px 10px rgba(0,0,0,.18);white-space:nowrap}
+.ac-item.sold .ac-nm{opacity:.6}
+.ac-sold{margin-inline-start:6px;font-size:10.5px;font-weight:800;color:#b91c1c;background:#fee2e2;border-radius:6px;padding:2px 6px;white-space:nowrap}
 .hint{font-size:11.5px;color:var(--muted);text-align:center;margin-top:8px}
 
 @media(max-width:480px){
@@ -1489,14 +1495,14 @@ function isHot(g){return g.variants.some(v=>HOT_SKUS.has(nbc(v.barcode)));}
 // קטגוריות להצגה: רק כאלה עם מוצר במלאי (עד שהמלאי נטען — כולן)
 function catsInStock(){
   if(!STOCK_READY)return CATS;
-  return CATS.filter(c=>GROUPS.some(g=>g.type===c&&g.variants.some(v=>STOCK[nbc(v.barcode)]>0)));
+  return CATS.filter(c=>GROUPS.some(g=>g.type===c&&g.variants.some(inDB)));
 }
 const BRANDS=(()=>{const c={};GROUPS.forEach(g=>c[g.brand]=(c[g.brand]||0)+1);
   return Object.keys(c).sort((a,b)=>a==='אחר'?1:b==='אחר'?-1:c[b]-c[a]);})();
 // מותגים להצגה: רק כאלה עם מוצר במלאי (עד שהמלאי נטען — כולם)
 function brandsInStock(){
   if(!STOCK_READY)return BRANDS;
-  return BRANDS.filter(b=>GROUPS.some(g=>g.brand===b&&g.variants.some(v=>STOCK[nbc(v.barcode)]>0)));
+  return BRANDS.filter(b=>GROUPS.some(g=>g.brand===b&&g.variants.some(inDB)));
 }
 const PRICES=[{l:'עד ₪50',mn:0,mx:50},{l:'₪50–100',mn:50,mx:100},{l:'₪100–200',mn:100,mx:200},{l:'₪200+',mn:200,mx:1e9}];
 
@@ -1553,7 +1559,10 @@ function showFavs(){favOnly=true;var fc=document.getElementById('favchip');if(fc
 // ---- שורת לוגואי מותגים ----
 function buildBrandRow(){
   var el=document.getElementById('brandRow');if(!el)return;
-  var bs=brandsInStock().filter(function(b){return brandLogo(b);});
+  // שורת הלוגואים היא שטח פרסום — מותג שכל מוצריו אזלו לא מקודם בה
+  // (לעומת רשימת המותגים לסינון, שכן כוללת אותו כדי שהמוצרים יישארו נגישים)
+  var bs=brandsInStock().filter(function(b){return brandLogo(b)&&GROUPS.some(function(g){
+    return g.brand===b&&g.variants.some(function(v){return !STOCK_READY||STOCK[nbc(v.barcode)]>0;});});});
   bs.sort(function(a,b){return prestige(a)-prestige(b);});
   bs=bs.slice(0,12);
   el.innerHTML=bs.map(function(b){return '<img src="'+aesc(brandLogo(b))+'" alt="'+esc(b)+'" title="'+esc(b)+'" data-b="'+esc(b)+'" loading="lazy">';}).join('');
@@ -1812,8 +1821,8 @@ function visible(){
     if(curBrand!=='__all__'&&g.brand!==curBrand)return false;
     if(curPrice>=0){const pr=PRICES[curPrice];if(!(g.minp>=pr.mn&&g.minp<pr.mx))return false}
     if(favOnly&&!FAVS.has(g.gid))return false;
-    if(STOCK_READY&&!g.variants.some(v=>STOCK[nbc(v.barcode)]>0))return false;   // תמיד: להציג רק מה שבמלאי (צרכן+סיטונאי)
     if(STOCK_READY&&!g.variants.some(inDB))return false;   // הסתרת מוצרים שאינם ב-DB (לא ניתנים להזמנה)
+    if(STOCK_READY&&inStockOnly&&grpSold(g))return false;   // "במלאי בלבד" — רק כשהצ'יפ פעיל מסתירים את מה שאזל
     if(STOCK_READY&&!WHOLESALE&&!g.variants.some(hasConsPrice))return false;   // מצב צרכן: להסתיר מוצר ללא מחיר צרכן
     return matchQ(g,q);
   });
@@ -1825,10 +1834,10 @@ function visible(){
       const b=String(v.barcode||'').replace(/\D/g,'');
       return b===dq?0:(b.endsWith(dq)?1:2);
     }));
-    return r.sort((a,b)=>rank(a)-rank(b)||a.name_he.localeCompare(b.name_he,'he'));
+    return r.sort((a,b)=>bySold(a,b)||rank(a)-rank(b)||a.name_he.localeCompare(b.name_he,'he'));
   }
   // cards without an image always sink to the bottom (regardless of sort)
-  const byImg=(a,b)=> (a._noimg?1:0)-(b._noimg?1:0);
+  const byImg=(a,b)=> bySold(a,b) || (a._noimg?1:0)-(b._noimg?1:0);
   if(s==='price-asc')r.sort((a,b)=>byImg(a,b)||a.minp-b.minp);
   else if(s==='price-desc')r.sort((a,b)=>byImg(a,b)||b.minp-a.minp);
   else if(s==='name')r.sort((a,b)=>byImg(a,b)||a.name_he.localeCompare(b.name_he,'he'));
@@ -1861,6 +1870,7 @@ function lowStockHtml(v){   // דחיפות מלאי חיה: "נותרו רק X!
 // ===== grid =====
 function cardHtml(g){
   const v=selV(g);
+  const gsold=grpSold(g);   // כל הגוונים אזלו → הכרטיס נשאר, מעומעם ומסומן
   const qty=CART[v.id]?CART[v.id].qty:0;
   const fav=FAVS.has(g.gid)?'on':'';
   const img=v.imgs.length?`<img src="${aesc(v.imgs[0])}" loading="lazy" data-l="${aesc(g.name_he[0]||'✦')}" onerror="imgErr(this)">`:`<div class="ph">${esc(g.name_he[0]||'✦')}</div>`;
@@ -1870,10 +1880,11 @@ function cardHtml(g){
     shades=`<div class="shrow" onclick="event.stopPropagation()">${g.variants.map((vv,k)=>swPill(vv,k===idx,`pickV('${g.gid}',${k})`)).join('')}</div>`;
   }
   const nInStock=STOCK_READY?g.variants.filter(vv=>STOCK[nbc(vv.barcode)]>0).length:0;
-  return `<div class="card" id="card-${g.gid}" role="button" tabindex="0" aria-label="${esc(g.name_he||'')} — לפרטים" onclick="openPd(${g._i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPd(${g._i})}">
+  return `<div class="card${gsold?' sold':''}" id="card-${g.gid}" role="button" tabindex="0" aria-label="${esc(g.name_he||'')} — לפרטים" onclick="openPd(${g._i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPd(${g._i})}">
       <div class="imgbox">
         <button class="fav ${fav}" aria-label="הוסף למועדפים" onclick="event.stopPropagation();toggleFav('${g.gid}',this)">♥</button>
         ${badgesHtml(v)}${img}
+        ${gsold?`<span class="soldflag">${t('sold_out')}</span>`:''}
       </div>
       <div class="body">
         <div class="brand">${esc(g.brand)}</div>
@@ -1927,12 +1938,14 @@ function buildAC(){
   const q=document.getElementById('q').value.trim().toLowerCase();
   const ac=document.getElementById('ac');
   if(q.length<2){ac.classList.remove('show');acList=[];return}
-  acList=GROUPS.filter(g=>matchQ(g,q)&&(!STOCK_READY||g.variants.some(v=>STOCK[nbc(v.barcode)]>0))).slice(0,20);
+  // הלקוח מחפש לפי שם — מוצר שאזל חייב להימצא, אך מסומן ומוצג אחרי הזמינים
+  acList=GROUPS.filter(g=>matchQ(g,q)&&(!STOCK_READY||g.variants.some(inDB))).sort(bySold).slice(0,20);
   acIdx=-1;
   if(!acList.length){ac.classList.remove('show');return}
   ac.innerHTML=acList.map((g,i)=>{const v=selV(g);
     const im=v.imgs.length?`<img src="${aesc(v.imgs[0])}" onerror="this.style.visibility='hidden'">`:`<span style="width:30px"></span>`;
-    return `<div class="ac-item" role="option" aria-label="${aesc(g.brand+' - '+g.name_he)}" data-i="${i}" onmousedown="acPick(${i})"><div class="b">${esc(g.brand)}</div>${im}<span class="ac-nm">${esc(g.name_he)}${g.name_en?`<i class="ac-en">${esc(g.name_en)}</i>`:''}</span></div>`;
+    const so=grpSold(g);
+    return `<div class="ac-item${so?' sold':''}" role="option" aria-label="${aesc(g.brand+' - '+g.name_he)}" data-i="${i}" onmousedown="acPick(${i})"><div class="b">${esc(g.brand)}</div>${im}<span class="ac-nm">${esc(g.name_he)}${g.name_en?`<i class="ac-en">${esc(g.name_en)}</i>`:''}</span>${so?`<span class="ac-sold">${t('sold_out')}</span>`:''}</div>`;
   }).join('');
   ac.classList.add('show');
 }
@@ -2138,6 +2151,11 @@ function hasConsPrice(v){var m=PRICE_CONS[nbc(v&&v.barcode)];return m!=null&&m>0
 function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}   // ברקוד → מפתח השוואה. אותיות נשמרות — יש מותגים עם ברקוד אלפאנומרי (ויקטוריהס סיקרט)
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
 function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
+// כל הוריאנטים אזלו? (החלטת 24/08: מוצר כזה נשאר בקטלוג עם תג "אזל" ואינו נעלם)
+function grpSold(g){return STOCK_READY && !g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}
+// מה שאזל תמיד יורד לסוף הרשימה — לא תופס את הכרטיסים הראשונים.
+// הצהרת פונקציה (ולא const) כי ענף חיפוש הברקוד ב-visible() קורא לה לפני נקודת ההגדרה.
+function bySold(a,b){return (grpSold(a)?1:0)-(grpSold(b)?1:0);}
 async function loadStock(){
   if(!SB)return;
   try{
