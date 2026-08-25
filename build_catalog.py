@@ -1112,7 +1112,6 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button class="ehot m" onclick="event.stopPropagation();goRecs()"><span id="ebtnM">למומלצים שלנו</span></button>
 </div>
 
-<!-- מונה "X מוצרים במלאי" הוסר לבקשת המשתמש (2026-07-12); updateHeroCount עמיד לאלמנט חסר -->
 
 <div class="cattiles" id="cattiles"></div>
 
@@ -1328,7 +1327,7 @@ const I18N={
   sort_default:'מיון: מומלץ',sort_pa:'מחיר: מהנמוך לגבוה',sort_pd:'מחיר: מהגבוה לנמוך',sort_name:'שם: א׳–ת׳',
   all:'הכל',all_brands:'כל המותגים',all_prices:'כל המחירים',
   p_u50:'עד ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
-  items:'מוצרים',in_stock_count:'מוצרים במלאי',cart_items:'פריטים',empty:'לא נמצאו מוצרים מתאימים 🔍',
+  items:'מוצרים',cart_items:'פריטים',empty:'לא נמצאו מוצרים מתאימים 🔍',
   view_order:'צפה בהזמנה ←',totop:'חזרה למעלה',
   c_איפור:'איפור',c_טיפוח:'טיפוח',c_שיער:'שיער',c_בושם:'בושם',c_מארזים:'מארזים',c_ציפורניים:'ציפורניים',c_אביזרים:'אביזרים',c_ציוד:'ציוד',c_אחר:'אחר',
   cat_hot:'🔥 Best Seller',
@@ -1376,7 +1375,7 @@ const I18N={
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
   p_u50:'حتى ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
-  items:'منتج',in_stock_count:'منتجات متوفرة',cart_items:'عناصر',empty:'لم يتم العثور على منتجات مطابقة 🔍',
+  items:'منتج',cart_items:'عناصر',empty:'لم يتم العثور على منتجات مطابقة 🔍',
   view_order:'عرض الطلب ←',totop:'العودة للأعلى',
   c_איפור:'مكياج',c_טיפוח:'العناية بالبشرة',c_שיער:'العناية بالشعر',c_בושם:'عطر',c_מארזים:'مجموعات',c_ציפורניים:'العناية بالأظافر',c_אביזרים:'إكسسوارات',c_ציוד:'معدات',c_אחר:'أخرى',
   cat_hot:'🔥 Best Seller',
@@ -1550,8 +1549,12 @@ function buildNav(){
 function goShop(){var el=document.getElementById('shopAllT')||document.getElementById('grid');if(el){var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;window.scrollTo({top:y,behavior:'smooth'});}}
 function goCat(c){curCat=c;curBrand='__all__';favOnly=false;var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');buildNav();render();goShop();}
 function focusSearch(){window.scrollTo({top:0,behavior:'smooth'});setTimeout(function(){var q=document.getElementById('q');if(q)q.focus();},360);}
-// כפתור הבאנר → מגלגל אל "מומלץ בשבילך" (נופל חזרה לכל המוצרים אם הקטע ריק/חסר)
-function goRecs(){var row=document.getElementById('recRow'),el=document.getElementById('recTitle');
+// כפתור הבאנר → מסנן בפועל למומלצים ומגלגל לרשת המסוננת.
+// נופל חזרה לגלילה אל קרוסלת "מומלץ בשבילך" אם אין מומלצים זמינים, ומשם לכל המוצרים.
+function goRecs(){
+  var hasHot=GROUPS.some(function(g){return isHot(g)&&(!STOCK_READY||g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;}));});
+  if(hasHot){goCat('__hot__');return;}
+  var row=document.getElementById('recRow'),el=document.getElementById('recTitle');
   if(!el||!row||!row.children.length){goShop();return;}
   var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;
   window.scrollTo({top:y,behavior:'smooth'});}
@@ -1902,16 +1905,10 @@ function cardHtml(g){
       </div>
     </div>`;
 }
-// ---- מונה חי בהירו: מספר המוצרים שבמלאי (עד שהמלאי נטען — סה"כ הקטלוג) ----
-function updateHeroCount(){
-  const el=document.getElementById('heroCount'); if(!el)return;
-  const n=STOCK_READY?GROUPS.reduce((s,g)=>s+g.variants.filter(v=>STOCK[nbc(v.barcode)]>0).length,0):GROUPS.length;   // ספירת מק"טים במלאי (תואם לבק אופיס)
-  el.textContent=n.toLocaleString()+' '+(STOCK_READY?t('in_stock_count'):t('items'));
-}
 // ---- paginated render (incremental, for 1400+ cards) ----
 let VIS=[], shown=0; const PAGE=60;
 function render(){
-  VIS=visible(); shown=0; updateHeroCount();
+  VIS=visible(); shown=0;
   const grid=document.getElementById('grid');
   const cnt=document.getElementById('rescount'); if(cnt)cnt.textContent=VIS.length.toLocaleString()+' '+t('items');
   grid.innerHTML='';
