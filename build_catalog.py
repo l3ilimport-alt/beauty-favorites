@@ -932,7 +932,15 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .om-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
 .om-row .om-img{width:46px;height:46px;flex:0 0 46px;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:8px;padding:3px}
 @media(max-width:640px){.om-row .om-img{width:40px;height:40px;flex-basis:40px}}
-.om-row .nm{flex:1;font-size:13.5px;font-weight:500}
+/* לחיצה על המוצר בסל → קופצים אליו במקומו ברשת (להיזכר מה הוא ולראות מה עמד לידו) */
+.om-go{flex:1;display:flex;align-items:center;gap:10px;min-width:0;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;border-radius:8px;transition:.15s}
+.om-go:hover{background:var(--accent-soft,#f7f4f2)}
+.om-go:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.om-go .go-ico{flex:0 0 auto;font-size:12px;color:var(--muted);opacity:0;transition:.15s}
+.om-go:hover .go-ico,.om-go:focus-visible .go-ico{opacity:1}
+@keyframes cardJump{0%,100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}18%,72%{box-shadow:0 0 0 3px var(--accent)}}
+.card.jump{animation:cardJump 2.1s ease-in-out}
+.om-row .nm{flex:1;min-width:0;font-size:13.5px;font-weight:500}
 .om-row .nm small{display:block;color:var(--muted);font-weight:300;font-size:11.5px}
 .qy{display:flex;align-items:center;border:1px solid var(--border2);border-radius:10px;overflow:hidden}
 .qy button{width:30px;height:30px;border:none;background:var(--accent-soft);color:var(--accent-d);font-size:17px;cursor:pointer;touch-action:manipulation}
@@ -1331,6 +1339,7 @@ const I18N={
   view_order:'צפה בהזמנה ←',totop:'חזרה למעלה',
   c_איפור:'איפור',c_טיפוח:'טיפוח',c_שיער:'שיער',c_בושם:'בושם',c_מארזים:'מארזים',c_ציפורניים:'ציפורניים',c_אביזרים:'אביזרים',c_ציוד:'ציוד',c_אחר:'אחר',
   cat_hot:'🔥 Best Seller',
+  go_to_product:'הצג בקטלוג',
   b_sale:'מבצע',b_new:'חדש',b_bestseller:'רב-מכר',b_soldout:'אזל',b_limited:'מהדורה מוגבלת',b_vegan:'טבעוני',
   shades:'גוונים',feats:'מאפיינים עיקריים',ingredients:'רכיבים',usage:'אופן שימוש',contents_h:'מה כלול במבחר',
   pick_shade:'בחר גוון',similar:'מוצרים דומים',desc:'תיאור',barcode:'ברקוד:',
@@ -1379,6 +1388,7 @@ const I18N={
   view_order:'عرض الطلب ←',totop:'العودة للأعلى',
   c_איפור:'مكياج',c_טיפוח:'العناية بالبشرة',c_שיער:'العناية بالشعر',c_בושם:'عطر',c_מארזים:'مجموعات',c_ציפורניים:'العناية بالأظافر',c_אביזרים:'إكسسوارات',c_ציוד:'معدات',c_אחר:'أخرى',
   cat_hot:'🔥 Best Seller',
+  go_to_product:'عرض في الكتالوج',
   b_sale:'تخفيض',b_new:'جديد',b_bestseller:'الأكثر مبيعاً',b_soldout:'نفد',b_limited:'إصدار محدود',b_vegan:'نباتي',
   shades:'ألوان',feats:'أبرز المزايا',ingredients:'المكوّنات',usage:'طريقة الاستخدام',contents_h:'ما الذي تشمله التشكيلة',
   pick_shade:'اختر اللون',similar:'منتجات مشابهة',desc:'الوصف',barcode:'باركود:',
@@ -2081,18 +2091,48 @@ function repriceCart(){Object.keys(CART).forEach(function(vid){var m=VMAP[vid];i
 
 function openOrder(){renderOrder();syncAgree();openOv('orderModal')}
 function closeOrder(){closeOv('orderModal')}
+// לחיצה על מוצר בסל → קפיצה אליו במקומו ברשת.
+// הכוונה (בקשת נמרוד 24/08): להיזכר רגע מה המוצר, וגם לראות שוב מה עמד לידו
+// ולא נבחר. לכן קופצים לכרטיס בתוך הרשת ולא פותחים את המגירה שמסתירה את השכנים.
+function goToProduct(vid){
+  const m=VMAP[vid]; if(!m)return;
+  closeOv('orderModal');
+  const gi=m.g.variants.indexOf(m.v); if(gi>=0)sel[m.g.gid]=gi;   // הכרטיס יציג את הגוון שנבחר בסל
+  if(visible().indexOf(m.g)<0){   // מסונן החוצה → מנקים סינון, אחרת הקפיצה תוביל לשום מקום
+    curCat='__all__';curBrand='__all__';curPrice=-1;favOnly=false;inStockOnly=false;
+    const q=document.getElementById('q'); if(q&&q.value){q.value='';toggleClr();}
+    const fc=document.getElementById('favchip'); if(fc)fc.classList.remove('active');
+    const sc=document.getElementById('stockchip'); if(sc)sc.classList.remove('active');
+    buildNav();
+  }
+  render();
+  const pos=VIS.indexOf(m.g);
+  if(pos<0){openPd(m.g._i);return;}   // נפילה חיננית: המוצר אינו ברשת — לפחות לפתוח את המגירה
+  while(shown<=pos&&shown<VIS.length)loadMore();   // הרשת מוגשת בדפים של 60
+  setTimeout(function(){
+    const el=document.getElementById('card-'+m.g.gid); if(!el)return;
+    const y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-90;
+    window.scrollTo({top:y,behavior:'smooth'});
+    el.classList.remove('jump'); void el.offsetWidth; el.classList.add('jump');   // reflow כדי שהאנימציה תרוץ שוב
+    setTimeout(function(){el.classList.remove('jump');},2300);
+  },90);
+}
 function renderOrder(){
   const keys=Object.keys(CART);window._K=keys;const body=document.getElementById('omBody');
   if(!keys.length){body.innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">'+t('cart_empty')+'</p>';renderTotals();return}
   body.innerHTML=keys.map((k,idx)=>{const it=CART[k];
     const _m=VMAP[k], _im=(_m&&_m.v.imgs&&_m.v.imgs[0])||'';   // תמונת המוצר הראשונה
     return `<div class="om-row">
-    ${_im?`<img class="om-img" src="${_im}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`:'<span class="om-img"></span>'}
-    <div class="nm">${esc(it.name)}<small>${esc(it.brand)}${it.size?' · '+esc(it.size):''}</small></div>
+    <button class="om-go" type="button" data-a="go" data-i="${idx}" title="${aesc(t('go_to_product'))}" aria-label="${aesc(t('go_to_product'))} — ${aesc(it.name)}">
+      ${_im?`<img class="om-img" src="${_im}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`:'<span class="om-img"></span>'}
+      <div class="nm">${esc(it.name)}<small>${esc(it.brand)}${it.size?' · '+esc(it.size):''}</small></div>
+      <span class="go-ico" aria-hidden="true">↗</span>
+    </button>
     <div class="qy"><button data-i="${idx}" data-a="dec">−</button><input class="qin" type="number" inputmode="numeric" min="1" data-qi="${idx}" value="${it.qty}"><button data-i="${idx}" data-a="inc">+</button></div>
     <div class="lt">₪${it.qty*it.price}</div>
     <button class="om-del" data-i="${idx}" data-a="del">✕</button></div>`}).join('');
   body.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const key=window._K[+b.dataset.i];if(!key)return;
+    if(b.dataset.a==='go'){goToProduct(key);return;}   // חייב להיבדק ראשון — אחרת הוא נופל למסלול המחיקה
     cartChange(key,b.dataset.a==='inc'?1:(b.dataset.a==='dec'?-1:-(CART[key]?CART[key].qty:0)));};
   body.onchange=e=>{const inp=e.target.closest('[data-qi]');if(!inp)return;const key=window._K[+inp.dataset.qi];if(!key)return;
     let n=parseInt(inp.value,10);if(isNaN(n)||n<1)n=1;cartSetQty(key,n);};
