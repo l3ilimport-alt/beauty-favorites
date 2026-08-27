@@ -2228,6 +2228,7 @@ let _popIdx = -1, _popItems = [], _popKind = null;
 
 function cityLabel(c){return (LANG==='ar'&&c.a)?c.a:c.h;}
 function normHe(x){return String(x||'').replace(/["'׳״\-–—]/g,'').replace(/\s+/g,' ').trim();}
+function rank(name,q){return name===q?0:1;}   // התאמה מדויקת תמיד ראשונה
 
 function closePop(kind){
   const p=document.getElementById('pop-'+kind); if(p){p.classList.remove('show');p.innerHTML='';}
@@ -2280,6 +2281,7 @@ function cityInput(){
     else if(h.includes(q)||(a&&a.includes(q)))inc.push(c);
     if(pre.length>=40)break;
   }
+  pre.sort((a,b)=>rank(normHe(a.h),q)-rank(normHe(b.h),q)||normHe(a.h).length-normHe(b.h).length);
   const list=pre.concat(inc).slice(0,40).map(c=>({label:cityLabel(c),sub:(LANG==='ar'&&c.a)?c.h:'',raw:c}));
   showPop('city',list,pickCity,list.length?'':t('no_match'));
 }
@@ -2344,6 +2346,7 @@ function streetInput(){
     if(n.startsWith(q))pre.push(r); else if(n.includes(q))inc.push(r);
     if(pre.length>=40)break;
   }
+  pre.sort((a,b)=>rank(normHe(a.street_name),q)-rank(normHe(b.street_name),q)||a.street_name.length-b.street_name.length);
   const list=pre.concat(inc).slice(0,40).map(r=>({label:r.street_name,raw:r}));
   showPop('street',list,pickStreet,list.length?'':t('no_match'));
 }
