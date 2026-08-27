@@ -577,6 +577,19 @@ def main():
     out = out.replace("__OG_IMAGE__", og_image)
     out = out.replace("__SITE_URL__", SITE_URL.rstrip("/"))
     out = out.replace("__SUPABASE_CONFIG__", json.dumps(supa_cfg, ensure_ascii=False))
+
+    # רשימת היישובים נצרבת לדף (18 ק"ב דחוסים) כדי שבחירת עיר תהיה מיידית
+    # בלי סיבוב רשת. הרחובות דווקא נשלפים לפי דרישה מהמסד — 62,261 רחובות
+    # היו מוסיפים 271 ק"ב לכל כניסה לאתר, בשביל שדה שרק הקופה משתמשת בו.
+    _cities_path = os.path.join(CAT, "cities.json")
+    if os.path.exists(_cities_path):
+        with open(_cities_path, encoding="utf-8") as _cf:
+            _cities = _cf.read().strip()
+        print(f"   יישובים נצרבו: {len(json.loads(_cities))}")
+    else:
+        _cities = "[]"
+        print("   ⚠️  catalog/cities.json חסר — בורר היישובים יעבוד כשדה חופשי")
+    out = out.replace("/*__CITIES__*/", _cities)
     with open(os.path.join(CAT, "index.html"), "w", encoding="utf-8") as f:
         f.write(out)
 
@@ -958,7 +971,29 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .totals .l{display:flex;justify-content:space-between;padding:4px 0;color:var(--muted)}
 .totals .l.grand{font-size:19px;font-weight:700;color:var(--text);border-top:1px solid var(--border);margin-top:6px;padding-top:10px}
 .totals .l.grand b{color:var(--accent-d)}
+/* --- טופס פרטי המזמין --- */
+/* תווית אמיתית מעל כל שדה ולא placeholder בלבד: ה-placeholder נעלם ברגע
+   שמתחילים להקליד, והלקוח כבר לא רואה מה השדה מבקש. "(לא חובה)" נכתב
+   בתוך התווית ולא ככוכבית — כך המשתמש יודע מה מותר לדלג עליו. */
 .form{margin-top:16px;display:flex;flex-direction:column;gap:9px}
+.f-row{display:flex;flex-direction:column;gap:4px;position:relative}
+.f-row>label{font-size:12.5px;font-weight:600;color:var(--muted);padding-inline-start:2px}
+.f-row>label .opt{font-weight:400;opacity:.75}
+.f-hint{font-size:11.5px;color:var(--muted);opacity:.9;padding-inline-start:2px}
+.f-err{font-size:12px;color:#b91c1c;font-weight:600;padding-inline-start:2px;display:none}
+.f-row.bad .f-err{display:block}
+.f-row.bad .fld{border-color:#b91c1c;background:#fff5f5}
+.f-grid{display:grid;grid-template-columns:2fr 1fr;gap:9px}
+.f-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.f-toggle{align-self:flex-start;background:none;border:0;padding:2px;font:inherit;font-size:13px;color:var(--accent-d);cursor:pointer;text-decoration:underline}
+/* בורר יישוב/רחוב — רשימה קופצת מעל השדה */
+.f-pop{position:absolute;z-index:40;inset-inline:0;top:100%;margin-top:3px;max-height:236px;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:11px;box-shadow:0 10px 30px rgba(0,0,0,.16);display:none}
+.f-pop.show{display:block}
+.f-pop li{list-style:none;padding:10px 13px;font-size:15px;cursor:pointer;border-bottom:1px solid var(--border)}
+.f-pop li:last-child{border-bottom:0}
+.f-pop li[aria-selected="true"],.f-pop li:hover{background:var(--accent-soft,#f7f4f2)}
+.f-pop li.none{color:var(--muted);cursor:default;font-size:13px}
+.f-pop li .sub{color:var(--muted);font-size:12.5px;margin-inline-start:6px}
 .form h4{font-family:var(--script);font-size:17px;font-weight:400;letter-spacing:0;color:var(--accent-d);margin-bottom:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .fld,.notes{width:100%;font-family:var(--font);font-size:16px;padding:11px 13px;border-radius:11px;border:1px solid var(--border2);outline:none;background:var(--surface);color:var(--text)}
 .notes{resize:vertical;min-height:58px}
@@ -1257,12 +1292,69 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <div class="totals" id="totals"></div>
     <div class="form">
       <h4 id="buyerTitle">פרטי המזמין</h4>
-      <input class="fld" id="buyer-name" type="text" placeholder="שם מלא *">
-      <input class="fld" id="buyer-phone" type="tel" placeholder="טלפון *">
-      <input class="fld" id="buyer-addr" type="text" placeholder="עיר וכתובת למשלוח">
-      <input class="fld" id="buyer-email" type="email" placeholder="אימייל — לקבלת אישור וחשבונית (חובה בתשלום באתר)">
-      <input class="fld" id="buyer-id" type="text" placeholder="מספר עוסק מורשה / ח.פ / ת.ז">
-      <textarea class="notes" id="notes" placeholder="הערות להזמנה (אופציונלי)…"></textarea>
+
+      <div class="f-row" id="row-name">
+        <label for="buyer-name" id="lb-name">שם מלא</label>
+        <input class="fld" id="buyer-name" type="text" autocomplete="name" oninput="clearErr('row-name')">
+        <span class="f-err" id="er-name"></span>
+      </div>
+
+      <div class="f-row" id="row-phone">
+        <label for="buyer-phone" id="lb-phone">טלפון נייד</label>
+        <input class="fld" id="buyer-phone" type="tel" inputmode="tel" autocomplete="tel-national" oninput="clearErr('row-phone')" onblur="checkPhone()">
+        <span class="f-hint" id="hint-phone">לתיאום המסירה מול השליח</span>
+        <span class="f-err" id="er-phone"></span>
+      </div>
+
+      <div class="f-row" id="row-city">
+        <label for="buyer-city" id="lb-city">יישוב</label>
+        <input class="fld" id="buyer-city" type="text" autocomplete="address-level2"
+               role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="pop-city"
+               oninput="cityInput()" onkeydown="popKey(event,'city')" onblur="cityBlur()">
+        <ul class="f-pop" id="pop-city" role="listbox" aria-label="יישובים"></ul>
+        <span class="f-err" id="er-city"></span>
+      </div>
+
+      <div class="f-grid">
+        <div class="f-row" id="row-street">
+          <label for="buyer-street" id="lb-street">רחוב</label>
+          <input class="fld" id="buyer-street" type="text" autocomplete="address-line1"
+                 role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="pop-street"
+                 oninput="streetInput()" onkeydown="popKey(event,'street')" onblur="streetBlur()">
+          <ul class="f-pop" id="pop-street" role="listbox" aria-label="רחובות"></ul>
+          <span class="f-hint" id="hint-street"></span>
+          <span class="f-err" id="er-street"></span>
+        </div>
+        <div class="f-row" id="row-house">
+          <label for="buyer-house" id="lb-house">מספר בית</label>
+          <input class="fld" id="buyer-house" type="text" inputmode="numeric" oninput="clearErr('row-house')">
+          <span class="f-err" id="er-house"></span>
+        </div>
+      </div>
+
+      <button type="button" class="f-toggle" id="bldgToggle" onclick="toggleBldg()">+ דירה, קומה, כניסה</button>
+      <div class="f-grid3" id="bldgRow" style="display:none">
+        <div class="f-row"><label for="buyer-apt" id="lb-apt">דירה</label><input class="fld" id="buyer-apt" type="text" inputmode="numeric" autocomplete="address-line2"></div>
+        <div class="f-row"><label for="buyer-floor" id="lb-floor">קומה</label><input class="fld" id="buyer-floor" type="text" inputmode="numeric"></div>
+        <div class="f-row"><label for="buyer-entrance" id="lb-entrance">כניסה</label><input class="fld" id="buyer-entrance" type="text"></div>
+      </div>
+
+      <div class="f-row" id="row-email">
+        <label for="buyer-email" id="lb-email">אימייל</label>
+        <input class="fld" id="buyer-email" type="email" inputmode="email" autocomplete="email" oninput="clearErr('row-email')">
+        <span class="f-hint" id="hint-email"></span>
+        <span class="f-err" id="er-email"></span>
+      </div>
+
+      <div class="f-row">
+        <label for="buyer-id" id="lb-id">מספר עוסק / ח.פ / ת.ז</label>
+        <input class="fld" id="buyer-id" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+
+      <div class="f-row">
+        <label for="notes" id="lb-notes">הערות לשליח</label>
+        <textarea class="notes" id="notes"></textarea>
+      </div>
     </div>
     <label class="agree" id="agreeWrap">
       <input type="checkbox" id="agreeTerms" onchange="syncAgree()">
@@ -1348,6 +1440,15 @@ const I18N={
   full_name:'שם מלא *',biz_name:'שם העסק / החנות (לחשבונית)',biz_id:'מספר עוסק מורשה / ח.פ / ת.ז',
   ship_addr:'עיר וכתובת למשלוח',phone:'טלפון *',notes_ph:'הערות להזמנה (אופציונלי)…',
   email_ph:'אימייל — לקבלת אישור וחשבונית (חובה בתשלום באתר)',alert_email:'לתשלום באתר צריך כתובת אימייל — אליה נשלח את האישור והחשבונית.',
+  l_name:'שם מלא',l_phone:'טלפון נייד',l_city:'יישוב',l_street:'רחוב',l_house:'מספר בית',
+  l_apt:'דירה',l_floor:'קומה',l_entrance:'כניסה',l_email:'אימייל',l_id:'מספר עוסק / ח.פ / ת.ז',l_notes:'הערות לשליח',
+  l_opt:'(לא חובה)',phone_hint:'לתיאום המסירה מול השליח',
+  bldg_show:'+ דירה, קומה, כניסה',bldg_hide:'− הסתר פרטי בניין',
+  city_ph:'הקלד/י שם יישוב…',street_ph:'הקלד/י שם רחוב…',street_free:'רחוב או תיאור הכתובת',
+  no_streets:'ביישוב זה אין רשימת רחובות — נא לכתוב את הכתובת המלאה',
+  city_first:'קודם בוחרים יישוב',no_match:'לא נמצאה התאמה — אפשר להקליד חופשי',
+  err_city:'נא למלא יישוב',err_street:'נא למלא רחוב או כתובת',err_house:'נא למלא מספר בית',
+  err_phone:'מספר טלפון לא תקין — נייד 10 ספרות (05X) או קווי 9 ספרות',
   send_order:'שלח הזמנה לאישור (וואטסאפ)',send_hint:'ההזמנה תיפתח ב-WhatsApp עם מספר ההזמנה',
   pay_now:'שלם עכשיו 💳',sold_out:'אזל',sending:'שולח…',err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',
   pay_ok:'התשלום התקבל בהצלחה! 🎉 הזמנה מספר {id} אושרה — פרטי אישור נשלחו אליך. תודה שקנית בביוטי פייבוריטס!',
@@ -1397,6 +1498,15 @@ const I18N={
   full_name:'الاسم الكامل *',biz_name:'اسم العمل / المتجر (للفاتورة)',biz_id:'رقم السجل التجاري / الهوية',
   ship_addr:'المدينة والعنوان للتوصيل',phone:'الهاتف *',notes_ph:'ملاحظات على الطلب (اختياري)…',
   email_ph:'البريد الإلكتروني — لاستلام التأكيد والفاتورة (إلزامي للدفع في الموقع)',alert_email:'للدفع في الموقع يلزم بريد إلكتروني — سنرسل إليه التأكيد والفاتورة.',
+  l_name:'الاسم الكامل',l_phone:'رقم الجوال',l_city:'البلدة',l_street:'الشارع',l_house:'رقم البيت',
+  l_apt:'شقة',l_floor:'طابق',l_entrance:'مدخل',l_email:'البريد الإلكتروني',l_id:'رقم المصلحة / ح.ب / هوية',l_notes:'ملاحظات للمندوب',
+  l_opt:'(اختياري)',phone_hint:'لتنسيق التسليم مع المندوب',
+  bldg_show:'+ شقة، طابق، مدخل',bldg_hide:'− إخفاء تفاصيل المبنى',
+  city_ph:'اكتب اسم البلدة…',street_ph:'اكتب اسم الشارع…',street_free:'الشارع أو وصف العنوان',
+  no_streets:'لا توجد قائمة شوارع لهذه البلدة — يرجى كتابة العنوان الكامل',
+  city_first:'اختر البلدة أولاً',no_match:'لا توجد نتيجة — يمكنك الكتابة بحرية',
+  err_city:'يرجى تعبئة البلدة',err_street:'يرجى تعبئة الشارع أو العنوان',err_house:'يرجى تعبئة رقم البيت',
+  err_phone:'رقم هاتف غير صالح — جوال 10 أرقام (05X) أو أرضي 9 أرقام',
   send_order:'إرسال الطلب للموافقة (واتساب)',send_hint:'سيُفتح الطلب في WhatsApp مع رقم الطلب',
   pay_now:'ادفع الآن 💳',sold_out:'نفد',sending:'جارٍ الإرسال…',err_order:'حدث خطأ في إنشاء الطلب. حاول مرة أخرى.',
   pay_ok:'تم استلام الدفع بنجاح! 🎉 تم تأكيد الطلب رقم {id} — تم إرسال تفاصيل التأكيد إليك. شكراً لتسوقك في بيوتي فيفوريتس!',
@@ -1445,8 +1555,20 @@ function applyStatic(){
   var tt=document.getElementById('toTop');if(tt){tt.title=t('totop');tt.setAttribute('aria-label',t('totop'));}
   setText('omTitle',t('my_order'));setPh('coupon',t('coupon_ph'));setText('couponBtn',t('apply'));
   setText('buyerTitle',t('buyer_details'));
-  setPh('buyer-name',t('full_name'));setPh('buyer-id',t('biz_id'));
-  setPh('buyer-addr',t('ship_addr'));setPh('buyer-phone',t('phone'));setPh('buyer-email',t('email_ph'));setPh('notes',t('notes_ph'));
+  // תוויות אמיתיות: הטקסט מוחלף בתווית ולא ב-placeholder
+  [['lb-name','l_name',0],['lb-phone','l_phone',0],['lb-city','l_city',0],['lb-street','l_street',0],
+   ['lb-house','l_house',0],['lb-apt','l_apt',1],['lb-floor','l_floor',1],['lb-entrance','l_entrance',1],
+   ['lb-email','l_email',1],['lb-id','l_id',1],['lb-notes','l_notes',1]].forEach(function(x){
+    var e=document.getElementById(x[0]); if(!e)return;
+    e.innerHTML=esc(t(x[1]))+(x[2]?' <span class="opt">'+esc(t('l_opt'))+'</span>':'');
+  });
+  setText('hint-phone',t('phone_hint'));setText('hint-email',t('email_ph'));
+  var _bt=document.getElementById('bldgToggle');
+  if(_bt)_bt.textContent=(document.getElementById('bldgRow').style.display==='none')?t('bldg_show'):t('bldg_hide');
+  setPh('buyer-city',t('city_ph'));setPh('notes',t('notes_ph'));
+  // שם היישוב שנבחר מתורגם יחד עם השפה
+  if(CITY){var _ci=document.getElementById('buyer-city');if(_ci)_ci.value=cityLabel(CITY);}
+  updateStreetMode();
   setText('sendBtn',t('send_order'));setText('sendHint',t('send_hint'));setText('payBtn',t('pay_now'));
   var _ag=document.getElementById('agreeTxt');if(_ag)_ag.innerHTML=t('agree_txt');
   setText('heroSub',t('hero_sub'));
@@ -2091,6 +2213,194 @@ function repriceCart(){Object.keys(CART).forEach(function(vid){var m=VMAP[vid];i
 
 function openOrder(){renderOrder();syncAgree();openOv('orderModal')}
 function closeOrder(){closeOv('orderModal')}
+
+// ===== כתובת מובנית =====
+// היישובים נצרבים בדף (18 ק"ב); הרחובות נשלפים לפי דרישה מהמסד.
+// 492 מתוך 1,310 היישובים בישראל (קיבוצים, מושבים, כפרים) הם בלי רחובות
+// כלל — ולכן השדה מתחלף שם אוטומטית לשדה חופשי. רשימת רחובות ריקה היא
+// הכשל שגורם לנטישת קופה, ולא נציג אותה אף פעם.
+const CITIES = /*__CITIES__*/;
+let CITY = null;                 // {c,h,a,s} היישוב שנבחר
+let STREETS = null;              // מטמון רחובות ליישוב הנוכחי
+let STREET_CODE = null;          // סמל הרחוב, אם נבחר מהרשימה
+const _streetCache = {};
+let _popIdx = -1, _popItems = [], _popKind = null;
+
+function cityLabel(c){return (LANG==='ar'&&c.a)?c.a:c.h;}
+function normHe(x){return String(x||'').replace(/["'׳״\-–—]/g,'').replace(/\s+/g,' ').trim();}
+
+function closePop(kind){
+  const p=document.getElementById('pop-'+kind); if(p){p.classList.remove('show');p.innerHTML='';}
+  const inp=document.getElementById('buyer-'+kind); if(inp)inp.setAttribute('aria-expanded','false');
+  _popIdx=-1;_popItems=[];_popKind=null;
+}
+function showPop(kind,items,onPick,emptyMsg){
+  const p=document.getElementById('pop-'+kind), inp=document.getElementById('buyer-'+kind);
+  if(!p)return;
+  if(!items.length){
+    if(!emptyMsg){closePop(kind);return;}
+    p.innerHTML='<li class="none">'+esc(emptyMsg)+'</li>';
+    p.classList.add('show');inp.setAttribute('aria-expanded','true');
+    _popItems=[];_popIdx=-1;_popKind=kind;return;
+  }
+  p.innerHTML=items.map((it,i)=>'<li role="option" aria-selected="false" data-i="'+i+'">'+esc(it.label)+
+    (it.sub?'<span class="sub">'+esc(it.sub)+'</span>':'')+'</li>').join('');
+  p.classList.add('show');inp.setAttribute('aria-expanded','true');
+  _popItems=items;_popIdx=-1;_popKind=kind;
+  // mousedown ולא click: blur של השדה קורה לפני click והיה סוגר את הרשימה
+  p.onmousedown=function(e){const li=e.target.closest('li[data-i]');if(!li)return;e.preventDefault();onPick(items[+li.dataset.i]);};
+  p._onPick=onPick;
+}
+function popKey(e,kind){
+  const p=document.getElementById('pop-'+kind);
+  if(!p||!p.classList.contains('show')||!_popItems.length){
+    if(e.key==='Enter'&&p&&p.classList.contains('show'))e.preventDefault();
+    return;
+  }
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();
+    _popIdx=e.key==='ArrowDown'?Math.min(_popIdx+1,_popItems.length-1):Math.max(_popIdx-1,0);
+    [...p.querySelectorAll('li[data-i]')].forEach((li,i)=>li.setAttribute('aria-selected',i===_popIdx?'true':'false'));
+    const cur=p.querySelector('li[aria-selected="true"]'); if(cur)cur.scrollIntoView({block:'nearest'});
+  } else if(e.key==='Enter'){
+    if(_popIdx>=0){e.preventDefault();p._onPick(_popItems[_popIdx]);}
+  } else if(e.key==='Escape'){ closePop(kind); }
+}
+
+// ---- יישוב ----
+function cityInput(){
+  clearErr('row-city');
+  const q=normHe(document.getElementById('buyer-city').value);
+  CITY=null; STREET_CODE=null;
+  if(q.length<1){closePop('city');updateStreetMode();return;}
+  const pre=[],inc=[];
+  for(const c of CITIES){
+    const h=normHe(c.h), a=c.a?normHe(c.a):'';
+    if(h.startsWith(q)||(a&&a.startsWith(q)))pre.push(c);
+    else if(h.includes(q)||(a&&a.includes(q)))inc.push(c);
+    if(pre.length>=40)break;
+  }
+  const list=pre.concat(inc).slice(0,40).map(c=>({label:cityLabel(c),sub:(LANG==='ar'&&c.a)?c.h:'',raw:c}));
+  showPop('city',list,pickCity,list.length?'':t('no_match'));
+}
+function pickCity(it){
+  CITY=it.raw;
+  document.getElementById('buyer-city').value=cityLabel(CITY);
+  closePop('city'); closePop('street'); clearErr('row-city'); clearErr('row-street');
+  STREETS=null; STREET_CODE=null;   // החלפת יישוב מאפסת גם את רשימת הרחובות שנשארה פתוחה מהיישוב הקודם
+  document.getElementById('buyer-street').value='';
+  updateStreetMode();
+  if(CITY.s)loadStreets(CITY.c);
+  document.getElementById('buyer-street').focus();
+}
+function cityBlur(){
+  setTimeout(function(){
+    closePop('city');
+    // הוקלד חופשי בלי בחירה — מנסים התאמה מדויקת, אחרת מכבדים את הטקסט
+    if(!CITY){
+      const v=normHe(document.getElementById('buyer-city').value);
+      if(v){const m=CITIES.find(c=>normHe(c.h)===v||(c.a&&normHe(c.a)===v));
+            if(m){CITY=m;document.getElementById('buyer-city').value=cityLabel(m);if(m.s)loadStreets(m.c);}}
+      updateStreetMode();
+    }
+  },140);
+}
+
+// ---- רחוב ----
+function updateStreetMode(){
+  const hint=document.getElementById('hint-street'), lb=document.getElementById('lb-street');
+  const inp=document.getElementById('buyer-street');
+  const known=CITY&&CITY.s;
+  if(!CITY){ hint.textContent=''; inp.placeholder=t('city_first'); }
+  else if(known){ hint.textContent=''; inp.placeholder=t('street_ph'); }
+  else { hint.textContent=t('no_streets'); inp.placeholder=t('street_free'); }
+  if(lb)lb.firstChild&&(lb.childNodes[0].nodeValue=(known||!CITY)?t('l_street'):t('street_free'));
+}
+async function loadStreets(code){
+  if(_streetCache[code]){STREETS=_streetCache[code];return;}
+  if(!SB){STREETS=[];return;}
+  // ⚠️ PostgREST מחזיר לכל היותר 1000 שורות בלי קשר ל-limit שביקשנו.
+  // לתל אביב 2,768 רחובות ולירושלים 4,381 — בלי דפדוף הרשימה נחתכת
+  // ולקוח שגר ברחוב מאוחר באלפבית פשוט לא מוצא אותו. נבדק ונתפס בפועל.
+  const PAGE=1000, all=[];
+  try{
+    for(let from=0; from<8000; from+=PAGE){
+      const {data,error}=await SB.from('streets').select('street_code,street_name')
+        .eq('city_code',code).order('street_code').range(from,from+PAGE-1);
+      if(error)throw error;
+      all.push(...(data||[]));
+      if(!data||data.length<PAGE)break;
+    }
+    STREETS=_streetCache[code]=all;
+  }catch(e){ console.warn('streets',e); STREETS=[]; }   // כשל שליפה → שדה חופשי, לא קופה תקועה
+}
+function streetInput(){
+  clearErr('row-street'); STREET_CODE=null;
+  const q=normHe(document.getElementById('buyer-street').value);
+  if(!CITY||!CITY.s||!STREETS||!STREETS.length||q.length<1){closePop('street');return;}
+  const pre=[],inc=[];
+  for(const r of STREETS){
+    const n=normHe(r.street_name);
+    if(n.startsWith(q))pre.push(r); else if(n.includes(q))inc.push(r);
+    if(pre.length>=40)break;
+  }
+  const list=pre.concat(inc).slice(0,40).map(r=>({label:r.street_name,raw:r}));
+  showPop('street',list,pickStreet,list.length?'':t('no_match'));
+}
+function pickStreet(it){
+  document.getElementById('buyer-street').value=it.raw.street_name;
+  STREET_CODE=it.raw.street_code;
+  closePop('street'); clearErr('row-street');
+  document.getElementById('buyer-house').focus();
+}
+function streetBlur(){setTimeout(function(){
+  closePop('street');
+  if(STREET_CODE===null&&STREETS&&STREETS.length){
+    const v=normHe(document.getElementById('buyer-street').value);
+    const m=STREETS.find(r=>normHe(r.street_name)===v);
+    if(m){STREET_CODE=m.street_code;document.getElementById('buyer-street').value=m.street_name;}
+  }
+},140);}
+
+function toggleBldg(){
+  const r=document.getElementById('bldgRow'),b=document.getElementById('bldgToggle');
+  const open=r.style.display==='none';
+  r.style.display=open?'':'none';
+  b.textContent=open?t('bldg_hide'):t('bldg_show');
+  if(open){const a=document.getElementById('buyer-apt');if(a)a.focus();}
+}
+
+// ---- ולידציה ----
+function clearErr(rowId){const r=document.getElementById(rowId);if(r)r.classList.remove('bad');}
+function setErr(rowId,erId,msg){
+  const r=document.getElementById(rowId),e=document.getElementById(erId);
+  if(e)e.textContent=msg; if(r)r.classList.add('bad');
+  return r;
+}
+// נייד 05X עשר ספרות · קווי תשע · לא-גיאוגרפי 07X עשר. הקידומות 07X נופלות
+// ברגקסים ישראליים ישנים שרצים ברשת — ואלה מספרים אמיתיים של לקוחות.
+function validPhone(v){
+  const d=String(v||'').replace(/\D/g,'').replace(/^972/,'0');
+  if(/^0(5\d|7\d)\d{7}$/.test(d))return true;
+  if(/^0(2|3|4|8|9)\d{7}$/.test(d))return true;
+  return false;
+}
+function checkPhone(){
+  const v=gv('buyer-phone');
+  if(v&&!validPhone(v))setErr('row-phone','er-phone',t('err_phone'));
+  else clearErr('row-phone');
+}
+function shipParts(){
+  return {city:gv('buyer-city'),cityCode:CITY?CITY.c:null,
+          street:gv('buyer-street'),streetCode:STREET_CODE,
+          house:gv('buyer-house'),apt:gv('buyer-apt'),
+          floor:gv('buyer-floor'),entrance:gv('buyer-entrance')};
+}
+function shipLine(){
+  const p=shipParts();
+  const extra=[p.apt?t('l_apt')+' '+p.apt:'',p.floor?t('l_floor')+' '+p.floor:'',p.entrance?t('l_entrance')+' '+p.entrance:''].filter(Boolean).join(', ');
+  return [[p.street,p.house].filter(Boolean).join(' '),extra,p.city].filter(Boolean).join(', ');
+}
 // לחיצה על מוצר בסל → קפיצה אליו במקומו ברשת.
 // הכוונה (בקשת נמרוד 24/08): להיזכר רגע מה המוצר, וגם לראות שוב מה עמד לידו
 // ולא נבחר. לכן קופצים לכרטיס בתוך הרשת ולא פותחים את המגירה שמסתירה את השכנים.
@@ -2151,11 +2461,13 @@ function renderTotals(){const {sub}=cartTotals();const d=discount(sub);const el=
 
 const WA_NUMBER='972534555501';
 function gv(id){var e=document.getElementById(id);return e?e.value.trim():''}
-function noteText(){   // עסק/עוסק-ח.פ/כתובת + הערת הלקוח + קופון — נשמר ב-orders.note (מוצג וניתן לחיפוש בבק אופיס)
-  const bid=gv('buyer-id'),addr=gv('buyer-addr');
+function noteText(){   // עוסק/ח.פ + הערת הלקוח + קופון — נשמר ב-orders.note
+  // ⚠️ הכתובת כבר לא נכנסת לכאן. היא נשמרת בעמודות ייעודיות ב-orders
+  // (ship_city/ship_street/ship_house/…) — קודם היא נדחסה למחרוזת הזו,
+  // ולכן שדה הכתובת בבק אופיס היה ריק בכל ההזמנות מהקטלוג.
+  const bid=gv('buyer-id');
   let n='';
   if(bid)n+=`עוסק/ח.פ: ${bid}`;
-  if(addr)n+=(n?' | ':'')+`כתובת: ${addr}`;
   const notes=gv('notes');if(notes)n=(n?n+' | ':'')+notes;
   if(activeCoupon){const d=discount(cartTotals().sub);if(d)n=(n?n+' | ':'')+`קופון ${activeCoupon.code} (−₪${d})`;}
   return n;
@@ -2164,7 +2476,7 @@ function buildOrderText(orderId){
   const keys=Object.keys(CART);if(!keys.length)return '';
   let msg='*הזמנה חדשה — Beauty Favorites*\n';
   if(orderId)msg+=`מס׳ הזמנה: #${orderId}\n`;
-  const name=gv('buyer-name'),bid=gv('buyer-id'),addr=gv('buyer-addr'),phone=gv('buyer-phone');
+  const name=gv('buyer-name'),bid=gv('buyer-id'),phone=gv('buyer-phone'),addr=shipLine();
   if(name)msg+=`\nשם: ${name}`;if(bid)msg+=`\nעוסק/ח.פ: ${bid}`;
   if(addr)msg+=`\nכתובת: ${addr}`;if(phone)msg+=`\nטלפון: ${phone}`;msg+='\n\n';
   let sub=0;keys.forEach(k=>{const it=CART[k];const lt=it.qty*it.price;sub+=lt;
@@ -2226,11 +2538,25 @@ function cartItems(){      // [{sku, qty}] עבור create_order (sku = ברקו
 function syncAgree(){var c=document.getElementById('agreeTerms');var ok=!!(c&&c.checked);['sendBtn','payBtn'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.toggle('locked',!ok);});}
 function validateBuyer(needEmail){
   if(!Object.keys(CART).length){alert(t('alert_empty'));return false;}
+  // שדות ריקים נבדקים בשליחה בלבד, והשגיאה נעלמת בהקלדה — לא מציקים
+  // ללקוח באמצע המילוי. הבדיקה עוצרת על השדה הראשון שנכשל ומגלגלת אליו.
+  ['row-name','row-phone','row-city','row-street','row-house','row-email'].forEach(clearErr);
+  let first=null;
+  const fail=(row,er,msg)=>{const r=setErr(row,er,msg);if(!first)first=r;};
   const name=gv('buyer-name'),phone=gv('buyer-phone');
-  if(!name||!phone){alert(t('alert_fill'));document.getElementById(!name?'buyer-name':'buyer-phone').focus();return false;}
+  if(!name)fail('row-name','er-name',t('alert_fill'));
+  if(!phone)fail('row-phone','er-phone',t('alert_fill'));
+  else if(!validPhone(phone))fail('row-phone','er-phone',t('err_phone'));
+  if(!gv('buyer-city'))fail('row-city','er-city',t('err_city'));
+  if(!gv('buyer-street'))fail('row-street','er-street',t('err_street'));
+  // מספר בית נדרש רק ביישוב שיש בו רחובות; בקיבוץ/מושב הכתובת חופשית
+  if(CITY&&CITY.s&&!gv('buyer-house'))fail('row-house','er-house',t('err_house'));
+  if(first){first.scrollIntoView({block:'center'});const i=first.querySelector('input');if(i)i.focus();return false;}
   // אימייל חובה רק בתשלום באתר — אליו נשלחים אישור פיי פלוס והחשבונית
   if(needEmail){const em=gv('buyer-email');
-    if(!em||em.indexOf('@')<1||em.indexOf('.')<0){alert(t('alert_email'));document.getElementById('buyer-email').focus();return false;}}
+    if(!em||em.indexOf('@')<1||em.indexOf('.')<0){
+      const r=setErr('row-email','er-email',t('alert_email'));
+      r.scrollIntoView({block:'center'});document.getElementById('buyer-email').focus();return false;}}
   var ag=document.getElementById('agreeTerms');
   if(!ag||!ag.checked){alert(t('alert_terms'));var w=document.getElementById('agreeWrap');if(w)w.scrollIntoView({block:'center'});if(ag)ag.focus();return false;}
   return true;
@@ -2239,10 +2565,17 @@ function setBusy(btn,on){if(!btn)return;if(on){btn.dataset.l=btn.textContent;btn
 async function createOrder(channel){   // קריאה אחת ל-create_order → {id,total}. המלאי לא יורד בשלב זה.
   const items=cartItems();
   if(!items.length){alert(t('err_order'));return null;}
+  const _sp=shipParts();
   const {data,error}=await SB.rpc('create_order',{
     p_customer_name:gv('buyer-name'),p_customer_phone:gv('buyer-phone'),
-    p_customer_email:gv('buyer-email')||'',p_customer_type:gv('buyer-id')?'barber':'retail',
+    p_customer_email:gv('buyer-email')||'',
+    // הסיווג נקבע בשרת לפי קוד הסיטונאי בלבד — הפרמטר נשלח לתאימות ואינו בשימוש
+    p_customer_type:'retail',
     p_channel:channel,p_note:noteText(),p_items:items,
+    p_ship_city:_sp.city||null,p_ship_city_code:_sp.cityCode,
+    p_ship_street:_sp.street||null,p_ship_street_code:_sp.streetCode,
+    p_ship_house:_sp.house||null,p_ship_apartment:_sp.apt||null,
+    p_ship_floor:_sp.floor||null,p_ship_entrance:_sp.entrance||null,
     p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null,     // התמחור נקבע בשרת: קוד תקף = סיטונאי, אחרת צרכן
     p_coupon_code:activeCoupon?activeCoupon.code:null});    // הקופון מאומת ונצרב בשרת (total כבר כולל את ההנחה)
   if(error){console.error(error);alert(t('err_order'));return null;}
