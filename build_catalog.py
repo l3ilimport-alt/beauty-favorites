@@ -566,22 +566,14 @@ def main():
     }
 
     def _brand_en(brand, name_en):
-        """שם המותג באנגלית לתצוגה. ריק כשהוא כבר מופיע בשם המוצר.
+        """שם המותג באנגלית לתצוגה, לצד השם העברי.
 
-        שתי מלכודות שנתפסו בבדיקה:
-        1. המותג לא תמיד פותח את השם — לפעמים הוא בסופו. לכן בדיקת
-           הכלה ולא תחילית.
-        2. סימני ניקוד: "Lancôme" בשם המוצר מול "Lancome" במיפוי לא
-           הותאמו, והמותג הוצג פעמיים. הנרמול מסיר ניקוד.
+        בהתחלה הוסתר כשהמותג כבר הופיע בשם המוצר, כדי לא לחזור עליו.
+        נמרוד ביקש (27/08) שיוצג בכל המוצרים בלי יוצא מן הכלל — שורת
+        המותג היא מקום קבוע, והלקוח מצפה למצוא בה את המותג תמיד ולא
+        רק לפעמים. `name_en` של המוצר עדיין לא נוגע.
         """
-        be = BRAND_EN.get((brand or "").strip())
-        if not be:
-            return ""
-        def _n(x):
-            x = unicodedata.normalize("NFD", str(x or ""))
-            x = "".join(c for c in x if unicodedata.category(c) != "Mn")
-            return re.sub(r"[^a-z0-9]", "", x.lower())
-        return "" if _n(be) and _n(be) in _n(name_en) else be
+        return BRAND_EN.get((brand or "").strip(), "")
 
     BRAND_EN.update({
         "סול דה ז'נרו": "Sol de Janeiro", "סול דה ז'ניירו": "Sol de Janeiro",
