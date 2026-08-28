@@ -1680,7 +1680,23 @@ function buildNav(){
 // ---- ניווט עמוד-הבית: קטגוריה/חנות/חיפוש/מועדפים ----
 function goShop(){var el=document.getElementById('shopAllT')||document.getElementById('grid');if(el){var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;window.scrollTo({top:y,behavior:'smooth'});}}
 function goCat(c){curCat=c;curBrand='__all__';favOnly=false;var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');buildNav();render();goShop();}
-function focusSearch(){window.scrollTo({top:0,behavior:'smooth'});setTimeout(function(){var q=document.getElementById('q');if(q)q.focus();},360);}
+// כפתור "חיפוש" בסרגל התחתון → נוחתים בדיוק על שדה החיפוש והמקלדת נפתחת.
+// ⚠️ הנקודה הקריטית: focus() חייב לרוץ **בתוך אירוע הלחיצה עצמו**. הגרסה
+// הקודמת קראה לו מתוך setTimeout של 360 מ"ש, וסאפארי בנייד מתייחס לזה
+// כאל פוקוס שלא מגיע ממחוות משתמש — ולכן המקלדת פשוט לא נפתחה.
+// שורת החיפוש דביקה ל-top:0, ולכן כשכבר גללנו מעבר למקומה הטבעי היא
+// ממילא על המסך ואין לאן לגלול; גוללים רק כשהיא עוד מתחת לקפל.
+function focusSearch(){
+  var q=document.getElementById('q'); if(!q)return;
+  q.focus({preventScroll:true});
+  if(q.value)q.select();            // חזרה לחיפוש → הקלדה מחליפה את הקודם
+  var wrap=document.querySelector('.search-wrap');
+  if(wrap){
+    var cur=window.pageYOffset||document.documentElement.scrollTop||0;
+    var y=wrap.getBoundingClientRect().top+cur;   // כשהיא "נדבקה" זה שווה ל-cur
+    if(cur<y-1)window.scrollTo({top:y,behavior:'smooth'});
+  }
+}
 // כפתור הבאנר → מסנן בפועל למומלצים ומגלגל לרשת המסוננת.
 // נופל חזרה לגלילה אל קרוסלת "מומלץ בשבילך" אם אין מומלצים זמינים, ומשם לכל המוצרים.
 function goRecs(){
