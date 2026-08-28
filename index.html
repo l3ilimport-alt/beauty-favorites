@@ -403,6 +403,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .agree{display:flex;gap:9px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--text);line-height:1.55;cursor:pointer}
 .agree input{width:18px;height:18px;margin-top:1px;flex:0 0 auto;accent-color:var(--accent-d);cursor:pointer}
 .agree a{color:var(--accent-d);text-decoration:underline;font-weight:600}
+.clear-cart{display:block;margin:10px auto 0;background:none;border:0;padding:6px 10px;font:inherit;font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;border-radius:8px}
+.clear-cart:hover{color:#b91c1c}
 .soldpill{font-size:12px;font-weight:700;color:#b91c1c;background:#fee2e2;border-radius:9px;padding:6px 10px;white-space:nowrap}
 /* מוצר שכל הגוונים שלו אזלו — נשאר בקטלוג, מעומעם, עם תג ברור */
 .card.sold .imgbox img{filter:grayscale(.75);opacity:.55}
@@ -685,6 +687,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <div class="om">
     <h3 id="omTitle">ההזמנה שלי</h3>
     <div id="omBody"></div>
+    <button type="button" class="clear-cart" id="clearCartBtn" onclick="clearCart()">🗑️ נקה את הסל</button>
     <div class="coupon"><input id="coupon" type="text" placeholder="קוד קופון" oninput="couponEdited()" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCoupon();}"><button id="couponBtn" onclick="applyCoupon()">החל</button></div>
     <div class="cmsg" id="cmsg"></div>
     <div class="totals" id="totals"></div>
@@ -693,22 +696,22 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
       <div class="f-row" id="row-name">
         <label for="buyer-name" id="lb-name">שם מלא</label>
-        <input class="fld" id="buyer-name" type="text" autocomplete="name" oninput="clearErr('row-name')">
+        <input class="fld" id="buyer-name" name="name" type="text" autocomplete="name" oninput="clearErr('row-name')">
         <span class="f-err" id="er-name"></span>
       </div>
 
       <div class="f-row" id="row-phone">
         <label for="buyer-phone" id="lb-phone">טלפון נייד</label>
-        <input class="fld" id="buyer-phone" type="tel" inputmode="tel" autocomplete="tel-national" oninput="clearErr('row-phone')" onblur="checkPhone()">
+        <input class="fld" id="buyer-phone" name="tel" type="tel" inputmode="tel" autocomplete="tel-national" oninput="clearErr('row-phone')" onblur="checkPhone()">
         <span class="f-hint" id="hint-phone">לתיאום המסירה מול השליח</span>
         <span class="f-err" id="er-phone"></span>
       </div>
 
       <div class="f-row" id="row-city">
         <label for="buyer-city" id="lb-city">יישוב</label>
-        <input class="fld" id="buyer-city" type="text" autocomplete="address-level2"
+        <input class="fld" id="buyer-city" name="city" type="text" autocomplete="address-level2"
                role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="pop-city"
-               oninput="cityInput()" onkeydown="popKey(event,'city')" onblur="cityBlur()">
+               oninput="cityInput()" onkeydown="popKey(event,'city')" onblur="cityBlur()" onchange="setTimeout(resolveAutofill,60)">
         <ul class="f-pop" id="pop-city" role="listbox" aria-label="יישובים"></ul>
         <span class="f-err" id="er-city"></span>
       </div>
@@ -716,30 +719,30 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
       <div class="f-grid">
         <div class="f-row" id="row-street">
           <label for="buyer-street" id="lb-street">רחוב</label>
-          <input class="fld" id="buyer-street" type="text" autocomplete="address-line1"
+          <input class="fld" id="buyer-street" name="address" type="text" autocomplete="address-line1"
                  role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="pop-street"
-                 oninput="streetInput()" onkeydown="popKey(event,'street')" onblur="streetBlur()">
+                 oninput="streetInput()" onkeydown="popKey(event,'street')" onblur="streetBlur()" onchange="setTimeout(resolveAutofill,60)">
           <ul class="f-pop" id="pop-street" role="listbox" aria-label="רחובות"></ul>
           <span class="f-hint" id="hint-street"></span>
           <span class="f-err" id="er-street"></span>
         </div>
         <div class="f-row" id="row-house">
           <label for="buyer-house" id="lb-house">מספר בית</label>
-          <input class="fld" id="buyer-house" type="text" inputmode="numeric" oninput="clearErr('row-house')">
+          <input class="fld" id="buyer-house" name="house-number" type="text" inputmode="numeric" oninput="clearErr('row-house')" onchange="resolveAutofill()">
           <span class="f-err" id="er-house"></span>
         </div>
       </div>
 
       <button type="button" class="f-toggle" id="bldgToggle" onclick="toggleBldg()">+ דירה, קומה, כניסה</button>
       <div class="f-grid3" id="bldgRow" style="display:none">
-        <div class="f-row"><label for="buyer-apt" id="lb-apt">דירה</label><input class="fld" id="buyer-apt" type="text" inputmode="numeric" autocomplete="address-line2"></div>
+        <div class="f-row"><label for="buyer-apt" id="lb-apt">דירה</label><input class="fld" id="buyer-apt" name="apartment" type="text" inputmode="numeric" autocomplete="address-line2" onchange="resolveAutofill()"></div>
         <div class="f-row"><label for="buyer-floor" id="lb-floor">קומה</label><input class="fld" id="buyer-floor" type="text" inputmode="numeric"></div>
         <div class="f-row"><label for="buyer-entrance" id="lb-entrance">כניסה</label><input class="fld" id="buyer-entrance" type="text"></div>
       </div>
 
       <div class="f-row" id="row-email">
         <label for="buyer-email" id="lb-email">אימייל</label>
-        <input class="fld" id="buyer-email" type="email" inputmode="email" autocomplete="email" oninput="clearErr('row-email')">
+        <input class="fld" id="buyer-email" name="email" type="email" inputmode="email" autocomplete="email" oninput="clearErr('row-email')">
         <span class="f-hint" id="hint-email"></span>
         <span class="f-err" id="er-email"></span>
       </div>
@@ -837,7 +840,7 @@ const I18N={
   view_order:'צפה בהזמנה ←',totop:'חזרה למעלה',
   c_איפור:'איפור',c_טיפוח:'טיפוח',c_שיער:'שיער',c_בושם:'בושם',c_מארזים:'מארזים',c_ציפורניים:'ציפורניים',c_אביזרים:'אביזרים',c_ציוד:'ציוד',c_אחר:'אחר',
   cat_hot:'🔥 Best Seller',
-  go_to_product:'הצג בקטלוג',
+  go_to_product:'הצג בקטלוג',clear_cart:'נקה את הסל',clear_cart_ask:'להסיר את כל {n} הפריטים מהסל?',
   b_sale:'מבצע',b_new:'חדש',b_bestseller:'רב-מכר',b_soldout:'אזל',b_limited:'מהדורה מוגבלת',b_vegan:'טבעוני',
   shades:'גוונים',feats:'מאפיינים עיקריים',ingredients:'רכיבים',usage:'אופן שימוש',contents_h:'מה כלול במבחר',
   pick_shade:'בחר גוון',similar:'מוצרים דומים',desc:'תיאור',barcode:'ברקוד:',
@@ -895,7 +898,7 @@ const I18N={
   view_order:'عرض الطلب ←',totop:'العودة للأعلى',
   c_איפור:'مكياج',c_טיפוח:'العناية بالبشرة',c_שיער:'العناية بالشعر',c_בושם:'عطر',c_מארזים:'مجموعات',c_ציפורניים:'العناية بالأظافر',c_אביזרים:'إكسسوارات',c_ציוד:'معدات',c_אחר:'أخرى',
   cat_hot:'🔥 Best Seller',
-  go_to_product:'عرض في الكتالوج',
+  go_to_product:'عرض في الكتالوج',clear_cart:'إفراغ السلة',clear_cart_ask:'إزالة كل الـ{n} منتجات من السلة؟',
   b_sale:'تخفيض',b_new:'جديد',b_bestseller:'الأكثر مبيعاً',b_soldout:'نفد',b_limited:'إصدار محدود',b_vegan:'نباتي',
   shades:'ألوان',feats:'أبرز المزايا',ingredients:'المكوّنات',usage:'طريقة الاستخدام',contents_h:'ما الذي تشمله التشكيلة',
   pick_shade:'اختر اللون',similar:'منتجات مشابهة',desc:'الوصف',barcode:'باركود:',
@@ -968,6 +971,7 @@ function applyStatic(){
     var e=document.getElementById(x[0]); if(!e)return;
     e.innerHTML=esc(t(x[1]))+(x[2]?' <span class="opt">'+esc(t('l_opt'))+'</span>':'');
   });
+  var _cc=document.getElementById('clearCartBtn'); if(_cc)_cc.textContent='🗑️ '+t('clear_cart');
   setText('hint-phone',t('phone_hint'));setText('hint-email',t('email_ph'));
   var _bt=document.getElementById('bldgToggle');
   if(_bt)_bt.textContent=(document.getElementById('bldgRow').style.display==='none')?t('bldg_show'):t('bldg_hide');
@@ -1250,6 +1254,18 @@ const BRAND_LOGO_PAIRS=[
   ["brand-logos/laline.svg",["ללין"]],
   ["brand-logos/color-wow.png",["קולור וואו","קלר וואו"]],
   ["brand-logos/kerastase.svg",["קרסטס"]],
+  ["brand-logos/maybelline.svg",["מייבלין"]],
+  ["brand-logos/huda-beauty.png",["הודה ביוטי"]],
+  ["brand-logos/hourglass.svg",["האורגלאס","אוארגלאס"]],
+  ["brand-logos/pixi.svg",["פיקסי"]],
+  ["brand-logos/one-size.svg",["ONE/SIZE","וואן סייז"]],
+  ["brand-logos/makeup-by-mario.png",["מייקאפ ביי מריו"]],
+  ["brand-logos/kylie-cosmetics.svg",["קיילי קוסמטיקס"]],
+  ["brand-logos/kayali.svg",["קייאלי","קאיאלי","KAYALI","Kayali"]],
+  ["brand-logos/gucci.svg",["גוצ'י"]],
+  ["brand-logos/peter-thomas-roth.svg",["פיטר תומאס רות'"]],
+  ["brand-logos/p-louise.png",["פי לואיז"]],
+  ["brand-logos/boy-smells.png",["בוי סמלס"]],
   // ספורה פייבוריטס אינה מותג נפרד עם סמליל משלה — משתמשת בסמליל ספורה
   ["brand-logos/sephora.svg",["ספורה","ספורה קולקשן","ספורה פייבוריטס"]],
   ["brand-logos/urban-decay.svg",["אורבן דקיי"]],
@@ -1616,7 +1632,13 @@ function cartChange(vid,delta){
   if(delta>0){
     if(CART[vid])CART[vid].qty++;
     else CART[vid]={vid,name:m.g.name_he+(m.v.shade&&m.g.variants.length>1?' · '+m.v.shade:''),brand:m.g.brand,size:m.v.size,price:eff(m.v),qty:1};
-  } else if(CART[vid]){CART[vid].qty--;if(CART[vid].qty<=0)delete CART[vid];}
+  } else if(CART[vid]){
+    // 🔴 קודם היה `qty--` בלבד, בלי קשר לגודל ה-delta שהתבקש. לכן כפתור
+    // האיקס, ששולח את מלוא הכמות במינוס, הוריד יחידה אחת בלבד ולא הסיר
+    // את המוצר. עכשיו הגודל מכובד.
+    CART[vid].qty-=Math.max(1,Math.abs(delta));
+    if(CART[vid].qty<=0)delete CART[vid];
+  }
   renderCart();updateCard(m.g.gid);
   if(document.getElementById('orderModal').classList.contains('open'))renderOrder();
 }
@@ -1676,6 +1698,17 @@ function repriceCart(){Object.keys(CART).forEach(function(vid){var m=VMAP[vid];i
 
 function openOrder(){renderOrder();syncAgree();openOv('orderModal')}
 function closeOrder(){closeOv('orderModal')}
+// ניקוי הסל כולו. שואל לפני, כי אין ממנו דרך חזרה.
+function clearCart(){
+  const n=Object.keys(CART).length;
+  if(!n)return;
+  if(!confirm(t('clear_cart_ask').replace('{n}',n)))return;
+  Object.keys(CART).forEach(function(k){delete CART[k];});
+  activeCoupon=null;
+  const c=document.getElementById('coupon'); if(c)c.value='';
+  const cm=document.getElementById('cmsg'); if(cm){cm.textContent='';cm.className='cmsg';}
+  renderCart(); render(); renderOrder();
+}
 
 // ===== כתובת מובנית =====
 // היישובים נצרבים בדף (18 ק"ב); הרחובות נשלפים לפי דרישה מהמסד.
@@ -1828,6 +1861,48 @@ function streetBlur(){setTimeout(function(){
   }
 },140);}
 
+// ===== מילוי אוטומטי =====
+// שתי סיבות שבגללן המילוי האוטומטי לא השלים רחוב ומספר בית:
+//
+// 1. **אין אסימון תקני למספר בית.** הדפדפן שומר שורת כתובת אחת ודוחף
+//    את כולה ל-address-line1 — כלומר "הרצל 5" נכנס לשדה הרחוב ושדה
+//    המספר נשאר ריק. הפתרון: לפצל את המספר הנגרר בעצמנו.
+//
+// 2. **בורר היישוב מצפה לבחירה מהרשימה.** מילוי אוטומטי כותב ערך בלי
+//    שאיש בחר, ולכן CITY נשאר ריק ורשימת הרחובות לא נטענה כלל.
+//
+// רץ על change של השדות — האירוע שנשלח בסיום מילוי אוטומטי — וגם
+// כשנפתחת מגירת ההזמנה, למקרה שהדפדפן מילא לפני שהקוד הספיק להאזין.
+function splitHouseFromStreet(){
+  const st=document.getElementById('buyer-street'), hs=document.getElementById('buyer-house');
+  if(!st||!hs||hs.value.trim())return false;
+  const v=st.value.trim();
+  // "הרצל 5" · "הרצל 5א" · "רוטשילד 12/3" — המספר תמיד בסוף
+  const m=v.match(/^(.*?[^\d\s\/-])[\s,]+(\d+[\dא-ת\/\-]*)$/);
+  if(!m||!m[1].trim())return false;
+  st.value=m[1].trim(); hs.value=m[2];
+  return true;
+}
+function resolveAutofill(){
+  const ci=document.getElementById('buyer-city');
+  if(!ci)return;
+  // היישוב: התאמה מדויקת ואז גמישה, בלי לפתוח רשימה — המשתמש לא הקליד
+  if(!CITY&&ci.value.trim()){
+    const v=normHe(ci.value);
+    let m=CITIES.find(c=>normHe(c.h)===v||(c.a&&normHe(c.a)===v));
+    if(!m){const lv=looseHe(v); m=CITIES.find(c=>looseHe(normHe(c.h))===lv);}
+    if(m){CITY=m; ci.value=cityLabel(m); clearErr('row-city'); if(m.s)loadStreets(m.c);}
+  }
+  closePop('city'); closePop('street');
+  if(splitHouseFromStreet())clearErr('row-house');
+  updateStreetMode();
+  // אם הרחוב שהושלם קיים ברשימה — נצמיד לו את הסמל הרשמי
+  if(STREET_CODE===null&&STREETS&&STREETS.length){
+    const sv=normHe(document.getElementById('buyer-street').value);
+    const hit=STREETS.find(r=>normHe(r.street_name)===sv);
+    if(hit){STREET_CODE=hit.street_code; document.getElementById('buyer-street').value=hit.street_name;}
+  }
+}
 function toggleBldg(){
   const r=document.getElementById('bldgRow'),b=document.getElementById('bldgToggle');
   const open=r.style.display==='none';
@@ -1894,6 +1969,9 @@ function goToProduct(vid){
   },90);
 }
 function renderOrder(){
+  // הדפדפן עשוי למלא אוטומטית לפני שהמגירה נפתחה ובלי לשלוח change —
+  // בדיקה בפתיחה מבטיחה שהעיר תזוהה והרחוב יפוצל בכל מקרה
+  setTimeout(function(){try{resolveAutofill();}catch(_){}} ,120);
   const keys=Object.keys(CART);window._K=keys;const body=document.getElementById('omBody');
   if(!keys.length){body.innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">'+t('cart_empty')+'</p>';renderTotals();return}
   body.innerHTML=keys.map((k,idx)=>{const it=CART[k];
