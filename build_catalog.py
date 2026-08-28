@@ -1401,7 +1401,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button onclick="focusSearch()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span id="nvSearch">חיפוש</span></button>
   <button onclick="showFavs()"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.3-9C1 8.5 3 5 6.5 5 8.7 5 10.5 6.4 12 8.4 13.5 6.4 15.3 5 17.5 5 21 5 23 8.5 21.3 12 19 16.4 12 21 12 21z"/></svg><span id="nvFav">מועדפים</span></button>
   <button onclick="openOrder()"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.2 11h9.6l1.7-8H6.4"/></svg><span id="nvCart">עגלה</span></button>
-  <button class="wa" onclick="toggleWaChat()"><svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.2 4.79 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m4.52 11.99c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42h-.48c-.16 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29"/></svg><span id="nvWa">וואטסאפ</span></button>
+  <button class="wa" id="navWa" onclick="toggleWaChat()"><svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.2 4.79 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m4.52 11.99c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42h-.48c-.16 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29"/></svg><span id="nvWa">וואטסאפ</span></button>
 </nav>
 
 <script>
@@ -1883,8 +1883,12 @@ function sendWaChat(){const m=document.getElementById('waChatMsg');
   const txt=((m&&m.value.trim())||t('wa_default'));
   window.open('https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(txt),'_blank');
   const c=document.getElementById('waChat');if(c)c.classList.remove('open');}
+// סגירה בלחיצה בחוץ. 🔴 הכפתור בסרגל התחתון לא היה מוחרג כאן, ולכן
+// הלחיצה עליו פתחה את החלון ומיד סגרה אותו — הכפתור פשוט לא עבד.
+// כל כפתור שמפעיל את החלון חייב להיות מוחרג, אחרת הוא סוגר את עצמו.
 document.addEventListener('click',function(e){var c=document.getElementById('waChat');
-  if(c&&c.classList.contains('open')&&!e.target.closest('#waChat')&&!e.target.closest('#waFloat'))c.classList.remove('open');});
+  if(c&&c.classList.contains('open')&&!e.target.closest('#waChat')
+     &&!e.target.closest('#waFloat')&&!e.target.closest('#navWa'))c.classList.remove('open');});
 
 buildNav();
 function toggleFavOnly(){favOnly=!favOnly;document.getElementById('favchip').classList.toggle('active',favOnly);render()}
@@ -2632,6 +2636,10 @@ var __ovReturnFocus=null;
 function openOv(id){
   __ovReturnFocus=document.activeElement;
   const m=document.getElementById(id); m.classList.add('open'); document.body.style.overflow='hidden';
+  // 🔴 ל-.sheet יש overflow-y:auto והוא שומר את מיקום הגלילה מהפעם הקודמת.
+  // בלי איפוס, פתיחת מוצר אחרי שגללנו בקודם נוחתת באמצע הכרטיס והלקוח
+  // צריך לגלול למעלה כדי לראות את השם ואת התמונה.
+  var _sh=m.querySelector('.sheet'); if(_sh)_sh.scrollTop=0;
   m.setAttribute('role','dialog'); m.setAttribute('aria-modal','true');
   const head=m.querySelector('h3,h4'); if(head){if(!head.id)head.id=id+'-h'; m.setAttribute('aria-labelledby',head.id);}
   const sheet=m.querySelector('.sheet')||m; sheet.setAttribute('tabindex','-1');
