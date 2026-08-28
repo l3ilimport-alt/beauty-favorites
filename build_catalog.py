@@ -6,7 +6,7 @@ Reads knowledge/<id>/product.json, groups shade-variants under one card,
 copies images, and emits catalog/index.html (data inline → works from file://).
 Re-run after adding products to knowledge/ or editing catalog_overrides.json.
 """
-import json, glob, os, shutil, re, sys
+import json, glob, os, shutil, re, sys, unicodedata
 
 # ---- image optimization on copy (keeps the published GitHub Pages site well under the 1GB limit
 #      and makes the catalog load far faster). Downscales to max 720px + recompresses. ----
@@ -525,11 +525,77 @@ def main():
         if p.get("ingredients_ar"): d["ingredients_ar"] = p["ingredients_ar"]
         if p.get("shade_ar"): d["shade_ar"] = p["shade_ar"]
         return d
+    # --- שם המותג באנגלית, לתצוגה לצד השם העברי ---
+    # נכתב במפורש ולא נגזר אוטומטית: ניסיון לגזור אותו מתוך name_en החזיר שמות
+    # של קווי מוצר ולא של מותגים ("Plump Ambition" ללוריאל, "Vanish Airbrush"
+    # להאורגלאס). 79 מותגים זו רשימה קטנה שעדיף לכתוב ולתחזק ביד.
+    # ⚠️ זו תצוגה בלבד — `name_en` של המוצר אינו נוגע, כי הוא עוגן זהות שלפיו
+    # מצליבים מול הספק ומול אתרי המותגים.
+    BRAND_EN = {
+        "אי.אל.אף": "e.l.f.", "הודה ביוטי": "HUDA BEAUTY", "מייבלין": "Maybelline",
+        "נארס": "NARS", "שרלוט טילבורי": "Charlotte Tilbury", "שרלוט טילברי": "Charlotte Tilbury",
+        "פנטי ביוטי": "FENTY BEAUTY", "לורה מרסייה": "Laura Mercier", "ריר ביוטי": "Rare Beauty",
+        "טו פייסד": "Too Faced", "אנסטסיה בברלי הילס": "Anastasia Beverly Hills",
+        "אנסטסיה": "Anastasia Beverly Hills", "פיקסי": "Pixi", "מורפי": "Morphe", "מורף": "Morphe",
+        "בנפיט": "Benefit", "קייאלי": "KAYALI", "לוריאל": "L'Oréal Paris",
+        "לוריאל פריז": "L'Oréal Paris", "לוריאל פריס": "L'Oréal Paris",
+        "פטריק טא": "PATRICK TA", "מילק מייקאפ": "Milk Makeup", "האורגלאס": "HOURGLASS",
+        "ויקטוריה סיקרט": "Victoria's Secret", "ארמני": "Giorgio Armani",
+        "ספורה": "SEPHORA", "ספורה קולקשן": "SEPHORA COLLECTION",
+        "Sephora Collection": "SEPHORA COLLECTION", "ספורה פייבוריטס": "SEPHORA Favorites",
+        "קוסאס": "Kosas", "בוי סמלס": "Boy Smells", "NYX": "NYX Professional Makeup",
+        "נטשה דנונה": "Natasha Denona", "דראנק אלפנט": "Drunk Elephant",
+        "בובי בראון": "Bobbi Brown", "סמאשבוקס": "Smashbox",
+        "מייק אפ פור אבר": "MAKE UP FOR EVER", "מייקאפ פוראבר": "MAKE UP FOR EVER",
+        "K18": "K18", "מילאני": "Milani", "מורד": "MURAD",
+        "קלרינס": "Clarins", "דנסה מיריקס": "Danessa Myricks Beauty",
+        "Glow Recipe": "Glow Recipe", "פי לואיז": "P.Louise", "דיור": "DIOR",
+        "מייקאפ ביי מריו": "MAKEUP BY MARIO",
+        "לנקום": "Lancôme", "אורבן דקיי": "Urban Decay", "קיילי קוסמטיקס": "Kylie Cosmetics",
+        "Mugler": "MUGLER", "Kryolan": "Kryolan", "סברינה קרפנטר": "Sabrina Carpenter",
+        "קליניק": "Clinique", "פיטר תומאס רות'": "Peter Thomas Roth", "ללין": "Laline",
+        "וואן סייז": "ONE/SIZE", "ONE/SIZE": "ONE/SIZE",
+        "קולור וואו": "Color Wow", "קלר וואו": "Color Wow",
+        "Ordinary": "The Ordinary", "The Ordinary": "The Ordinary",
+        "גוט2בי": "got2b", "קרסטס": "Kérastase",
+        "YSL": "Yves Saint Laurent", "ייב סן לורן": "Yves Saint Laurent",
+        "Rhode": "rhode", "ביוטי קריאיישן": "Beauty Creations", "Gisou": "Gisou",
+        "מייד ביי מיטשל": "Made By Mitchell", "איירספן": "Airspun",
+        "אולפלקס": "OLAPLEX", "איט קוסמטיקס": "IT Cosmetics",
+        "האוס לאבס": "Haus Labs", "האוס לאבס ביי ליידי גאגא": "Haus Labs",
+    }
+
+    def _brand_en(brand, name_en):
+        """שם המותג באנגלית לתצוגה. ריק כשהוא כבר מופיע בשם המוצר.
+
+        שתי מלכודות שנתפסו בבדיקה:
+        1. המותג לא תמיד פותח את השם — לפעמים הוא בסופו. לכן בדיקת
+           הכלה ולא תחילית.
+        2. סימני ניקוד: "Lancôme" בשם המוצר מול "Lancome" במיפוי לא
+           הותאמו, והמותג הוצג פעמיים. הנרמול מסיר ניקוד.
+        """
+        be = BRAND_EN.get((brand or "").strip())
+        if not be:
+            return ""
+        def _n(x):
+            x = unicodedata.normalize("NFD", str(x or ""))
+            x = "".join(c for c in x if unicodedata.category(c) != "Mn")
+            return re.sub(r"[^a-z0-9]", "", x.lower())
+        return "" if _n(be) and _n(be) in _n(name_en) else be
+
+    BRAND_EN.update({
+        "סול דה ז'נרו": "Sol de Janeiro", "סול דה ז'ניירו": "Sol de Janeiro",
+        "סול דה \u05d6\u05f3\u05e0\u05e8\u05d5": "Sol de Janeiro",
+        "טאצ'ה": "TATCHA", "גוצ'י": "GUCCI", "קילס": "Kiehl's", "קיהל'ס": "Kiehl's",
+        "דולצ'ה וגבאנה": "Dolce&Gabbana", "לנייג'": "LANEIGE",
+    })
+
     def make_group(members, base_he):
         members = sorted(members, key=lambda m: (m["shade"] or m["name_he"]))
         return {"gid": "g" + str(len(groups)), "name_he": base_he,
                 "name_en": _strip_trailing_shade(members[0]["name_en"]),
                 "brand": members[0]["brand"], "type": members[0]["type"],
+                "ben": _brand_en(members[0]["brand"], _strip_trailing_shade(members[0]["name_en"])),
                 "variants": [variant(m) for m in members]}
 
     for k, members in buckets.items():
@@ -540,6 +606,7 @@ def main():
     for p in singles:
         groups.append({"gid": "g" + str(len(groups)), "name_he": p["name_he"],
                        "name_en": p["name_en"], "brand": p["brand"], "type": p["type"],
+                       "ben": _brand_en(p["brand"], p["name_en"]),
                        "variants": [variant(p)]})
 
     # keep a stable, brand-grouped order
@@ -854,6 +921,10 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .bdg.soldout{background:#6b7280}.bdg.limited{background:#3d3a35}.bdg.vegan{background:#3d3a35}
 .card .body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:5px;flex:1}
 .card .brand{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-l)}
+/* שם המותג באנגלית לצד העברי — כך הלקוח מזהה את המותג גם כשהשם
+   האנגלי של המוצר עצמו אינו פותח בו. השם האנגלי של המוצר לא נגע. */
+.brand-en{font-weight:500;opacity:.72;letter-spacing:.3px}
+.brand-en::before{content:'·';margin:0 5px;opacity:.6}
 .card .nm{font-size:13.5px;font-weight:500;line-height:1.32;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
 .card .nm-en{font-size:11px;color:var(--muted);font-weight:300;direction:ltr;text-align:end;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .card .meta{display:flex;gap:5px;flex-wrap:wrap}
@@ -2042,7 +2113,7 @@ function cardHtml(g){
         ${gsold?`<span class="soldflag">${t('sold_out')}</span>`:''}
       </div>
       <div class="body">
-        <div class="brand">${esc(g.brand)}</div>
+        <div class="brand">${esc(g.brand)}${g.ben?`<span class="brand-en">${esc(g.ben)}</span>`:''}</div>
         <div class="nm">${esc(g.name_he)}</div>
         ${g.name_en?`<div class="nm-en">${esc(g.name_en)}</div>`:''}
         ${g.variants.length>1?`<span class="nsh">${g.variants.length} ${t('shades')}${(STOCK_READY&&nInStock>0)?` · <b class="instk">${nInStock} ${t('in_stock_short')}</b>`:''}</span>`:(v.size?`<div class="meta"><span class="tag">${esc(v.size)}</span></div>`:'')}
@@ -2142,7 +2213,7 @@ function renderPd(g){
   document.getElementById('pdContent').innerHTML=`
     <div class="pd-gal">${gal}</div>
     <div class="pd">
-      <div class="b">${esc(g.brand)}</div>
+      <div class="b">${esc(g.brand)}${g.ben?`<span class="brand-en">${esc(g.ben)}</span>`:''}</div>
       <h2>${esc(g.name_he)}</h2>
       ${g.name_en?`<div class="en">${esc(g.name_en)}</div>`:''}
       <div class="row">${bdg}${v.size?`<span class="tag">${esc(v.size)}</span>`:''}<span class="tag">${esc(catLabel(g.type))}</span></div>
