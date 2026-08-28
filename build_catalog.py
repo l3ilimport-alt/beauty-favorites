@@ -657,6 +657,7 @@ def main():
         _cities = "[]"
         print("   ⚠️  catalog/cities.json חסר — בורר היישובים יעבוד כשדה חופשי")
     out = out.replace("/*__CITIES__*/", _cities)
+    out = out.replace("/*__BRANDS_EN__*/", json.dumps(BRAND_EN, ensure_ascii=False))
     with open(os.path.join(CAT, "index.html"), "w", encoding="utf-8") as f:
         f.write(out)
 
@@ -826,6 +827,9 @@ a{color:inherit}img{display:block}
 .bcard.on{border-color:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .bcard .blogo{height:48px;max-width:92%;object-fit:contain;mix-blend-mode:multiply}
 .bcard .bwm{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--accent-d);text-align:center;line-height:1.15}
+/* אריח בלי קובץ לוגו מקבל סמליל טיפוגרפי בגובה זהה, כדי שהרשת תישאר
+   מיושרת ולא תיראה כאילו חסר בה משהו */
+.bcard .bwm{min-height:48px;display:flex;align-items:center;justify-content:center}
 .bcard .bname{font-size:11px;font-weight:600;color:var(--muted);text-align:center;line-height:1.2}
 .bcard .bcount{font-size:10px;color:var(--accent-l);font-weight:700}
 .bcard.allb{background:linear-gradient(160deg,var(--accent-soft),#fff)}
@@ -1486,7 +1490,15 @@ const BRAND_ALIASES={
  "RHODE":"Rhode","רואד":"Rhode","רואד (RHODE)":"Rhode","רוד":"Rhode",
  "Ordinary":"The Ordinary","Saie":"SAIE","סאיי":"SAIE",
  "SEPHORA":"ספורה","Sephora Collection":"ספורה","אוארגלאס":"האורגלאס",
- "Charlotte Tilbury":"שרלוט טילבורי","Charlotte Tilbury Beauty":"שרלוט טילבורי"
+ "Charlotte Tilbury":"שרלוט טילבורי","Charlotte Tilbury Beauty":"שרלוט טילבורי",
+ // כפילויות איות שאותרו בנתונים החיים (27/08). בלעדיהן הסינון מפצל מותג
+ // אחד לשניים והלקוח שבוחר איות אחד לא רואה את המוצרים של השני.
+ "שרלוט טילברי":"שרלוט טילבורי",
+ "סול דה ז'ניירו":"סול דה ז'נרו","סול דה ז\u05f3נרו":"סול דה ז'נרו",
+ "מורף":"מורפי","אנסטסיה":"אנסטסיה בברלי הילס",
+ "קלר וואו":"קולור וואו","לוריאל פריז":"לוריאל","לוריאל פריס":"לוריאל",
+ "קיהל'ס":"קילס","האוס לאבס ביי ליידי גאגא":"האוס לאבס",
+ "ספורה קולקשן":"ספורה","קאיאלי":"קייאלי","KAYALI":"קייאלי","Kayali":"קייאלי"
 };
 function canonBrand(b){return BRAND_ALIASES[b]||b||'אחר';}
 GROUPS.forEach(g=>{g.brand=canonBrand(g.brand);});
@@ -1920,10 +1932,15 @@ const BRAND_LOGOS={};
 BRAND_LOGO_PAIRS.forEach(function(p){p[1].forEach(function(n){BRAND_LOGOS[normText(n)]=p[0];});});
 function brandLogo(b){return BRAND_LOGOS[normText(b)];}
 function brandCount(b){return GROUPS.reduce((s,g)=>s+((g.brand===b&&(!STOCK_READY||g.variants.some(v=>STOCK[nbc(v.barcode)]>0)))?1:0),0);}
+const BRANDS_EN=/*__BRANDS_EN__*/;
+function brandEn(b){return BRANDS_EN[b]||'';}
+// לכל מותג יש סמליל: קובץ לוגו כשקיים, ואחרת סמליל טיפוגרפי מהשם
+// האנגלי. 24 מתוך 76 המותגים עדיין בלי קובץ לוגו, והכיתוב האנגלי
+// שומר על מראה אחיד במקום אריח ריק. השם העברי מוצג תמיד מתחת.
 function brandVisual(b){
   const lg=brandLogo(b);
   if(lg)return `<img class="blogo" src="${aesc(lg)}" alt="${aesc(b)}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bwm',textContent:this.alt}))">`;
-  return `<span class="bwm">${esc(b)}</span>`;
+  return `<span class="bwm">${esc(brandEn(b)||b)}</span>`;
 }
 function updateBrandBtn(){
   const lbl=document.getElementById('brandPickLbl'),btn=document.getElementById('brandPickBtn');if(!lbl||!btn)return;
@@ -1939,8 +1956,8 @@ function renderBrandGrid(){
   if(q)brands=brands.filter(b=>normText(b).includes(q)||expandSearch(b).includes(q));
   const total=brandsInStock().length;
   const allCard=(!q)?`<div class="bcard allb ${curBrand==='__all__'?'on':''}" data-b="__all__"><span class="bwm">${t('all_brands')}</span><span class="bcount">${total}</span></div>`:'';
-  grid.innerHTML=allCard+brands.map(b=>{const hasLogo=!!brandLogo(b);
-    return `<div class="bcard ${curBrand===b?'on':''}" data-b="${aesc(b)}">${brandVisual(b)}${hasLogo?`<span class="bname">${esc(b)}</span>`:''}<span class="bcount">${brandCount(b)}</span></div>`;}).join('');
+  grid.innerHTML=allCard+brands.map(b=>{
+    return `<div class="bcard ${curBrand===b?'on':''}" data-b="${aesc(b)}">${brandVisual(b)}<span class="bname">${esc(b)}</span><span class="bcount">${brandCount(b)}</span></div>`;}).join('');
   if(!brands.length)grid.innerHTML='<div class="bempty">'+t('empty')+'</div>';
   grid.onclick=e=>{const c=e.target.closest('[data-b]');if(!c)return;pickBrand(c.dataset.b);};
 }
@@ -1957,6 +1974,17 @@ function sendWaChat(){const m=document.getElementById('waChatMsg');
 // סגירה בלחיצה בחוץ. 🔴 הכפתור בסרגל התחתון לא היה מוחרג כאן, ולכן
 // הלחיצה עליו פתחה את החלון ומיד סגרה אותו — הכפתור פשוט לא עבד.
 // כל כפתור שמפעיל את החלון חייב להיות מוחרג, אחרת הוא סוגר את עצמו.
+// שדה כמות: הערך הקיים נבחר בכניסה לשדה, כך שהקלדה דורסת אותו.
+// בלי זה הלקוח צריך למחוק ידנית את "1" לפני שהוא כותב "12", ולרוב
+// נוצר "112" או "121". תופס גם שדות שנוצרים אחרי טעינת הדף.
+document.addEventListener('focusin',function(e){
+  var el=e.target;
+  if(el&&el.tagName==='INPUT'&&(el.type==='number'||el.inputMode==='numeric')
+     &&/qin|qty|cardqin/i.test(el.className+' '+el.id)){
+    setTimeout(function(){try{el.select();}catch(_){}},0);
+  }
+});
+// בנייד לחיצה מציבה סמן ולא בוחרת — ההשהיה מאפשרת לדפדפן לסיים ואז בוחרים
 document.addEventListener('click',function(e){var c=document.getElementById('waChat');
   if(c&&c.classList.contains('open')&&!e.target.closest('#waChat')
      &&!e.target.closest('#waFloat')&&!e.target.closest('#navWa'))c.classList.remove('open');});
@@ -2031,13 +2059,23 @@ function bcMatch(g,d){
     return b===d||b.endsWith(d)||b.includes(d);
   });
 }
+// כתיב חסר מול כתיב מלא: "נרס" מול "נארס", "עפרון" מול "עיפרון".
+// אמות הקריאה א/ו/י/ה הן מה שמשתנה בין שני הכתיבים, ולכן הסרתן משני
+// הצדדים מאחדת אותם. משמש כשכבה שנייה בלבד — התאמה מדויקת מדורגת לפניה.
+function looseHe(s){return String(s||'').replace(/[אוהי]/g,'');}
 function matchQ(g,q){
   q=normText(q);
   if(!q)return true;
   const d=q.replace(/\s/g,'');
   if(/^\d{4,}$/.test(d))return bcMatch(g,d);
   const hay=g._hay||(g._hay=buildHay(g));
-  return hay.includes(q)||q.split(' ').every(term=>hay.includes(term));
+  if(hay.includes(q)||q.split(' ').every(term=>hay.includes(term))){g._mq=0;return true;}
+  // שכבה שנייה: כתיב גמיש. שאילתה קצרה מדי אחרי ההסרה תתאים לכל דבר.
+  const lq=looseHe(q).replace(/\s+/g,' ').trim();
+  if(lq.replace(/\s/g,'').length<3)return false;
+  const lhay=g._hayL||(g._hayL=looseHe(hay));
+  if(lhay.includes(lq)||lq.split(' ').every(term=>term.length<2||lhay.includes(term))){g._mq=1;return true;}
+  return false;
 }
 function visible(){
   const q=document.getElementById('q').value.trim().toLowerCase();
@@ -2063,7 +2101,9 @@ function visible(){
     return r.sort((a,b)=>bySold(a,b)||rank(a)-rank(b)||a.name_he.localeCompare(b.name_he,'he'));
   }
   // cards without an image always sink to the bottom (regardless of sort)
-  const byImg=(a,b)=> bySold(a,b) || (a._noimg?1:0)-(b._noimg?1:0);
+  // התאמה מדויקת תמיד לפני התאמת כתיב גמיש
+  const byMatch=(a,b)=>(a._mq||0)-(b._mq||0);
+  const byImg=(a,b)=> bySold(a,b) || byMatch(a,b) || (a._noimg?1:0)-(b._noimg?1:0);
   if(s==='price-asc')r.sort((a,b)=>byImg(a,b)||a.minp-b.minp);
   else if(s==='price-desc')r.sort((a,b)=>byImg(a,b)||b.minp-a.minp);
   else if(s==='name')r.sort((a,b)=>byImg(a,b)||a.name_he.localeCompare(b.name_he,'he'));
@@ -2122,7 +2162,7 @@ function cardHtml(g){
         <div class="foot">
           ${priceHtml(v)}
           ${isSold(v)?`<span class="soldpill">${t('sold_out')}</span>`
-            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button aria-label="הקטן כמות" onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><input class="cardqin" type="number" inputmode="numeric" min="1" value="${qty}" aria-label="כמות" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter')this.blur()" onchange="event.stopPropagation();cartSetQty('${v.id}',Math.max(1,parseInt(this.value)||1))"><button aria-label="הגדל כמות" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
+            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button aria-label="הקטן כמות" onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><input class="cardqin" type="number" inputmode="numeric" min="1" value="${qty}" aria-label="כמות" onfocus="this.select()" onclick="event.stopPropagation();this.select()" onkeydown="if(event.key==='Enter')this.blur()" onchange="event.stopPropagation();cartSetQty('${v.id}',Math.max(1,parseInt(this.value)||1))"><button aria-label="הגדל כמות" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
                  :`<button class="add" aria-label="הוסף לסל" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button>`}
         </div>
       </div>
@@ -2532,7 +2572,7 @@ function renderOrder(){
       <div class="nm">${esc(it.name)}<small>${esc(it.brand)}${it.size?' · '+esc(it.size):''}</small></div>
       <span class="go-ico" aria-hidden="true">↗</span>
     </button>
-    <div class="qy"><button data-i="${idx}" data-a="dec">−</button><input class="qin" type="number" inputmode="numeric" min="1" data-qi="${idx}" value="${it.qty}"><button data-i="${idx}" data-a="inc">+</button></div>
+    <div class="qy"><button data-i="${idx}" data-a="dec">−</button><input class="qin" type="number" inputmode="numeric" min="1" data-qi="${idx}" value="${it.qty}" onfocus="this.select()" onclick="this.select()"><button data-i="${idx}" data-a="inc">+</button></div>
     <div class="lt">₪${it.qty*it.price}</div>
     <button class="om-del" data-i="${idx}" data-a="del">✕</button></div>`}).join('');
   body.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const key=window._K[+b.dataset.i];if(!key)return;
