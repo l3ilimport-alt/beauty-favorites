@@ -1360,7 +1360,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <div class="coupon"><input id="coupon" type="text" placeholder="קוד קופון" oninput="couponEdited()" onkeydown="if(event.key==='Enter'){event.preventDefault();applyCoupon();}"><button id="couponBtn" onclick="applyCoupon()">החל</button></div>
     <div class="cmsg" id="cmsg"></div>
     <div class="totals" id="totals"></div>
-    <div class="form">
+    <form class="form" id="buyerForm" autocomplete="on" onsubmit="return false">
       <h4 id="buyerTitle">פרטי המזמין</h4>
 
       <div class="f-row" id="row-name">
@@ -1425,7 +1425,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
         <label for="notes" id="lb-notes">הערות לשליח</label>
         <textarea class="notes" id="notes"></textarea>
       </div>
-    </div>
+    </form>
     <label class="agree" id="agreeWrap">
       <input type="checkbox" id="agreeTerms" onchange="syncAgree()">
       <span id="agreeTxt">קראתי ואני מסכים/ה ל<a href="#" onclick="openPolicy('terms');return false">תקנון</a> ול<a href="#" onclick="openPolicy('privacy');return false">מדיניות הפרטיות</a></span>
@@ -2232,7 +2232,16 @@ function acKey(e){
   const ac=document.getElementById('ac');if(!ac.classList.contains('show'))return;
   if(e.key==='ArrowDown'){acIdx=Math.min(acIdx+1,acList.length-1);e.preventDefault();}
   else if(e.key==='ArrowUp'){acIdx=Math.max(acIdx-1,0);e.preventDefault();}
-  else if(e.key==='Enter'){ac.classList.remove('show');if(acIdx>=0)acPick(acIdx);else document.getElementById('q').blur();e.preventDefault();return;}
+  else if(e.key==='Enter'){
+    ac.classList.remove('show');
+    if(acIdx>=0){acPick(acIdx);}
+    else{
+      // 🔴 קודם רק סגר את הרשימה והוריד פוקוס — ומכיוון שרשת התוצאות
+      // נמצאת הרבה מתחת לקפל, ובדסקטופ הבאנר גבוה, נראה כאילו החיפוש
+      // לא עשה כלום. עכשיו מגלגלים אל התוצאות.
+      document.getElementById('q').blur(); goShop();
+    }
+    e.preventDefault();return;}
   else if(e.key==='Escape'){ac.classList.remove('show');return;}
   [...ac.children].forEach((c,k)=>c.classList.toggle('hl',k===acIdx));
 }
@@ -2308,6 +2317,7 @@ function cartChange(vid,delta){
     CART[vid].qty-=Math.max(1,Math.abs(delta));
     if(CART[vid].qty<=0)delete CART[vid];
   }
+  saveCart();
   renderCart();updateCard(m.g.gid);
   if(document.getElementById('orderModal').classList.contains('open'))renderOrder();
 }
@@ -2367,12 +2377,79 @@ function repriceCart(){Object.keys(CART).forEach(function(vid){var m=VMAP[vid];i
 
 function openOrder(){renderOrder();syncAgree();openOv('orderModal')}
 function closeOrder(){closeOv('orderModal')}
+
+// ===== שמירת הסל ופרטי המזמין בין ביקורים =====
+// לקוח שסגר את הדף בטעות, רענן, או חזר אחרי כמה שעות — מוצא את הסל ואת
+// הפרטים שמילא. הכול נשמר **רק במכשיר שלו** ולא נשלח לשום מקום עד שהוא
+// לוחץ לשלוח הזמנה.
+const SAVE_KEY='bf_cart_v1', BUYER_KEY='bf_buyer_v1', SAVE_DAYS=14;
+const BUYER_FIELDS=['buyer-name','buyer-phone','buyer-city','buyer-street','buyer-house',
+                    'buyer-apt','buyer-floor','buyer-entrance','buyer-email','buyer-id','notes'];
+
+function saveCart(){
+  try{
+    const items=Object.keys(CART).map(k=>({v:k,q:CART[k].qty}));
+    if(!items.length){localStorage.removeItem(SAVE_KEY);return;}
+    localStorage.setItem(SAVE_KEY,JSON.stringify({t:Date.now(),items}));
+  }catch(e){}
+}
+function saveBuyer(){
+  try{
+    const d={};
+    BUYER_FIELDS.forEach(function(id){const e=document.getElementById(id);if(e&&e.value.trim())d[id]=e.value.trim();});
+    if(CITY)d._city=CITY.c;
+    if(STREET_CODE!=null)d._street=STREET_CODE;
+    if(!Object.keys(d).length){localStorage.removeItem(BUYER_KEY);return;}
+    d.t=Date.now();
+    localStorage.setItem(BUYER_KEY,JSON.stringify(d));
+  }catch(e){}
+}
+function restoreCart(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY); if(!raw)return;
+    const d=JSON.parse(raw);
+    // סל ישן מדי כבר לא רלוונטי — מחירים ומלאי השתנו
+    if(!d||!d.items||(Date.now()-d.t)>SAVE_DAYS*864e5){localStorage.removeItem(SAVE_KEY);return;}
+    d.items.forEach(function(it){
+      const m=VMAP[it.v]; if(!m)return;                 // מוצר שכבר לא בקטלוג
+      CART[it.v]={vid:it.v,
+        name:m.g.name_he+(m.v.shade&&m.g.variants.length>1?' · '+m.v.shade:''),
+        brand:m.g.brand,size:m.v.size,price:eff(m.v),   // המחיר מהקטלוג ולא מהשמירה
+        qty:Math.max(1,parseInt(it.q,10)||1)};
+    });
+    renderCart();
+  }catch(e){}
+}
+function restoreBuyer(){
+  try{
+    const raw=localStorage.getItem(BUYER_KEY); if(!raw)return;
+    const d=JSON.parse(raw);
+    if(!d||(Date.now()-d.t)>SAVE_DAYS*864e5){localStorage.removeItem(BUYER_KEY);return;}
+    BUYER_FIELDS.forEach(function(id){const e=document.getElementById(id);if(e&&d[id])e.value=d[id];});
+    if(d._city){const c=CITIES.find(x=>x.c===d._city);
+      if(c){CITY=c;document.getElementById('buyer-city').value=cityLabel(c);if(c.s)loadStreets(c.c);}}
+    if(d._street!=null)STREET_CODE=d._street;
+    // פרטי בניין שמורים → לפתוח את המקטע כדי שהלקוח יראה אותם
+    if(d['buyer-apt']||d['buyer-floor']||d['buyer-entrance']){
+      const r=document.getElementById('bldgRow');
+      if(r&&r.style.display==='none')toggleBldg();
+    }
+    updateStreetMode();
+  }catch(e){}
+}
+document.addEventListener('input',function(e){
+  if(e.target&&BUYER_FIELDS.indexOf(e.target.id)>=0)saveBuyer();
+});
+document.addEventListener('change',function(e){
+  if(e.target&&BUYER_FIELDS.indexOf(e.target.id)>=0)saveBuyer();
+});
 // ניקוי הסל כולו. שואל לפני, כי אין ממנו דרך חזרה.
 function clearCart(){
   const n=Object.keys(CART).length;
   if(!n)return;
   if(!confirm(t('clear_cart_ask').replace('{n}',n)))return;
   Object.keys(CART).forEach(function(k){delete CART[k];});
+  saveCart();
   activeCoupon=null;
   const c=document.getElementById('coupon'); if(c)c.value='';
   const cm=document.getElementById('cmsg'); if(cm){cm.textContent='';cm.className='cmsg';}
@@ -2662,6 +2739,7 @@ function renderOrder(){
   renderTotals();
 }
 function cartSetQty(vid,n){const m=VMAP[vid];if(!m||!CART[vid])return;CART[vid].qty=Math.max(1,n);
+  saveCart();
   renderCart();updateCard(m.g.gid);if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 function renderTotals(){const {sub}=cartTotals();const d=discount(sub);const el=document.getElementById('totals');
   if(!Object.keys(CART).length){el.innerHTML='';return}
@@ -2930,6 +3008,8 @@ window.addEventListener('scroll',()=>{
 },{passive:true});
 
 applyStatic();
+// שחזור לפני הציור הראשון, כדי שסרגל הסל יופיע מלא מיד
+restoreCart(); restoreBuyer();
 render();
 if(SB){var _pb=document.getElementById('payBtn');if(_pb)_pb.style.display='';loadStock();}
 // חזרה מדף התשלום של פיי פלוס (?pay=success/failure&order=N) — הודעה וניקוי הכתובת
