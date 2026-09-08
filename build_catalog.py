@@ -184,22 +184,36 @@ BRAND_MAP = {
     "Giorgio Armani": "Armani", "Armani Beauty": "Armani",
     "Charlotte Tilbury Beauty": "שרלוט טילבורי", "Charlotte Tilbury": "שרלוט טילבורי",
     "Dior": "דיור", "DIOR": "דיור", "דיור (Dior)": "דיור",
-    "YSL": "ייב סן לורן", "איב סן לורן": "ייב סן לורן", "Yves Saint Laurent": "ייב סן לורן",
-    "M.A.C": "MAC", "Mac": "MAC",
+    # 🔴 תוקן 06/09/2026 — המפה הזו קנוניזה **אל** התעתיקים השגויים ואל כתב לטיני,
+    # ולכן דרסה בכל בנייה את מה שתוקן במסד. נמרוד לא מצא "רייר ביוטי" בסינון בדיוק בגלל זה.
+    # הכיוון הפוך עכשיו: כל וריאציה מתלכדת לשם העברי הנכון.
+    "YSL": "איב סן לורן", "ייב סן לורן": "איב סן לורן", "Yves Saint Laurent": "איב סן לורן",
+    "M.A.C": "מאק", "Mac": "מאק", "MAC": "מאק",
     "Makeup for ever": "מייק אפ פור אבר", "Make Up For Ever": "מייק אפ פור אבר",
     "מייקאפ פוראבר": "מייק אפ פור אבר",
-    "ONE/SIZE": "ONE/SIZE", "וואן סייז": "ONE/SIZE", "וואן סайז (ONE/SIZE)": "ONE/SIZE",
-    "Rhode": "Rhode", "RHODE": "Rhode", "רואד": "Rhode", "רואד (RHODE)": "Rhode", "רוד": "Rhode",
-    "Ordinary": "The Ordinary", "The Ordinary": "The Ordinary",
-    "Saie": "SAIE", "סאיי": "SAIE",
+    "ONE/SIZE": "וואן סייז", "וואן/סייז": "וואן סייז", "וואן סייז (ONE/SIZE)": "וואן סייז",
+    "Rhode": "רוד", "RHODE": "רוד", "רואד": "רוד", "רואד (RHODE)": "רוד",
+    "Ordinary": "דה אורדינרי", "The Ordinary": "דה אורדינרי",
+    "Saie": "סאיי", "SAIE": "סאיי",
     "SEPHORA": "ספורה", "Sephora Collection": "ספורה",
     "אוארגלאס": "האורגלאס",
-    # איחוד כפילויות איות (2026-07-12)
-    "אורבן דיקיי": "אורבן דקיי",
-    "סול דה ז'ניירו": "סול דה ז'נרו",
-    "דה אורדינרי": "The Ordinary",
-    "וואן/סייז": "ONE/SIZE", "וואן סייז (ONE/SIZE)": "ONE/SIZE",
-    "קיהל'ס": "קילס",
+    # איחוד כפילויות איות (2026-07-12, כיוון תוקן 2026-09-06)
+    "אורבן דקיי": "אורבן דיקיי",
+    "סול דה ז'ניירו": "סול דה ז'נרו", "סול דה ז׳נרו": "סול דה ז'נרו",
+    "Sol de Janeiro": "סול דה ז'נרו",
+    "קיהל'ס": "קילס", "Kiehl's": "קילס", "KIEHL'S": "קילס",
+    # תעתיקים שהיו חסרים לגמרי — מותגים שנשארו בלטינית ולכן לא נמצאו בסינון בעברית
+    "ריר ביוטי": "רייר ביוטי", "Rare Beauty": "רייר ביוטי",
+    "אנסטסיה בברלי הילס": "אנסטסיה בוורלי הילס", "Anastasia Beverly Hills": "אנסטסיה בוורלי הילס",
+    "NYX": "נייקס", "NYX Professional Makeup": "נייקס",
+    "K18": "קיי 18",
+    "Glow Recipe": "גלואו רסיפי",
+    "Gisou": "ג'יסו",
+    "Mugler": "מוגלר",
+    "Kryolan": "קריולן",
+    "Too Faced": "טו פייסד",
+    "Huda Beauty": "הודה ביוטי",
+    "Color Wow": "קולור וואו", "ColorWow": "קולור וואו",
 }
 def norm_brand(b):
     if not b: return "אחר"
@@ -555,6 +569,11 @@ def main():
         "Mugler": "MUGLER", "Kryolan": "Kryolan", "סברינה קרפנטר": "Sabrina Carpenter",
         "קליניק": "Clinique", "פיטר תומאס רות'": "Peter Thomas Roth", "ללין": "Laline",
         "וואן סייז": "ONE/SIZE", "ONE/SIZE": "ONE/SIZE",
+        "רייר ביוטי": "Rare Beauty", "נייקס": "NYX", "קיי 18": "K18",
+        "דה אורדינרי": "The Ordinary", "רוד": "rhode", "גלואו רסיפי": "Glow Recipe",
+        "ג'יסו": "Gisou", "מוגלר": "MUGLER", "קריולן": "Kryolan", "מאק": "MAC",
+        "אנסטסיה בוורלי הילס": "Anastasia Beverly Hills", "אורבן דיקיי": "Urban Decay",
+        "איב סן לורן": "Yves Saint Laurent",
         "קולור וואו": "Color Wow", "קלר וואו": "Color Wow",
         "Ordinary": "The Ordinary", "The Ordinary": "The Ordinary",
         "גוט2בי": "got2b", "קרסטס": "Kérastase",
@@ -903,6 +922,19 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 /* grid */
 .rescount{max-width:1160px;margin:8px auto 0;padding:0 20px;font-size:12.5px;color:var(--muted);font-weight:500;text-align:right}
+/* 🔵 סרגל הסינונים הפעילים — מופיע רק כשיש סינון, כדי שתמיד יהיה ברור מה מצומצם ואיך לחזור להכל */
+.actfil{display:none;max-width:1160px;margin:10px auto 0;padding:10px 14px;gap:8px;align-items:center;flex-wrap:wrap;
+  background:var(--accent-soft);border:1px solid var(--accent-l);border-radius:14px}
+.actfil.on{display:flex}
+.actfil .afl{font-size:12.5px;font-weight:700;color:var(--accent-d);margin-inline-end:2px}
+.aftag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text);
+  background:var(--surface);border:1px solid var(--accent-l);border-radius:20px;padding:5px 10px}
+.aftag button{all:unset;cursor:pointer;font-size:14px;line-height:1;color:var(--muted);padding:0 1px}
+.aftag button:hover{color:var(--accent-d)}
+.afclear{margin-inline-start:auto;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:700;
+  color:#fff;background:var(--accent);border:none;border-radius:20px;padding:8px 18px;transition:.15s;white-space:nowrap}
+.afclear:hover{filter:brightness(.93)}
+@media(max-width:600px){.afclear{width:100%;margin-inline-start:0;text-align:center}}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;max-width:1160px;margin:8px auto 40px;padding:0 18px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:.22s;position:relative}
 .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h);border-color:var(--border2)}
@@ -1293,6 +1325,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   </select>
 </div>
 
+<div class="actfil" id="actFil"></div>
 <div class="rescount" id="rescount"></div>
 <main class="grid" id="grid"></main>
 
@@ -1478,19 +1511,26 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 const GROUPS = /*__GROUPS__*/;
 const BRAND_ALIASES={
  "Dior":"דיור","DIOR":"דיור","דיור (Dior)":"דיור",
- "YSL":"ייב סן לורן","איב סן לורן":"ייב סן לורן","Yves Saint Laurent":"ייב סן לורן",
- "M.A.C":"MAC","Mac":"MAC",
+ // 🔴 תוקן 06/09/2026 — המפה הזו רצה **בדפדפן** וממפה את המותג אחרי הבנייה.
+ // היא קנוניזה אל תעתיקים שגויים ואל כתב לטיני, ולכן הפכה גם את מה שתוקן במסד
+ // וגם את מה שתוקן ב-BRAND_MAP של הבנייה. הכיוון הפוך עכשיו.
+ "YSL":"איב סן לורן","ייב סן לורן":"איב סן לורן","Yves Saint Laurent":"איב סן לורן",
+ "M.A.C":"מאק","Mac":"מאק","MAC":"מאק",
  "Makeup for ever":"מייק אפ פור אבר","Make Up For Ever":"מייק אפ פור אבר","מייקאפ פוראבר":"מייק אפ פור אבר",
- "וואן סייז":"ONE/SIZE","וואן סайז (ONE/SIZE)":"ONE/SIZE",
- "RHODE":"Rhode","רואד":"Rhode","רואד (RHODE)":"Rhode","רוד":"Rhode",
- "Ordinary":"The Ordinary","Saie":"SAIE","סאיי":"SAIE",
+ "ONE/SIZE":"וואן סייז","וואן/סייז":"וואן סייז","וואן סייז (ONE/SIZE)":"וואן סייז",
+ "RHODE":"רוד","Rhode":"רוד","רואד":"רוד","רואד (RHODE)":"רוד",
+ "Ordinary":"דה אורדינרי","The Ordinary":"דה אורדינרי","Saie":"סאיי","SAIE":"סאיי",
+ "ריר ביוטי":"רייר ביוטי","Rare Beauty":"רייר ביוטי",
+ "NYX":"נייקס","NYX Professional Makeup":"נייקס","K18":"קיי 18",
+ "Glow Recipe":"גלואו רסיפי","Gisou":"ג'יסו","Mugler":"מוגלר","Kryolan":"קריולן",
+ "אורבן דקיי":"אורבן דיקיי","Urban Decay":"אורבן דיקיי",
  "SEPHORA":"ספורה","Sephora Collection":"ספורה","אוארגלאס":"האורגלאס",
  "Charlotte Tilbury":"שרלוט טילבורי","Charlotte Tilbury Beauty":"שרלוט טילבורי",
  // כפילויות איות שאותרו בנתונים החיים (27/08). בלעדיהן הסינון מפצל מותג
  // אחד לשניים והלקוח שבוחר איות אחד לא רואה את המוצרים של השני.
  "שרלוט טילברי":"שרלוט טילבורי",
  "סול דה ז'ניירו":"סול דה ז'נרו","סול דה ז\u05f3נרו":"סול דה ז'נרו",
- "מורף":"מורפי","אנסטסיה":"אנסטסיה בברלי הילס",
+ "מורף":"מורפי","אנסטסיה":"אנסטסיה בוורלי הילס","אנסטסיה בברלי הילס":"אנסטסיה בוורלי הילס","אנסטסיה בברלי הילז":"אנסטסיה בוורלי הילס",
  "קלר וואו":"קולור וואו","לוריאל פריז":"לוריאל","לוריאל פריס":"לוריאל",
  "קיהל'ס":"קילס","האוס לאבס ביי ליידי גאגא":"האוס לאבס",
  "ספורה קולקשן":"ספורה","קאיאלי":"קייאלי","KAYALI":"קייאלי","Kayali":"קייאלי"
@@ -1501,7 +1541,7 @@ GROUPS.forEach((g,i)=>{g._i=i; g.minp=Math.min(...g.variants.map(eff)); g._noimg
 
 /* ===== i18n: UI language toggle (HE / AR). The WhatsApp order text stays Hebrew always. ===== */
 const I18N={
- he:{search_ph:'חיפוש מוצר, מותג או ברקוד…',fav_only:'המועדפים שלי',in_stock:'נמצא במלאי',in_stock_short:'במלאי',reset_all:'נקה הכל',cons_rec:'מומלץ לצרכן:',
+ he:{search_ph:'חיפוש מוצר, מותג או ברקוד…',fav_only:'המועדפים שלי',in_stock:'נמצא במלאי',in_stock_short:'במלאי',reset_all:'נקה הכל',af_lbl:'מסונן לפי:',af_clear:'✕ נקה הכל והצג הכל',af_cat:'קטגוריה',af_brand:'מותג',af_price:'מחיר',af_fav:'מועדפים',af_stock:'במלאי בלבד',af_q:'חיפוש',cons_rec:'מומלץ לצרכן:',
   sort_default:'מיון: מומלץ',sort_pa:'מחיר: מהנמוך לגבוה',sort_pd:'מחיר: מהגבוה לנמוך',sort_name:'שם: א׳–ת׳',
   all:'הכל',all_brands:'כל המותגים',all_prices:'כל המחירים',
   p_u50:'עד ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
@@ -1559,7 +1599,7 @@ const I18N={
   wa_help_title:'צריכים עזרה? כתבו לנו',wa_help_greet:'כתבו את ההודעה שלכם ונחזור אליכם מיד בוואטסאפ.',
   wa_help_ph:'ההודעה שלי…',wa_send:'שלח בוואטסאפ',wa_default:'שלום! יש לי שאלה על מוצר בקטלוג',
   brand_title:'בחירת מותג',brand_search:'חיפוש מותג…'},
- ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',in_stock_short:'متوفر',reset_all:'مسح الكل',cons_rec:'موصى للمستهلك:',
+ ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',in_stock_short:'متوفر',reset_all:'مسح الكل',af_lbl:'مُصفّى حسب:',af_clear:'✕ مسح الكل وعرض الجميع',af_cat:'الفئة',af_brand:'الماركة',af_price:'السعر',af_fav:'المفضلة',af_stock:'المتوفر فقط',af_q:'بحث',cons_rec:'موصى للمستهلك:',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
   p_u50:'حتى ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
@@ -2026,6 +2066,29 @@ const SEARCH_ALIASES=[
  ['שרלוט','charlotte tilbury'],['charlotte','שרלוט טילבורי'],['tilbury','שרלוט טילבורי'],
  ['רוד','rhode רואד'],['רואד','rhode רוד'],['rhode','רוד רואד'],
  ['אלף','elf e.l.f אי.אל.אף'],['elf','אי.אל.אף אלף'],['e.l.f','אי.אל.אף אלף'],
+ // 🔵 נוסף 06/09/2026 — לקוח שמקליד את שם המותג באנגלית, או באיות הישן,
+ // לא מצא כלום. כל שורה מרחיבה מונח אחד לכל הווריאציות שלו.
+ ['rare','רייר ביוטי ריר ביוטי'],['רייר','rare beauty'],['ריר','רייר ביוטי rare'],
+ ['nyx','נייקס'],['נייקס','nyx'],
+ ['one size','וואן סייז'],['onesize','וואן סייז'],['וואן סייז','one size onesize'],
+ ['rhode','רוד רואד'],['ordinary','דה אורדינרי'],['דה אורדינרי','the ordinary'],
+ ['anastasia','אנסטסיה בוורלי הילס'],['אנסטסיה','anastasia beverly hills'],
+ ['urban decay','אורבן דיקיי'],['אורבן','urban decay'],
+ ['k18','קיי 18'],['קיי 18','k18'],
+ ['glow recipe','גלואו רסיפי'],['גלואו','glow recipe'],
+ ['gisou','ג\'יסו'],['mugler','מוגלר'],['kryolan','קריולן'],
+ ['kiehl','קילס'],['קילס','kiehls kiehl'],
+ ['sol de janeiro','סול דה ז\'נרו'],['סול דה','sol de janeiro'],
+ ['huda','הודה ביוטי'],['הודה','huda beauty'],
+ ['fenty','פנטי ביוטי'],['פנטי','fenty beauty'],
+ ['nars','נארס'],['נארס','nars'],
+ ['maybelline','מייבלין'],['מייבלין','maybelline'],
+ ['too faced','טו פייסד'],['טו פייסד','too faced'],
+ ['morphe','מורפי מורף'],['מורפי','morphe'],
+ ['laura mercier','לורה מרסייה'],['לורה','laura mercier'],
+ ['benefit','בנפיט'],['בנפיט','benefit'],
+ ['victoria','ויקטוריה סיקרט'],['ויקטוריה','victoria secret'],
+ ['mac','מאק'],['מאק','mac'],
  // מילים נרדפות לסוגי מוצר — כך "ליפסטיק 102" ימצא מוצר שרשום "שפתון", וכן להפך ובאנגלית
  ['שפתון','ליפסטיק lipstick'],['ליפסטיק','שפתון lipstick'],['lipstick','שפתון ליפסטיק'],
  ['סומק','בלאש blush'],['בלאש','סומק blush'],['blush','סומק בלאש'],
@@ -2185,12 +2248,52 @@ function cardHtml(g){
       </div>
     </div>`;
 }
+// 🔵 סרגל הסינונים הפעילים.
+// נמרוד: "קשה לחזור למצב של כל המוצרים" — הכפתור הישן היה צ'יפ אפור בין שאר
+// הצ'יפים, ונראה זהה בין אם מסונן ובין אם לא. כאן הסרגל **מופיע רק כשמשהו מסונן**,
+// אומר בדיוק מה מצומצם, ומאפשר להסיר סינון בודד או לנקות הכל בכפתור בולט.
+function activeFilterList(){
+  const out=[];
+  const q=(document.getElementById('q')||{}).value||'';
+  if(curCat==='__hot__')out.push({k:'cat',lbl:t('af_cat'),val:t('cat_hot')});
+  else if(curCat!=='__all__')out.push({k:'cat',lbl:t('af_cat'),val:catLabel(curCat)});
+  if(curBrand!=='__all__')out.push({k:'brand',lbl:t('af_brand'),val:curBrand});
+  if(curPrice>=0&&typeof PRICES!=='undefined'&&PRICES[curPrice])out.push({k:'price',lbl:t('af_price'),val:PRICES[curPrice].l});
+  if(favOnly)out.push({k:'fav',lbl:'',val:t('af_fav')});
+  if(inStockOnly)out.push({k:'stock',lbl:'',val:t('af_stock')});
+  if(q.trim())out.push({k:'q',lbl:t('af_q'),val:q.trim()});
+  return out;
+}
+function clearOneFilter(k){
+  if(k==='cat')curCat='__all__';
+  else if(k==='brand')curBrand='__all__';
+  else if(k==='price')curPrice=-1;
+  else if(k==='fav'){favOnly=false;const fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');}
+  else if(k==='stock'){inStockOnly=false;const sc=document.getElementById('stockchip');if(sc)sc.classList.remove('active');}
+  else if(k==='q'){const q=document.getElementById('q');if(q)q.value='';const ac=document.getElementById('ac');if(ac)ac.classList.remove('show');}
+  buildNav();render();
+}
+function renderActiveFilters(){
+  const bar=document.getElementById('actFil'); if(!bar)return;
+  const list=activeFilterList();
+  const rc=document.getElementById('resetchip'); if(rc)rc.style.display=list.length?'':'none';
+  if(!list.length){bar.className='actfil';bar.innerHTML='';return;}
+  bar.className='actfil on';
+  bar.innerHTML='<span class="afl">'+esc(t('af_lbl'))+'</span>'+
+    list.map(f=>'<span class="aftag">'+(f.lbl?esc(f.lbl)+': ':'')+esc(String(f.val))+
+      '<button type="button" aria-label="'+esc(t('reset_all'))+'" data-k="'+esc(f.k)+'">✕</button></span>').join('')+
+    '<button class="afclear" type="button" onclick="resetFilters()">'+esc(t('af_clear'))+'</button>';
+  bar.querySelectorAll('.aftag button').forEach(function(b){
+    b.onclick=function(){clearOneFilter(b.dataset.k);};
+  });
+}
 // ---- paginated render (incremental, for 1400+ cards) ----
 let VIS=[], shown=0; const PAGE=60;
 function render(){
   VIS=visible(); shown=0;
   const grid=document.getElementById('grid');
   const cnt=document.getElementById('rescount'); if(cnt)cnt.textContent=VIS.length.toLocaleString()+' '+t('items');
+  renderActiveFilters();
   grid.innerHTML='';
   if(!VIS.length){grid.innerHTML='<div class="empty">'+t('empty')+'</div>';return}
   loadMore();
