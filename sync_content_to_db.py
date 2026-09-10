@@ -7,6 +7,9 @@
   description (חדש מנצח) · brand · category · main_category · name_he (רק לכרטיס דק) · image_url (רק אם ריק)
 לעולם לא נוגע ב: מחירים, מלאי, sku, name_en, active.
 
+🔴 תוקן 09/09/2026 — הקטגוריה הראשית נדרסה בכל סנכרון (ראה fetch_existing_main).
+   מעכשיו: ערך קיים במסד נשמר, וגזירה מהשם קורית רק לכרטיס שאין לו קטגוריה.
+
 שימוש:
   python3 catalog/sync_content_to_db.py                  # כל המוצרים שבידע
   python3 catalog/sync_content_to_db.py 0123... 0456...  # ברקודים מסוימים בלבד
@@ -40,7 +43,33 @@ def digits(v):
 sys.path.insert(0, CATALOG)
 from build_catalog import ptype, norm_brand, brand_from_name  # noqa: E402
 
-def collect_rows(only_barcodes=None, force_names=None):
+def fetch_existing_main(env):
+    """הקטגוריה הראשית הקיימת במסד, לפי ברקוד מנורמל.
+
+    🔴 נוסף 09/09/2026 אחרי באג: השורה הייתה `"main_category": ptype(p)` — כלומר
+    **הקטגוריה חושבה מחדש מהשם בכל סנכרון ודרסה את מה שנקבע בבק אופיס.**
+    בפועל אף קובץ ידע אינו נושא `category_main` (הוא נקבע רק בזיכרון בזמן בנייה),
+    ולכן `ptype()` תמיד ניצח. מדידה מ-09/09: סנכרון מלא היה משנה קטגוריה
+    ל-35 מוצרים, 19 מהם פעילים ובמלאי — וברובם **ערך המסד היה הנכון**
+    (מאק סטרוב קרים טיפוח→איפור · מברשת מורפי איפור→אביזרים · ערכות מורד).
+
+    ה-RPC כבר בנוי נכון: `coalesce(nullif(v_row->>'main_category',''), p.main_category)`
+    — **מחרוזת ריקה אינה דורסת.** לכן די בשליחת ריק כדי לשמר ערך קיים.
+    """
+    out, offset = {}, 0
+    while True:
+        url = (env["URL"] + "/rest/v1/catalog_content"
+               "?select=barcode,main_category&limit=1000&offset=" + str(offset))
+        req = urllib.request.Request(url, headers={
+            "apikey": env["ANON"], "Authorization": "Bearer " + env["ANON"]})
+        page = json.load(urllib.request.urlopen(req, timeout=60))
+        for r in page:
+            out[digits(r.get("barcode"))] = (r.get("main_category") or "").strip()
+        if len(page) < 1000:
+            return out
+        offset += 1000
+
+def collect_rows(only_barcodes=None, force_names=None, existing_main=None):
     rows, seen = [], set()
     for pj in glob.glob(os.path.join(KNOW, "*", "product.json")):
         try:
@@ -61,7 +90,14 @@ def collect_rows(only_barcodes=None, force_names=None):
             "description": (p.get("description") or "").strip(),
             "brand": ("" if brand == "אחר" else brand).strip(),
             "category": (p.get("category_refined") or "").strip(),
-            "main_category": ptype(p),
+            # קטגוריה ראשית — שלוש מדרגות, מהמפורש לנגזר:
+            #   1. ערך מפורש בקובץ הידע — מנצח תמיד
+            #   2. יש כבר ערך במסד — שולחים ריק, וה-RPC משאיר אותו כמות שהוא
+            #   3. אין כלום — רק אז נגזר מהשם, כדי למלא כרטיס חדש
+            "main_category": (
+                (p.get("category_main") or "").strip()
+                or ("" if (existing_main or {}).get(bc) else ptype(p))
+            ),
             "name_he": (p.get("name_he") or "").strip(),
         }
         if force_names and bc in force_names:
@@ -95,7 +131,12 @@ def main():
     if force and not only:
         only = set(force)
     env = load_env()
-    rows = collect_rows(only, force)
+    existing_main = fetch_existing_main(env)
+    print(f"נקראו {len(existing_main)} קטגוריות קיימות מהמסד — הן לא יידרסו.")
+    rows = collect_rows(only, force, existing_main)
+    kept = sum(1 for r in rows if not r["main_category"])
+    if kept:
+        print(f"  🛡️  {kept} מוצרים ישמרו את הקטגוריה הקיימת שלהם.")
     if not rows:
         print("אין שורות לדחיפה."); return
     print(f"דוחף תוכן ל-{len(rows)} מוצרים…")

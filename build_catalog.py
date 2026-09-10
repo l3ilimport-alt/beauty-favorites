@@ -196,7 +196,10 @@ BRAND_MAP = {
     "Ordinary": "דה אורדינרי", "The Ordinary": "דה אורדינרי",
     "Saie": "סאיי", "SAIE": "סאיי",
     "SEPHORA": "ספורה", "Sephora Collection": "ספורה",
-    "אוארגלאס": "האורגלאס",
+    # תתי-מותגים שפיצלו את הסינון לשלוש כרטיסיות נפרדות (נמרוד, 09/09)
+    "ספורה קולקשן": "ספורה", "ספורה פייבוריטס": "ספורה",
+    "Sephora Favorites": "ספורה", "SEPHORA COLLECTION": "ספורה",
+    "אוארגלאס": "האורגלאס", "אוורגלאס": "האורגלאס", "Hourglass": "האורגלאס",
     # איחוד כפילויות איות (2026-07-12, כיוון תוקן 2026-09-06)
     "אורבן דקיי": "אורבן דיקיי",
     "סול דה ז'ניירו": "סול דה ז'נרו", "סול דה ז׳נרו": "סול דה ז'נרו",
@@ -374,11 +377,36 @@ def group_key(p, brand):
     base = p.get("name_he") or p.get("excel_description") or p.get("name_en") or ""
     sh = p.get("shade") or ""
     if sh:
-        base = re.sub(re.escape(sh), "", base, flags=re.I)
+        # 🔴 תוקן 09/09/2026 — ב-1,080 קבצי ידע שדה `shade` מכיל את **שם המוצר המלא**
+        # ולא את הגוון בלבד. ההסרה העיוורת מחקה את כל השם, הבסיס יצא ריק,
+        # ו-730 מוצרים לא קובצו כלל — כל אחד קיבל כרטיס נפרד.
+        # לכן: מסירים רק אם נשאר בסיס משמעותי.
+        trial = re.sub(re.escape(sh), "", base, flags=re.I).strip()
+        if len(trial) >= 6:
+            base = trial
     base = re.sub(r"\([^)]*\)", " ", base)             # strip parenthetical shade e.g. "(גוון X)"
+    # 🔴 תוקן 09/09/2026 — אותו מוצר הופיע בכרטיסים נפרדים במקום ככרטיס אחד עם גוונים.
+    # שתי סיבות, ושתיהן מטופלות כאן:
+    #   1. חלק מהשמות נושאים "בגוון X" בגוף השם. שדה `shade` מכיל תיאור מלא
+    #      ("321 Ophélie (ורוד-פוקסיה…)") שאינו מופיע מילולית בשם, ולכן ההסרה למעלה
+    #      לא תפסה אותו. חותכים מ"בגוון" והלאה.
+    #   2. סדר המילים משתנה בין "Petal Soft עיפרון שפתון" ל"עיפרון שפתון Petal Soft",
+    #      ולכן מיון המילים הופך את הבסיס לחסין לסדר.
+    # נמדד: 39 קבוצות שנשברו לשווא התאחדו, ואפס איחודי שווא (נבדקו 21 חשודים —
+    # כולם אותו מוצר בגוונים שונים).
+    cut = re.sub(r"בגוון\s+.*$", " ", base)
+    had_shade_phrase = (cut != base)      # "בגוון X" נמצא והוסר — הגוון כבר מחוץ לבסיס
+    base = re.sub(r"גוון\s*[^\s,–\-]*", " ", cut)
     base = re.sub(r"#?\d+\b", " ", base)              # drop numeric shade codes
-    base = _strip_trailing_shade(re.sub(r"\s+", " ", base).strip())
+    base = re.sub(r"\s+", " ", base).strip()
+    # ⚠️ `_strip_trailing_shade` חותכת את המילה האחרונה בהנחה שהיא גוון. אחרי שכבר
+    # חתכנו "בגוון X" זו הנחה שגויה — היא אכלה את ה-"Soft" מתוך "Petal Soft"
+    # והשאירה את המוצר מפוצל לשני כרטיסים. מריצים אותה רק כשלא חתכנו קודם.
+    if not had_shade_phrase:
+        base = _strip_trailing_shade(base)
     base = re.sub(r"[\s\-–/]+$", "", base).strip().lower()
+    # פיסוק דבוק למילה ("Dimension," מול "Dimension") שבר קיבוץ — מנקים לכל אסימון
+    base = " ".join(sorted(w.strip(",.;:·|") for w in base.replace("–", " ").split() if w.strip(",.;:·|")))
     return (brand, ptype(p), base) if len(base) >= 6 else None
 
 def _lcp(strings):
@@ -1524,7 +1552,8 @@ const BRAND_ALIASES={
  "NYX":"נייקס","NYX Professional Makeup":"נייקס","K18":"קיי 18",
  "Glow Recipe":"גלואו רסיפי","Gisou":"ג'יסו","Mugler":"מוגלר","Kryolan":"קריולן",
  "אורבן דקיי":"אורבן דיקיי","Urban Decay":"אורבן דיקיי",
- "SEPHORA":"ספורה","Sephora Collection":"ספורה","אוארגלאס":"האורגלאס",
+ "SEPHORA":"ספורה","Sephora Collection":"ספורה","אוארגלאס":"האורגלאס","אוורגלאס":"האורגלאס","Hourglass":"האורגלאס",
+ "ספורה קולקשן":"ספורה","ספורה פייבוריטס":"ספורה","Sephora Favorites":"ספורה",
  "Charlotte Tilbury":"שרלוט טילבורי","Charlotte Tilbury Beauty":"שרלוט טילבורי",
  // כפילויות איות שאותרו בנתונים החיים (27/08). בלעדיהן הסינון מפצל מותג
  // אחד לשניים והלקוח שבוחר איות אחד לא רואה את המוצרים של השני.
