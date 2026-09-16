@@ -444,10 +444,321 @@ def he_base(members):
     best = re.sub(r"\s+", " ", best).strip(" –-,()|·")
     return best
 
+# ===========================================================================
+#  🛒 דף הזמנה מהירה — order.html (16/09/2026)
+# ---------------------------------------------------------------------------
+#  נמרוד: "קטלוג שאפשר לסמן כמויות זריז, לשתף אינטרנטי, ואז לוואטסאפ שלנו
+#  לשלוח את הכמויות. תמונה חשוב, ואולי כמה מילים כמו באתר."
+#
+#  🔑 העיקרון: **אותו קוד בדיוק כמו האתר.** הסל, הקוד הסיטונאי, המלאי החי,
+#  יצירת ההזמנה וטקסט הוואטסאפ נחתכים מתוך TEMPLATE **בזמן הבנייה** (לפי
+#  עוגנים ייחודיים — _slice) ומודבקים לדף. TEMPLATE עצמו לא זז, ולכן
+#  index.html נשאר זהה ביט-לביט, ואין שתי גרסאות של אותה לוגיקה שיסטו זו
+#  מזו. עוגן שנעלם — הבנייה נופלת בקול, לא בשקט.
+#
+#  הדף מקבל רשימת מוצרים מצומצמת **באותו מבנה** של האתר (gid/variants/id/
+#  barcode/imgs…), ולכן VMAP, eff, restoreCart ו-createOrder רצים כמו שהם.
+#  אותם מפתחות ב-localStorage (bf_cart_v1, wholesale_code) — אותו לקוח,
+#  אותו סל, אותו קוד סיטונאי בשני הדפים.
+#
+#  קישור ממוקד: order.html#b=מותג|מותג&c=קטגוריה&t=כותרת — הדף מציג רק אותם.
+#  הקוד הסיטונאי לעולם לא בקישור; הלקוח מקליד אותו בדף.
+# ===========================================================================
+
+def _slice(src, start, end):
+    """קטע מתוך התבנית — מתחילת `start` (חייב להופיע פעם אחת) ועד `end` (לא כולל)."""
+    n = src.count(start)
+    if n != 1:
+        raise RuntimeError(f"עוגן לא יחיד ({n}): {start[:50]!r}")
+    i = src.index(start)
+    j = src.find(end, i + len(start))
+    if j < 0:
+        raise RuntimeError(f"עוגן סיום לא נמצא: {end[:50]!r}")
+    return src[i:j]
+
+
+def _lead(v, limit=120):
+    """השורה המקדימה: summary מכרטיס הידע; בהיעדרו — המשפט הראשון של התיאור."""
+    s = str(v.get("summary") or "").strip()
+    if not s:
+        d = str(v.get("desc") or "").strip()
+        m = re.match(r"(.+?[.!?])(\s|$)", d)
+        s = (m.group(1) if m else d).strip()
+    if len(s) > limit:
+        s = s[:limit - 1].rstrip() + "…"
+    return s
+
+
+ORDER_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Beauty Favorites — הזמנה מהירה</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#171717">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>window.SUPA=__SUPABASE_CONFIG__;</script>
+<link rel="icon" type="image/png" href="favicon-bf.png">
+<link rel="apple-touch-icon" href="favicon-bf.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Gveret+Levin+AlefAlefAlef&display=swap" rel="stylesheet">
+<style>
+/*__SITE_CSS__*/
+/* ===== דף ההזמנה המהירה ===== */
+body{padding-bottom:90px}
+.qo-top{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:8px 12px 10px}
+.qo-head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px;max-width:760px;margin-inline:auto}
+.qo-title{font-family:var(--script);font-size:22px;line-height:1.1;min-width:0}
+.qo-ws{font-family:var(--font);font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:30px;border:1px solid var(--border2);background:#fff;cursor:pointer;white-space:nowrap}
+.qo-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;max-width:760px;margin:0 auto}
+.qo-tools input[type=search]{flex:1 1 150px;font-family:var(--font);font-size:16px;padding:9px 12px;border:1px solid var(--border2);border-radius:12px;min-width:0}
+.qo-tools select{font-family:var(--font);font-size:13px;padding:8px 10px;border:1px solid var(--border2);border-radius:12px;background:#fff;max-width:44vw}
+.qo-count{font-size:12px;color:var(--muted);white-space:nowrap}
+.qo-row{display:flex;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border);max-width:760px;margin:0 auto}
+.qo-img{width:56px;height:56px;flex:0 0 56px;object-fit:contain;border:1px solid var(--border);border-radius:10px;background:#fff}
+.qo-noimg{display:flex;align-items:center;justify-content:center;color:var(--accent-l);opacity:.5;font-size:22px}
+.qo-main{flex:1;min-width:0}
+.qo-nm{font-size:14px;font-weight:600;line-height:1.3}
+.qo-meta{font-size:12px;color:var(--muted);margin-top:1px}
+.qo-lead{font-size:12.5px;color:#4b4b4b;line-height:1.35;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.qo-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}
+.qo-add{font-family:var(--font);font-size:13px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--accent-soft);color:var(--accent-d);cursor:pointer;white-space:nowrap}
+.qo-empty{padding:40px 16px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="qo-top">
+  <div class="qo-head">
+    <div class="qo-title" id="qoTitle">Beauty Favorites — הזמנה מהירה</div>
+    <button class="qo-ws" id="pbWholesale" onclick="openWholesale()">💼 מועדון עסקים</button>
+  </div>
+  <div class="qo-tools">
+    <input id="q" type="search" autocomplete="off" placeholder="חיפוש מוצר / מותג / ברקוד…" oninput="render()">
+    <select id="brandSel" onchange="render()"></select>
+    <select id="catSel" onchange="render()"></select>
+    <span class="qo-count" id="rescount"></span>
+  </div>
+</header>
+
+<div class="wsbanner" id="wsBanner" style="display:none">
+  <span id="wsBannerTxt">מצב סיטונאי פעיל — מוצגים מחירי סיטונאי (לפני מע"מ) ומחיר צרכן מומלץ</span>
+  <button onclick="wholesaleLogout()">יציאה</button>
+</div>
+
+<main id="list"></main>
+
+<div class="cartbar" id="cartbar"><span class="sum" id="cartsum"></span><button onclick="openOrder()">📲 שלח הזמנה בוואטסאפ</button></div>
+
+<div class="ov" id="orderModal"><div class="sheet">
+  <button class="x" onclick="closeOrder()">✕</button>
+  <div class="om">
+    <h3>ההזמנה שלי</h3>
+    <div id="omBody"></div>
+    <div class="totals" id="totals"></div>
+    <form class="form" autocomplete="on" onsubmit="return false">
+      <h4>פרטי המזמין</h4>
+      <div class="f-row" id="row-name">
+        <label for="buyer-name">שם מלא</label>
+        <input class="fld" id="buyer-name" name="name" type="text" autocomplete="name" oninput="clearErr('row-name');saveBuyer()">
+        <span class="f-err" id="er-name"></span>
+      </div>
+      <div class="f-row" id="row-phone">
+        <label for="buyer-phone">טלפון נייד</label>
+        <input class="fld" id="buyer-phone" name="tel" type="tel" inputmode="tel" autocomplete="tel-national" oninput="clearErr('row-phone');saveBuyer()">
+        <span class="f-err" id="er-phone"></span>
+      </div>
+      <div class="f-row">
+        <label for="buyer-id">שם העסק / ח.פ <span class="opt">(לא חובה)</span></label>
+        <input class="fld" id="buyer-id" type="text" oninput="saveBuyer()">
+      </div>
+      <div class="f-row">
+        <label for="notes">הערות <span class="opt">(לא חובה)</span></label>
+        <textarea class="notes" id="notes" oninput="saveBuyer()"></textarea>
+      </div>
+      <button type="button" class="send" id="sendBtn" onclick="submitWhatsApp()">📲 שלח הזמנה בוואטסאפ</button>
+    </form>
+  </div>
+</div></div>
+
+/*__WS_MODALS__*/
+<script>
+const GROUPS = /*__GROUPS__*/;
+const LINK = readLinkParams();
+
+// המילים שהקוד המשותף מבקש דרך t() — אותם ערכים כמו באתר (עברית בלבד כאן)
+const I18N_HE={cart_items:'פריטים',cons_rec:'מומלץ לצרכן:',ws_unavailable:'לא זמין כרגע',ws_bad:'קוד שגוי',
+  ws_exit:'יציאה ממצב סיטונאי',club_link:'💼 מועדון עסקים',subtotal:'סכום ביניים',discount:'הנחה',vat:'מע"מ 18%',
+  incl_vat:'המחירים כוללים מע"מ',grand:'סה"כ לתשלום',alert_empty:'העגלה ריקה',
+  alert_fill:'נא למלא שם מלא וטלפון לפני שליחת ההזמנה',
+  err_phone:'מספר טלפון לא תקין — נייד 10 ספרות (05X) או קווי 9 ספרות',
+  err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',sending:'שולח…',cart_empty:'העגלה ריקה'};
+function t(k){return I18N_HE[k]!=null?I18N_HE[k]:k;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function aesc(s){return String(s).replace(/"/g,'&quot;')}
+
+// דברים שהקוד המשותף מזכיר ויש רק באתר (קופון, כתובת משלוח, יישוב) — כאן ריקים.
+// ⚠️ shipParts מחזיר את **כל** המפתחות עם null: create_order במסד מצפה לסט
+//    הארגומנטים המלא, ומפתח חסר (undefined) היה נשמט מהבקשה.
+var activeCoupon=null; function discount(){return 0;} function shipLine(){return '';}
+function shipParts(){return {city:null,cityCode:null,street:null,streetCode:null,house:null,apt:null,floor:null,entrance:null};}
+var CITY=null, STREET_CODE=null;
+
+// ===== מכאן — קוד האתר, כמות שהוא (נחתך מ-TEMPLATE בזמן הבנייה) =====
+/*__JS_VMAP_EFF__*/
+/*__JS_PRICE_HTML__*/
+/*__JS_CART_CORE__*/
+/*__JS_WHOLESALE_UI__*/
+/*__JS_CART_PERSIST__*/
+/*__JS_FORM_ERRORS__*/
+/*__JS_QTY_TOTALS__*/
+/*__JS_ORDER_CORE_A__*/
+/*__JS_ORDER_CORE_B__*/
+/*__JS_OVERLAY__*/
+// ===== עד כאן קוד האתר =====
+
+// קישור ממוקד: #b=מותג|מותג&c=קטגוריה&t=כותרת
+function readLinkParams(){
+  var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
+  var b=(p.get('b')||'').split('|').map(function(s){return s.trim();}).filter(Boolean);
+  return {brands:b,cat:(p.get('c')||'').trim(),title:(p.get('t')||'').trim(),catApplied:false};
+}
+function validateBuyer(){
+  if(!Object.keys(CART).length){alert(t('alert_empty'));return false;}
+  ['row-name','row-phone'].forEach(clearErr);
+  var first=null; var fail=function(row,er,msg){var r=setErr(row,er,msg);if(!first)first=r;};
+  var name=gv('buyer-name'),phone=gv('buyer-phone');
+  if(!name)fail('row-name','er-name',t('alert_fill'));
+  if(!phone)fail('row-phone','er-phone',t('alert_fill'));
+  else if(!validPhone(phone))fail('row-phone','er-phone',t('err_phone'));
+  if(first){first.scrollIntoView({block:'center'});var i=first.querySelector('input');if(i)i.focus();return false;}
+  return true;
+}
+function openOrder(){renderOrder();openOv('orderModal')}
+function closeOrder(){closeOv('orderModal')}
+function renderOrder(){
+  var keys=Object.keys(CART), body=document.getElementById('omBody');
+  if(!keys.length){body.innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">'+t('cart_empty')+'</p>';renderTotals();return;}
+  body.innerHTML=keys.map(function(k){var it=CART[k],m=VMAP[k],im=(m&&m.v.imgs&&m.v.imgs[0])||'';
+    return `<div class="om-row">${im?`<img class="om-img" src="${aesc(im)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`:'<span class="om-img"></span>'}
+      <div class="nm">${esc(it.name)}<small>${esc(it.brand)}${it.size?' · '+esc(it.size):''}</small></div>
+      <div class="qy"><button type="button" onclick="cartChange('${aesc(k)}',-1)">−</button><input class="qin" type="number" inputmode="numeric" min="1" value="${it.qty}" onfocus="this.select()" onchange="cartSetQty('${aesc(k)}',Math.max(1,parseInt(this.value,10)||1))"><button type="button" onclick="cartChange('${aesc(k)}',1)">+</button></div>
+      <div class="lt">₪${it.qty*it.price}</div>
+      <button type="button" class="om-del" onclick="cartChange('${aesc(k)}',-${it.qty})">✕</button></div>`;}).join('');
+  renderTotals();
+}
+function visibleVariants(){
+  var q=(document.getElementById('q').value||'').trim().toLowerCase();
+  var b=document.getElementById('brandSel').value, c=document.getElementById('catSel').value, out=[];
+  GROUPS.forEach(function(g){
+    if(LINK.brands.length&&LINK.brands.indexOf(g.brand)<0)return;
+    if(b&&g.brand!==b)return; if(c&&g.type!==c)return;
+    g.variants.forEach(function(v){
+      if(SB&&STOCK_READY&&isSold(v))return;      // רק מה שבמלאי
+      if(q){var hay=(g.name_he+' '+g.brand+' '+(v.shade||'')+' '+(v.barcode||'')).toLowerCase();if(hay.indexOf(q)<0)return;}
+      out.push({g:g,v:v});
+    });
+  });
+  return out;
+}
+function sideHtml(g,v){
+  var it=CART[v.id], id=aesc(v.id);
+  var q=it?`<div class="qy"><button type="button" onclick="cartChange('${id}',-1)">−</button><span>${it.qty}</span><button type="button" onclick="cartChange('${id}',1)">+</button></div>`
+          :`<button type="button" class="qo-add" onclick="cartChange('${id}',1)">+ הוסף</button>`;
+  return priceHtml(v)+q;   // בסיטונאי — priceHtml מוסיף מעצמו "מומלץ לצרכן"
+}
+function rowHtml(g,v){
+  var multi=g.variants.length>1, nm=esc(g.name_he)+(multi&&v.shade?' · '+esc(v.shade):'');
+  var meta=[g.brand,v.size].filter(Boolean).map(esc).join(' · ');
+  var im=(v.imgs&&v.imgs[0])?`<img class="qo-img" src="${aesc(v.imgs[0])}" loading="lazy" alt="" onerror="this.style.visibility='hidden'">`:'<span class="qo-img qo-noimg">✦</span>';
+  return `<div class="qo-row" data-gid="${aesc(g.gid)}">${im}<div class="qo-main"><div class="qo-nm">${nm}</div><div class="qo-meta">${meta}</div>${v.lead?`<div class="qo-lead">${esc(v.lead)}</div>`:''}</div><div class="qo-side" id="side-${aesc(v.id)}">${sideHtml(g,v)}</div></div>`;
+}
+function render(){
+  var list=document.getElementById('list'), rc=document.getElementById('rescount');
+  if(SB&&!STOCK_READY){list.innerHTML='<div class="qo-empty">טוען מלאי…</div>';rc.textContent='';return;}
+  var rows=visibleVariants();
+  rc.textContent=rows.length+' מוצרים';
+  list.innerHTML=rows.length?rows.map(function(x){return rowHtml(x.g,x.v);}).join(''):'<div class="qo-empty">לא נמצאו מוצרים</div>';
+}
+function updateCard(gid){   // הסל השתנה — רק צד הכמות של השורות משתנה, בלי לצייר הכול מחדש
+  var g=GROUPS.find(function(x){return x.gid===gid;});if(!g)return;
+  g.variants.forEach(function(v){var el=document.getElementById('side-'+v.id);if(el)el.innerHTML=sideHtml(g,v);});
+}
+function buildNav(){   // בוררי מותג/קטגוריה — רק מה שיש בו מלאי, ובקישור ממוקד רק המותגים שבו
+  var bs=document.getElementById('brandSel'), cs=document.getElementById('catSel'), bset={}, cset={};
+  GROUPS.forEach(function(g){
+    if(LINK.brands.length&&LINK.brands.indexOf(g.brand)<0)return;
+    if(!g.variants.some(function(v){return !(SB&&STOCK_READY&&isSold(v));}))return;
+    bset[g.brand]=1; if(g.type)cset[g.type]=1;
+  });
+  var fill=function(sel,vals,all){var cur=sel.value;sel.innerHTML='<option value="">'+esc(all)+'</option>'+vals.map(function(x){return '<option value="'+aesc(x)+'">'+esc(x)+'</option>';}).join('');if(vals.indexOf(cur)>=0)sel.value=cur;};
+  fill(bs,Object.keys(bset).sort(function(a,b){return a.localeCompare(b,'he');}),LINK.brands.length?'כל המותגים בקישור':'כל המותגים');
+  fill(cs,Object.keys(cset).sort(function(a,b){return a.localeCompare(b,'he');}),'כל הקטגוריות');
+  if(LINK.cat&&!LINK.catApplied&&cset[LINK.cat]){cs.value=LINK.cat;LINK.catApplied=true;}
+}
+function restoreBuyerLite(){   // שם, טלפון, עסק והערות — מאותה שמירה של האתר
+  try{var d=JSON.parse(localStorage.getItem(BUYER_KEY)||'null');if(!d)return;
+    ['buyer-name','buyer-phone','buyer-id','notes'].forEach(function(id){var e=document.getElementById(id);if(e&&d[id])e.value=d[id];});}catch(e){}
+}
+(function init(){
+  if(LINK.title){document.getElementById('qoTitle').textContent=LINK.title;document.title=LINK.title+' — Beauty Favorites';}
+  restoreBuyerLite(); updateWsUI(); buildNav(); restoreCart(); render();
+  if(SB)loadStock();   // מלאי ומחירים חיים; בסיום — buildNav + render מחדש (כמו באתר)
+})();
+window.addEventListener('hashchange',function(){location.reload();});   // קישור אחר (מותגים/כותרת) = דף טרי
+</script>
+</body>
+</html>
+"""
+
+
+def build_order_page(groups, supa_cfg, site_url=""):
+    """דף ההזמנה המהירה — מאותם נתונים ומאותו קוד של האתר."""
+    slim = []
+    for g in groups:
+        vs = []
+        for v in g["variants"]:
+            vs.append({"id": v["id"], "shade": v.get("shade") or "", "price": v.get("price"),
+                       "sale": v.get("sale"), "was": v.get("was"), "size": v.get("size") or "",
+                       "barcode": v.get("barcode") or "", "imgs": list(v.get("imgs") or [])[:1],
+                       "lead": _lead(v)})
+        slim.append({"gid": g["gid"], "name_he": g["name_he"], "brand": g["brand"],
+                     "type": g.get("type") or "", "variants": vs})
+    T = TEMPLATE
+    css = _slice(T, "\n<style>\n", "\n</style>\n")[len("\n<style>\n"):]
+    parts = {
+        "SITE_CSS":         css,
+        "WS_MODALS":        _slice(T, '<div class="ov" id="clubModal">', '<nav class="bnav" id="bnav">'),
+        "JS_VMAP_EFF":      _slice(T, "const VMAP={};", "\nconst BADGE_LABEL"),
+        "JS_PRICE_HTML":    _slice(T, "function priceHtml(v,cls){", "function lowStockHtml(v){"),
+        "JS_CART_CORE":     _slice(T, "const CART={};", "/* קופונים: מאומתים בשרת"),
+        "JS_WHOLESALE_UI":  _slice(T, "/* ===== מצב סיטונאי", "function openOrder(){"),
+        "JS_CART_PERSIST":  _slice(T, "const SAVE_KEY='bf_cart_v1'", "function restoreBuyer(){"),
+        "JS_FORM_ERRORS":   _slice(T, "function clearErr(rowId)", "function checkPhone(){"),
+        "JS_QTY_TOTALS":    _slice(T, "function cartSetQty(vid,n)", "const WA_NUMBER='972534555501';"),
+        "JS_ORDER_CORE_A":  _slice(T, "const WA_NUMBER='972534555501';", "function validateBuyer(needEmail){"),
+        "JS_ORDER_CORE_B":  _slice(T, "function setBusy(btn,on)", '// ב) "שלם עכשיו"'),
+        "JS_OVERLAY":       _slice(T, "var __ovReturnFocus=null;", "// ===== store policies"),
+    }
+    out = ORDER_TEMPLATE
+    for k, v in parts.items():
+        out = out.replace(f"/*__{k}__*/", v)
+    out = out.replace("/*__GROUPS__*/", json.dumps(slim, ensure_ascii=False))
+    out = out.replace("__SUPABASE_CONFIG__", json.dumps(supa_cfg, ensure_ascii=False))
+    out = out.replace("__SITE_URL__", (site_url or "").rstrip("/"))
+    return out
+
+
 def main():
     # מצב מהיר (--fast או FAST=1): לא מוחק ולא מעבד מחדש תמונות קיימות — רק בונה index.html.
     # מתאים לשינויי קוד/HTML בלבד. תמונות חדשות עדיין יעובדו (אם חסרות ביעד).
     fast = ("--fast" in sys.argv) or (os.environ.get("FAST") == "1")
+    # --out DIR: לכתוב את הדפים לתיקייה אחרת (לבדיקות/השוואה) בלי לגעת ב-catalog/
+    out_dir = CAT
+    if "--out" in sys.argv:
+        out_dir = os.path.abspath(sys.argv[sys.argv.index("--out") + 1])
+        os.makedirs(out_dir, exist_ok=True)
     if os.path.isdir(IMGDIR):
         if not fast:
             shutil.rmtree(IMGDIR)
@@ -697,8 +1008,13 @@ def main():
         print("   ⚠️  catalog/cities.json חסר — בורר היישובים יעבוד כשדה חופשי")
     out = out.replace("/*__CITIES__*/", _cities)
     out = out.replace("/*__BRANDS_EN__*/", json.dumps(BRAND_EN, ensure_ascii=False))
-    with open(os.path.join(CAT, "index.html"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as f:
         f.write(out)
+    # 🛒 דף ההזמנה המהירה — מאותם נתונים ומאותו קוד (ראה build_order_page)
+    order_html = build_order_page(groups, supa_cfg, SITE_URL)
+    with open(os.path.join(out_dir, "order.html"), "w", encoding="utf-8") as f:
+        f.write(order_html)
+    print(f"✅ order.html: {sum(len(g['variants']) for g in groups)} שורות ({len(order_html.encode()) // 1024} ק\"ב)")
 
     multi = [g for g in groups if len(g["variants"]) > 1]
     nprod = sum(len(g["variants"]) for g in groups)
