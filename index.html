@@ -2309,7 +2309,13 @@ async function payNow(){
   const ord=await createOrder('payment');
   if(!ord){setBusy(btn,false);return;}
   try{
-    const {data,error}=await SB.functions.invoke('create-checkout',{body:{order_id:ord.id}});
+    // 🔒 30/09/2026 — נשלח גם הטלפון. create-checkout המאובטחת משווה אותו
+    // (ספרות בלבד) מול orders.customer_phone של אותה הזמנה, וזו ההוכחה שמבקש
+    // הקישור הוא מי שיצר את ההזמנה. עד אז הפונקציה ענתה לכל אדם באינטרנט עם
+    // order_id בלבד. זהו אותו ערך בדיוק שנשלח שורות קודם ל-create_order כ-
+    // p_customer_phone, ולכן ההשוואה תמיד תתאים. הטלפון חובה ומאומת ב-
+    // validateBuyer, כך שאין לקוח שנחסם בגלל השדה הזה.
+    const {data,error}=await SB.functions.invoke('create-checkout',{body:{order_id:ord.id,phone:gv('buyer-phone')}});
     if(error)throw error;
     if(data&&data.url){window.location.href=data.url;return;}
     throw new Error('no checkout url');
