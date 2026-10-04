@@ -21,6 +21,9 @@ import json, os, re, sys, glob, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KNOW = os.path.join(ROOT, "knowledge")
+# כתובת הבסיס של האתר החי — ממנה נבנית כתובת התמונה שנשלחת למסד
+SITE = "https://beautyfavorites.co.il"
+IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 CATALOG = os.path.join(ROOT, "catalog")
 
 def load_env():
@@ -69,6 +72,26 @@ def fetch_existing_main(env):
             return out
         offset += 1000
 
+def first_image_url(card_dir):
+    """כתובת התמונה הראשית של הכרטיס באתר החי.
+
+    🔴 תוקן 04/10/2026: הסקריפט הצהיר בתיעוד שהוא מסנכרן `image_url`, אבל
+    השדה **מעולם לא נכלל במטען** שנשלח ל-RPC. בצד השרת הכול היה תקין
+    (`coalesce(nullif(v_row->>'image_url',''), p.image_url)`), ולכן הכתיבה
+    פשוט לא קרתה ואיש לא הבחין — כל כרטיס חדש הגיע למסד בלי תמונה ונשאר
+    מוסתר באתר. התגלה על ידי צ'אט הניהול אחרי שסנכרון החזיר 7/7 ו-image_url
+    נשאר ריק בכל השבעה.
+
+    התמונה הראשית היא **הקובץ הראשון בסדר אלפביתי** — בדיוק מה ש-
+    build_catalog.py בוחר, ולכן השתיים תמיד מסכימות.
+    """
+    d = os.path.join(KNOW, card_dir, "images")
+    if not os.path.isdir(d):
+        return ""
+    files = sorted(f for f in os.listdir(d) if f.lower().endswith(IMG_EXT))
+    return f"{SITE}/images/{card_dir}/{files[0]}" if files else ""
+
+
 def collect_rows(only_barcodes=None, force_names=None, existing_main=None):
     rows, seen = [], set()
     for pj in glob.glob(os.path.join(KNOW, "*", "product.json")):
@@ -99,6 +122,9 @@ def collect_rows(only_barcodes=None, force_names=None, existing_main=None):
                 or ("" if (existing_main or {}).get(bc) else ptype(p))
             ),
             "name_he": (p.get("name_he") or "").strip(),
+            # תמונה ראשית — ה-RPC כותב אותה **רק אם השדה במסד ריק**,
+            # ולכן זה לעולם לא ידרוס תמונה שנבחרה ידנית בבק אופיס.
+            "image_url": first_image_url(os.path.basename(os.path.dirname(pj))),
         }
         if force_names and bc in force_names:
             row["force_name"] = "1"
