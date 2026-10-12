@@ -850,6 +850,7 @@ function priceHtml(v,cls){
   var c=WHOLESALE?PRICE_CONS[nbc(v.barcode)]:null;   // במצב סיטונאי — להציג גם מחיר צרכן מומלץ
   var sub=(c!=null&&c>0)?`<div class="price-cons">${t('cons_rec')} ₪${c}</div>`:'';
   var p=eff(v);
+  if(p==null||!(p>0))return `<div class="pricewrap"><div class="price ${cls||''}">—</div></div>`;   // אין מחיר — לא "₪null"
   var was=(!WHOLESALE&&v.was&&v.was>p)?`<span class="was">₪${v.was}</span>`:'';   // מחיר-לפני (price_before) — מצב צרכן בלבד
   return `<div class="pricewrap"><div class="price ${was?'sale':(cls||'')}">₪${p}${was}</div>${sub}</div>`;
 }
@@ -1013,7 +1014,9 @@ function priceMap(){return WHOLESALE?PRICE_WS:PRICE_CONS;}   // המפה הפע�
 function hasConsPrice(v){var m=PRICE_CONS[nbc(v&&v.barcode)];return m!=null&&m>0;}   // יש מחיר צרכן?
 function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}   // ברקוד → מפתח השוואה. אותיות נשמרות — יש מותגים עם ברקוד אלפאנומרי (ויקטוריהס סיקרט)
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
-function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
+function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);
+  if(!WHOLESALE&&!hasConsPrice(v))return true;   // 12/10: גוון בלי מחיר צרכן — לא למכירה לצרכן (היה מציג ₪null)
+  return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
 // כל הוריאנטים אזלו? (החלטת 24/08: מוצר כזה נשאר בקטלוג עם תג "אזל" ואינו נעלם)
 function grpSold(g){return STOCK_READY && !g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}
 // מה שאזל תמיד יורד לסוף הרשימה — לא תופס את הכרטיסים הראשונים.
@@ -1086,9 +1089,24 @@ async function submitWhatsApp(){
 }
 
 var __ovReturnFocus=null;
+// ⬅️ 12/10 (נמרוד): "אחורה" בטלפון סוגר את החלון הפתוח. כל פתיחה דוחפת רשומה להיסטוריה;
+//    חזרה אחורה (popstate) סוגרת את העליון; ✕ עושה history.back() כדי שלא תישאר רשומה מיותרת.
+let _popClosing=false;
+function pushOvState(kind,id){try{history.pushState({bf:kind,id:id},'',location.href);}catch(e){}}
+function popOvState(kind,id){const st=history.state;if(!_popClosing&&st&&st.bf===kind&&st.id===id){try{history.back();return true;}catch(e){}}return false;}
+window.addEventListener('popstate',function(){
+  const st=history.state; if(st&&st.bf)return;   // עדיין יש רשומת חלון מתחת — לא שלנו לסגור
+  _popClosing=true;
+  try{
+    if(typeof drawerOpen==='function'&&drawerOpen())closeDrawer();
+    const zo=document.getElementById('zoomOv');if(zo&&zo.classList.contains('on'))closeZoom();
+    [...document.querySelectorAll('.ov.open')].reverse().forEach(o=>closeOv(o.id));
+  }finally{_popClosing=false;}
+});
 function openOv(id){
   __ovReturnFocus=document.activeElement;
-  const m=document.getElementById(id); m.classList.add('open'); document.body.style.overflow='hidden';
+  const m=document.getElementById(id); if(m.classList.contains('open'))return; m.classList.add('open'); document.body.style.overflow='hidden';
+  pushOvState('ov',id);
   lockPage();   // 📱 12/10: באייפון overflow:hidden לא עוצר את הדף מאחורי "ההזמנה שלי" — נועלים באמת
   // 🔴 ל-.sheet יש overflow-y:auto והוא שומר את מיקום הגלילה מהפעם הקודמת.
   // בלי איפוס, פתיחת מוצר אחרי שגללנו בקודם נוחתת באמצע הכרטיס והלקוח
@@ -1100,7 +1118,9 @@ function openOv(id){
   setTimeout(function(){const f=m.querySelector('input:not([type=hidden]),.x,button,[tabindex]'); (f||sheet).focus();},40);
 }
 function closeOv(id){
-  const m=document.getElementById(id); m.classList.remove('open'); document.body.style.overflow='';
+  const m=document.getElementById(id); if(!m.classList.contains('open'))return;
+  if(popOvState('ov',id))return;   // ה-popstate יקרא לנו שוב — ואז נסגור באמת
+  m.classList.remove('open'); document.body.style.overflow='';
   unlockPage();
   if(__ovReturnFocus&&__ovReturnFocus.focus){try{__ovReturnFocus.focus();}catch(e){}} __ovReturnFocus=null;
 }
