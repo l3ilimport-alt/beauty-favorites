@@ -6,7 +6,7 @@
 <title>Beauty Favorites — הזמנה מהירה</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#3b2b20">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>window.SUPA={"url": "https://ieifiducsmiabncwwmiz.supabase.co", "anon": "sb_publishable_vvhhk186MODu13GS60Uc0g_PW1HfgQy"};</script>
 <link rel="icon" type="image/png" href="favicon-bf.png">
 <link rel="apple-touch-icon" href="favicon-bf.png">
@@ -1019,6 +1019,7 @@ function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
 function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);
   if(!WHOLESALE&&!hasConsPrice(v))return true;   // 12/10: גוון בלי מחיר צרכן — לא למכירה לצרכן (היה מציג ₪null)
+  if(WHOLESALE&&!(PRICE_WS[n]>0))return true;     // 13/10: גוון בלי מחיר סיטונאי — לא למכירה לסיטונאי (השרת היה מסרב)
   return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
 // כל הוריאנטים אזלו? (החלטת 24/08: מוצר כזה נשאר בקטלוג עם תג "אזל" ואינו נעלם)
 function grpSold(g){return STOCK_READY && !g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}

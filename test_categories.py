@@ -193,6 +193,10 @@ class TreeTest(Base):
         # סבב 4: "נקה הכל" מנקה גם קבוצה ראשית וחיפוש; חיפוש חופשי בראש המגירה
         self.assertIn("function drawerClear(){var so=document.getElementById('sort');if(so)so.value='default';clearSearchQ();curCat='__all__';", HTML, '"נקה הכל" לא מנקה קבוצה ראשית')
         self.assertIn('id="fdQ"', HTML, 'אין חיפוש חופשי במגירה')
+        # 4 התיקונים מהביקורת (13/10): ספרייה נעוצה עם טביעת אצבע; סיטונאי בלי מחיר = לא זמין
+        self.assertIn('supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-', HTML, 'ספריית סופאבייס לא נעוצה')
+        self.assertNotIn('supabase-js@2/dist', HTML, 'נשארה גרסה צפה')
+        self.assertIn("if(WHOLESALE&&!(PRICE_WS[n]>0))return true;", HTML, 'סיטונאי בלי מחיר עדיין נמכר')
         # סבב 9: פחות שטח מת במחשב; מותגים באנגלית; תמונת כרטיס תמיד בתוך הריבוע
         self.assertIn('@media(min-width:1100px){.grid{grid-template-columns:repeat(4,1fr)}}', HTML, 'אין 4 עמודות במחשב')
         self.assertIn('"אסתי לאודר": "ESTÉE LAUDER"', HTML, 'אסתי לאודר בלי שם אנגלי')

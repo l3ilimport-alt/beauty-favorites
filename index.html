@@ -21,7 +21,7 @@
 {"@context":"https://schema.org","@type":"Store","name":"Beauty Favorites","url":"https://beautyfavorites.co.il/","image":"https://beautyfavorites.co.il/og-image.png?v=bf1","logo":"https://beautyfavorites.co.il/logo-bf.png","description":"הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים האהובים","telephone":"+972-53-4555501","email":"beautyfavorites2026@gmail.com","priceRange":"₪₪","areaServed":"IL","currenciesAccepted":"ILS"}
 </script>
 <!-- חיבור Supabase (anon ציבורי). אם לא הוגדר — הקטלוג נופל חזרה למצב וואטסאפ-טקסט בלבד. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>window.SUPA={"url": "https://ieifiducsmiabncwwmiz.supabase.co", "anon": "sb_publishable_vvhhk186MODu13GS60Uc0g_PW1HfgQy"};</script>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://beautyfavorites.co.il/og-image.png?v=bf1">
@@ -2898,6 +2898,7 @@ function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
 function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);
   if(!WHOLESALE&&!hasConsPrice(v))return true;   // 12/10: גוון בלי מחיר צרכן — לא למכירה לצרכן (היה מציג ₪null)
+  if(WHOLESALE&&!(PRICE_WS[n]>0))return true;     // 13/10: גוון בלי מחיר סיטונאי — לא למכירה לסיטונאי (השרת היה מסרב)
   return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
 // כל הוריאנטים אזלו? (החלטת 24/08: מוצר כזה נשאר בקטלוג עם תג "אזל" ואינו נעלם)
 function grpSold(g){return STOCK_READY && !g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}

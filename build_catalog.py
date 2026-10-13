@@ -629,7 +629,7 @@ ORDER_TEMPLATE = r"""<!DOCTYPE html>
 <title>Beauty Favorites — הזמנה מהירה</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#3b2b20">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>window.SUPA=__SUPABASE_CONFIG__;</script>
 <link rel="icon" type="image/png" href="favicon-bf.png">
 <link rel="apple-touch-icon" href="favicon-bf.png">
@@ -921,9 +921,9 @@ def main():
     if "--out" in sys.argv:
         out_dir = os.path.abspath(sys.argv[sys.argv.index("--out") + 1])
         os.makedirs(out_dir, exist_ok=True)
-    if os.path.isdir(IMGDIR):
-        if not fast:
-            shutil.rmtree(IMGDIR)
+    # 🖼️ 13/10/2026 — כבר לא מרוקנים את התיקייה בבנייה מלאה: יושבות בה גם תמונות של מוצרים
+    #    שלא נקלטו (1,277 — הבק אופיס מציג אותן מהאתר), והבנייה בונה רק לנקלטים. ריקון + פרסום
+    #    היה מוחק אותן מהאתר. בנייה מלאה עכשיו = עיבוד מחדש ודריסה של מה שנבנה, בלי מחיקה.
     os.makedirs(IMGDIR, exist_ok=True)
     if fast:
         print("⚡ מצב מהיר: מדלג על עיבוד תמונות קיימות")
@@ -1327,7 +1327,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 {"@context":"https://schema.org","@type":"Store","name":"Beauty Favorites","url":"__SITE_URL__/","image":"__OG_IMAGE__","logo":"__SITE_URL__/logo-bf.png","description":"הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים האהובים","telephone":"+972-53-4555501","email":"beautyfavorites2026@gmail.com","priceRange":"₪₪","areaServed":"IL","currenciesAccepted":"ILS"}
 </script>
 <!-- חיבור Supabase (anon ציבורי). אם לא הוגדר — הקטלוג נופל חזרה למצב וואטסאפ-טקסט בלבד. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>window.SUPA=__SUPABASE_CONFIG__;</script>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="__OG_IMAGE__">
@@ -4204,6 +4204,7 @@ function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
 function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);
   if(!WHOLESALE&&!hasConsPrice(v))return true;   // 12/10: גוון בלי מחיר צרכן — לא למכירה לצרכן (היה מציג ₪null)
+  if(WHOLESALE&&!(PRICE_WS[n]>0))return true;     // 13/10: גוון בלי מחיר סיטונאי — לא למכירה לסיטונאי (השרת היה מסרב)
   return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
 // כל הוריאנטים אזלו? (החלטת 24/08: מוצר כזה נשאר בקטלוג עם תג "אזל" ואינו נעלם)
 function grpSold(g){return STOCK_READY && !g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}
