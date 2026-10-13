@@ -90,6 +90,58 @@ class OrderPage(unittest.TestCase):
             bc._slice("abc", "zzz", "c")
 
 
+class CategoryTree(unittest.TestCase):
+    """🗂️ 06/10/2026 — דף ההזמנה על אותו עץ קטגוריות של האתר.
+
+    הסיבה לבדיקה: הקישור הממוקד c= מהבק אופיס שלח עד היום main_category
+    ("💄 פנים"), והדף השווה אותו ל-type הישן ("איפור") — **שני אוצרות מילים
+    שמעולם לא נפגשו**, והסינון בקישור פשוט לא עבד. עכשיו שניהם על slug.
+    """
+    TREE = [{"m": "lips", "he": "שפתיים", "ar": "الشفاه", "bg": "#f8ecf3", "ink": "#93386b", "ic": "",
+             "subs": [{"s": "lips-gloss", "he": "גלוסים", "ar": ""}]}]
+
+    def groups(self):
+        g = fake_groups()
+        g[0]["cs"] = "face-blush"; g[1]["cs"] = "lips-gloss"
+        return g
+
+    def test_tree_and_slug_reach_the_page(self):
+        h = bc.build_order_page(self.groups(), CFG, "", self.TREE)
+        self.assertIn('const CATTREE = [{"m": "lips"', h)
+        self.assertIn('"cs": "lips-gloss"', h)                 # הקבוצה הרזה נושאת את ה-slug
+        self.assertIn("function catMatch(g,c)", h)
+        self.assertIn("optgroup", h)
+        self.assertIn("if(!catMatch(g,c))return;", h)          # הסינון עובר דרך העץ, לא דרך type
+
+    def test_no_tree_falls_back_to_flat_types(self):
+        # בלי רשת בבנייה העץ ריק — והדף חייב להמשיך לעבוד עם הסוגים הישנים
+        h = bc.build_order_page(self.groups(), CFG, "")
+        self.assertIn("const CATTREE = [];", h)
+        self.assertIn("if(!HAS_TREE)return g.type===c;", h)
+        self.assertNotIn("/*__", h)
+
+
+class ScriptInjection(unittest.TestCase):
+    """🛡️ ביקורת אבטחה 06/10/2026 — נתונים שנצרבים לתוך <script>.
+
+    json.dumps לא מבריח "</script>": שם קטגוריה או תיאור מוצר שמכילים את הרצף
+    היו סוגרים את הסקריפט ופותחים חדש. כל הזרקה עוברת ב-_js.
+    """
+    EVIL = "</script><script>window.__pwned=1</script>"
+
+    def test_js_escapes_and_round_trips(self):
+        x = bc._js({"n": self.EVIL, "html": "<h2>תקנון</h2>"})
+        self.assertNotIn("<", x)
+        self.assertEqual(json.loads(x), {"n": self.EVIL, "html": "<h2>תקנון</h2>"})
+
+    def test_order_page_data_cannot_close_the_script(self):
+        g = fake_groups(); g[0]["name_he"] = self.EVIL; g[0]["cs"] = "x"
+        tree = [{"m": "lips", "he": self.EVIL, "ar": "", "bg": "", "ink": "", "ic": "", "subs": []}]
+        h = bc.build_order_page(g, CFG, "", tree)
+        i = h.index("const GROUPS = "); j = h.index("const LINK = ", i)
+        self.assertNotIn("</script", h[i:j].lower())       # אזור הנתונים — אף סגירת סקריפט
+
+
 class RealBuild(unittest.TestCase):
     """בנייה אמיתית (--fast) לתיקייה תחת הבית — לא נוגעת ב-catalog/index.html."""
     OUT = os.path.expanduser("~/bf-test-build/unittest")

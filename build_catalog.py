@@ -111,18 +111,29 @@ SITE_URL = "https://beautyfavorites.co.il"
 # שולף את catalog_content (תצוגה ציבורית) ודורס name_he/description/brand/קטגוריות
 # בערכי המסד — כך עריכה בבק אופיס מגיעה לאתר בפרסום הבא. נכשל בשקט אם אין רשת/תצוגה.
 def fetch_db_content():
-    import urllib.request
+    import urllib.request, urllib.error
     try:
         cfg = json.load(open(os.path.join(CAT, "supabase.config.json"), encoding="utf-8"))
         url = cfg.get("url") or cfg.get("SUPABASE_URL")
         key = cfg.get("anonKey") or cfg.get("anon_key") or cfg.get("SUPABASE_ANON_KEY")
         out, offset = {}, 0
+        # 🎛️ 07/10/2026 — attrs (תכונות לסינון). אם העמודה עוד לא קיימת במסד (המיגרציה
+        # לא הורצה) — 400 מהשרת. **לא** נופלים לבנייה בלי מסד: מנסים שוב בלי attrs.
+        cols = "barcode,name_he,description,brand,category,main_category,category_slug,sub_type,is_set,stocked_ever"
+        with_attrs = True
         while True:
             req = urllib.request.Request(
-                f"{url}/rest/v1/catalog_content?select=barcode,name_he,description,brand,category,main_category"
+                f"{url}/rest/v1/catalog_content?select={cols}{',attrs' if with_attrs else ''}"
                 f"&limit=1000&offset={offset}",
                 headers={"apikey": key, "Authorization": "Bearer " + key})
-            page = json.load(urllib.request.urlopen(req, timeout=30))
+            try:
+                page = json.load(urllib.request.urlopen(req, timeout=30))
+            except urllib.error.HTTPError as e:
+                if with_attrs and e.code == 400 and offset == 0:
+                    print("ℹ️  אין עדיין עמודת attrs במסד — בונה בלי תכונות סינון")
+                    with_attrs = False
+                    continue
+                raise
             for r in page:
                 bc = _nbc(r.get("barcode"))          # אותו נירמול כמו בצד הקורא — כולל הסרת אפסים מובילים
                 if bc:
@@ -158,6 +169,121 @@ def fetch_db_content():
         print(f"⚠️  אין שכבת תוכן מהמסד ({e}) — בונה מקבצי הידע בלבד")
         return {}
 
+# ---- 🗂️ עץ הקטגוריות (06/10/2026) ----
+# שמונה קבוצות ו-50 תתי-קטגוריות, מטבלת `categories` במסד. **זה מחליף את
+# הרשימה הקשיחה CATS** שהייתה שכבה שטוחה אחת (איפור · טיפוח · שיער…).
+# הטבלה פתוחה לקריאה ל-anon (מדיניות categories_read_all), ולכן אותו מפתח
+# ציבורי שכבר בשימוש כאן מספיק — אין צורך במפתח שירות בבנייה.
+#
+# 🎨 הצבע והאייקון יושבים כאן ולא במסד: הם **החלטת עיצוב של האתר**, לא נתון
+# עסקי. מי שיוסיף קבוצה במסד יקבל אפור ואייקון ברירת מחדל, ויראה מיד שצריך
+# לבחור לה צבע — עדיף על קבוצה שנעלמת בשקט.
+CAT_STYLE = {
+    # 🏜️ 12/10/2026 — פלטת "חול ואבן" לפי הבאנר של המעצבת נועה: גוני אדמה
+    #    שקטים במקום שמונה צבעים חזקים. (הקודם: face #fdf2ec/#b4714f וכו' — בגיבוי.)
+    "face":     ("#f6ede3", "#a87a5a"),
+    "cheeks":   ("#f4e6e0", "#a86b5e"),
+    "lips":     ("#f1e3e1", "#8e4f4f"),
+    "eyes":     ("#ede8e2", "#6e6259"),
+    "brows":    ("#f0e7dc", "#7a5c44"),
+    "skincare": ("#ebebe1", "#6b7259"),
+    "tools":    ("#ece7e1", "#6b625a"),
+    "sets":     ("#f4eadb", "#9a7533"),
+}
+# ✏️ 12/10/2026 — אייקוני קו מאוירים לפי הדוגמה של המעצבת (viewBox 48).
+#    fill="currentColor" + fill-opacity = מילוי עדין בצבע האריח (color נקבע ב-svg).
+CAT_ICON = {
+    "face":  '<circle cx="21" cy="26" r="14"/><path d="M13.5 24q2.5 2.6 5 0M23.5 24q2.5 2.6 5 0M15.5 31q5.5 5 11 0"/>'
+             '<path d="M40 8l1.1 3.9 3.9 1.1-3.9 1.1-1.1 3.9-1.1-3.9-3.9-1.1 3.9-1.1zM41 27l.8 2.7 2.7.8-2.7.8-.8 2.7-.8-2.7-2.7-.8 2.7-.8z"/>',
+    "cheeks": '<ellipse cx="26" cy="32" rx="16" ry="10"/><ellipse cx="26" cy="31" rx="9.5" ry="5.6" fill="currentColor" fill-opacity=".28"/>'
+             '<ellipse cx="17" cy="15" rx="11" ry="7.5" transform="rotate(-28 17 15)"/><path d="M12 15.5l6-6M15 17.5l3.5-3.5"/>',
+    "lips":  '<path d="M5 24c4-6.5 9.5-9.5 14-7.4 2 1 3.4 1.4 5 .4 1.6 1 3 .6 5-.4 4.5-2.1 10 .9 14 7.4"/>'
+             '<path d="M5 24c5 8 12 11.5 19 11.5S38 32 43 24"/><path d="M5 24c7 2.2 13 1.6 19 1.6S36 26.2 43 24"/>',
+    "eyes":  '<path d="M4 26c6-9 13-12.5 20-12.5S38 17 44 26c-6 8.5-13 11.5-20 11.5S10 34.5 4 26z"/>'
+             '<circle cx="24" cy="26" r="7"/><circle cx="24" cy="26" r="2.6" fill="currentColor" fill-opacity=".45"/>'
+             '<path d="M11.5 18.5l-3-4.5M17 15.2l-1.6-5M24 13.5V8M31 15.2l1.6-5M36.5 18.5l3-4.5"/>',
+    "brows": '<path d="M5 31c8-10 20-14 38-8"/><path d="M10 31.5c7-6 17-8 30-5"/>'
+             '<path d="M8.5 28l-2.5-4M12 25.5l-1.8-4.3M15.8 23.4l-1.1-4.5M19.6 22l-.5-4.6M23.4 21.2l.1-4.6"/>',
+    "skincare": '<rect x="5" y="22" width="19" height="20" rx="4.5"/><path d="M11 22v-5h7v5M10 17h9v-5.5h-9z"/>'
+             '<path d="M19 14h4M25 14h.01"/><rect x="9" y="28" width="11" height="8" rx="1.6"/>'
+             '<path d="M29 6h13v3l-1.8 24h-9.4L29 9z"/><rect x="31" y="33" width="9" height="9" rx="1.6"/>',
+    "tools": '<path d="M6.3 39.4l17.5-17.5 3.3 3.3L9.6 42.7c-1.2 1.2-4.5-2.1-3.3-3.3z"/><path d="M23.8 21.9l4-4 3.3 3.3-4 4"/>'
+             '<path d="M27.8 17.9C29 12 33 6.6 38.6 4.8c3.7-1.2 5.8.9 4.6 4.6-1.8 5.6-7.2 9.6-12.1 11.1"/>'
+             '<path d="M32.5 13.5l6-5.5M35 16.5l5.5-4.5" opacity=".6"/>',
+    "sets":  '<rect x="8" y="22" width="32" height="20" rx="1.6"/><rect x="6" y="15.5" width="36" height="7" rx="1.6"/>'
+             '<path d="M24 15.5V42"/><path d="M24 15.5c-3.8-6.8-11-7.2-10.6-2.7.4 3.6 6.4 3.4 10.6 2.7 4.2.7 10.2.9 10.6-2.7.4-4.5-6.8-4.1-10.6 2.7z"/>',
+}
+CAT_ICON_DEFAULT = '<circle cx="24" cy="24" r="16"/>'   # 12/10: viewBox 48
+
+
+# 📌 כלל (הניהול 06/10): **כל מה שהבנייה צריכה יושב ב-catalog/ או ב-knowledge/.**
+#    10-עבודה/ אינו בריפו ומסתדר ידנית — שינוי שם שם היה מפיל בנייה. העותק שם
+#    ("מסמכי מדיניות — ערבית.json") הוא המקור הארכיוני של תרגום צ'אט המחקר.
+POLICIES_AR_PATH = os.path.join(CAT, "policies_ar.json")
+
+def load_policies_ar():
+    """שבעת מסמכי המדיניות בערבית. חסר/פגום → {} והאתר נופל לעברית (ובדיקה תצעק)."""
+    try:
+        d = json.load(open(POLICIES_AR_PATH, encoding="utf-8"))
+        ok = {k: v for k, v in d.items() if isinstance(v, str) and v.strip()}
+        print(f"🌐 מדיניות בערבית: {len(ok)} מסמכים")
+        return ok
+    except Exception as e:
+        print(f"⚠️  מדיניות בערבית לא נטענה מ-catalog/policies_ar.json ({e}) — האתר יציג עברית")
+        return {}
+
+
+# 🚫 06/10/2026 — תמונות לא מקצועיות לא נכנסות לאתר (נמרוד: "אסור… חכי לתמונה
+#    מקצועית"). catalog/hidden_images.json — {תיקיית כרטיס: {קובץ: סיבה}}. הקבצים
+#    ב-knowledge/ **לא נמחקים**; הבנייה פשוט לא מעתיקה ולא מציגה אותם.
+def _load_hidden_images():
+    try:
+        d = json.load(open(os.path.join(CAT, "hidden_images.json"), encoding="utf-8"))
+        return {k: v for k, v in d.items() if not k.startswith("_")}
+    except FileNotFoundError:
+        return {}
+HIDDEN_IMAGES = _load_hidden_images()
+
+
+def fetch_categories():
+    """עץ הקטגוריות מהמסד. מחזיר [] אם אין רשת — והאתר נופל לשכבה הישנה."""
+    import urllib.request
+    try:
+        cfg = json.load(open(os.path.join(CAT, "supabase.config.json"), encoding="utf-8"))
+        url = cfg.get("url") or cfg.get("SUPABASE_URL")
+        key = cfg.get("anonKey") or cfg.get("anon_key") or cfg.get("SUPABASE_ANON_KEY")
+        req = urllib.request.Request(
+            f"{url}/rest/v1/categories?select=slug,main,main_he,main_ar,name_he,name_ar,sort,active"
+            f"&active=is.true&order=sort&limit=500",
+            headers={"apikey": key, "Authorization": "Bearer " + key})
+        rows = json.load(urllib.request.urlopen(req, timeout=30))
+        tree, seen = [], {}
+        for r in rows:
+            m = r["main"]
+            if m not in seen:
+                bg, ink = CAT_STYLE.get(m, ("#f4f4f5", "#5a5a5a"))
+                seen[m] = {"m": m, "he": re.sub(r"^\S+\s", "", r["main_he"] or m),
+                           "ar": r.get("main_ar") or "", "bg": bg, "ink": ink,
+                           "ic": CAT_ICON.get(m, CAT_ICON_DEFAULT), "subs": []}
+                tree.append(seen[m])
+            seen[m]["subs"].append({"s": r["slug"], "he": r["name_he"],
+                                    "ar": r.get("name_ar") or ""})
+        print(f"🗂️  עץ קטגוריות: {len(tree)} קבוצות · {len(rows)} תתי-קטגוריות")
+        return tree
+    except Exception as e:
+        print(f"⚠️  עץ הקטגוריות לא נשלף ({e}) — האתר ייבנה בלי ניווט העץ")
+        return []
+
+
+def _js(x):
+    """JSON בטוח להזרקה לתוך <script>: כל "<" מוברח ל-\\u003c.
+
+    🛡️ ביקורת אבטחה 06/10/2026: json.dumps('</script>') מחזיר את הרצף כמו שהוא.
+    **כל** נתון שנצרב לתבנית עובר כאן — לא רק מה שנראה מסוכן היום.
+    """
+    return json.dumps(x, ensure_ascii=False).replace("<", "\\u003c")
+
+
 def overlay_db_content(p, db_row):
     # דורס טקסטים מהמסד (הבק אופיס = מקור אמת) — למעט name_he:
     # שמות המסד כוללים לרוב גוון ("...(גוון 15ML)"), והבנייה מנקה גוון מכותרות
@@ -171,6 +297,12 @@ def overlay_db_content(p, db_row):
     if val("brand"):        p["brand"] = val("brand")
     if val("category"):     p["category_refined"] = val("category")
     if val("main_category"): p["category_main"] = val("main_category")
+    # 🗂️ 06/10/2026 — עץ הקטגוריות החדש. **המסד הוא מקור האמת היחיד כאן**:
+    # לקבצי הידע אין את השדות האלה בכלל, ולכן אין מה לדרוס ואין התנגשות.
+    if val("category_slug"): p["_cslug"] = val("category_slug")
+    if val("sub_type"):      p["_stype"] = val("sub_type")
+    if db_row.get("is_set"): p["_isset"] = True
+    if isinstance(db_row.get("attrs"), dict): p["_attrs"] = db_row["attrs"]
     if db_row.get("_live_price"):        # המחיר החי גובר על המחיר שבקובץ הידע
         p["price_ils"] = db_row["_live_price"]
     return p
@@ -496,20 +628,20 @@ ORDER_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Beauty Favorites — הזמנה מהירה</title>
 <meta name="robots" content="noindex,nofollow">
-<meta name="theme-color" content="#171717">
+<meta name="theme-color" content="#3b2b20">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>window.SUPA=__SUPABASE_CONFIG__;</script>
 <link rel="icon" type="image/png" href="favicon-bf.png">
 <link rel="apple-touch-icon" href="favicon-bf.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Gveret+Levin+AlefAlefAlef&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 /*__SITE_CSS__*/
 /* ===== דף ההזמנה המהירה ===== */
 body{padding-bottom:90px}
 .qo-top{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:8px 12px 10px}
 .qo-head{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px;max-width:760px;margin-inline:auto}
-.qo-title{font-family:var(--script);font-size:22px;line-height:1.1;min-width:0}
+.qo-title{font-family:var(--font);font-size:22px;line-height:1.1;min-width:0}
 .qo-ws{font-family:var(--font);font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:30px;border:1px solid var(--border2);background:#fff;cursor:pointer;white-space:nowrap}
 .qo-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;max-width:760px;margin:0 auto}
 .qo-tools input[type=search]{flex:1 1 150px;font-family:var(--font);font-size:16px;padding:9px 12px;border:1px solid var(--border2);border-radius:12px;min-width:0}
@@ -585,6 +717,19 @@ body{padding-bottom:90px}
 /*__WS_MODALS__*/
 <script>
 const GROUPS = /*__GROUPS__*/;
+// 🗂️ 06/10/2026 — אותו עץ קטגוריות של האתר. בורר הקטגוריה הוא רשימה
+// עם קבוצות (optgroup): "הכול בפנים" ואז תתי-הקטגוריות. הקישור הממוקד
+// c= מקבל slug של תת-קטגוריה או m:<קבוצה>. ריק = נופל לסוגים הישנים.
+const CATTREE = /*__CATTREE__*/;
+const CT_MAIN={},CT_BY={};
+CATTREE.forEach(function(g){CT_BY[g.m]=g;g.subs.forEach(function(sb){CT_MAIN[sb.s]=g.m;});});
+const HAS_TREE=CATTREE.length>0;
+function catMatch(g,c){   // c: '' · 'm:<קבוצה>' · '<slug>' · (ללא עץ) סוג ישן
+  if(!c)return true;
+  if(!HAS_TREE)return g.type===c;
+  if(c.indexOf('m:')===0)return CT_MAIN[g.cs||'']===c.slice(2);
+  return g.cs===c;
+}
 const LINK = readLinkParams();
 
 // המילים שהקוד המשותף מבקש דרך t() — אותם ערכים כמו באתר (עברית בלבד כאן)
@@ -653,7 +798,7 @@ function visibleVariants(){
   var b=document.getElementById('brandSel').value, c=document.getElementById('catSel').value, out=[];
   GROUPS.forEach(function(g){
     if(LINK.brands.length&&LINK.brands.indexOf(g.brand)<0)return;
-    if(b&&g.brand!==b)return; if(c&&g.type!==c)return;
+    if(b&&g.brand!==b)return; if(!catMatch(g,c))return;
     g.variants.forEach(function(v){
       if(SB&&STOCK_READY&&isSold(v))return;      // רק מה שבמלאי
       if(q){var hay=(g.name_he+' '+g.brand+' '+(v.shade||'')+' '+(v.barcode||'')).toLowerCase();if(hay.indexOf(q)<0)return;}
@@ -690,12 +835,28 @@ function buildNav(){   // בוררי מותג/קטגוריה — רק מה שי�
   GROUPS.forEach(function(g){
     if(LINK.brands.length&&LINK.brands.indexOf(g.brand)<0)return;
     if(!g.variants.some(function(v){return !(SB&&STOCK_READY&&isSold(v));}))return;
-    bset[g.brand]=1; if(g.type)cset[g.type]=1;
+    bset[g.brand]=1; if(g.type)cset[g.type]=1; if(g.cs)cset['s:'+g.cs]=1;
   });
   var fill=function(sel,vals,all){var cur=sel.value;sel.innerHTML='<option value="">'+esc(all)+'</option>'+vals.map(function(x){return '<option value="'+aesc(x)+'">'+esc(x)+'</option>';}).join('');if(vals.indexOf(cur)>=0)sel.value=cur;};
   fill(bs,Object.keys(bset).sort(function(a,b){return a.localeCompare(b,'he');}),LINK.brands.length?'כל המותגים בקישור':'כל המותגים');
-  fill(cs,Object.keys(cset).sort(function(a,b){return a.localeCompare(b,'he');}),'כל הקטגוריות');
-  if(LINK.cat&&!LINK.catApplied&&cset[LINK.cat]){cs.value=LINK.cat;LINK.catApplied=true;}
+  if(HAS_TREE){
+    // רק קבוצות ותתי-קטגוריות שיש בהן מוצר במלאי — אותו כלל כמו באתר
+    var cur=cs.value, h='<option value="">כל הקטגוריות</option>', ok={};
+    CATTREE.forEach(function(g){
+      var subs=g.subs.filter(function(sb){return cset['s:'+sb.s];});
+      if(!subs.length)return;
+      h+='<optgroup label="'+aesc(g.he)+'"><option value="m:'+aesc(g.m)+'">הכול ב'+esc(g.he)+'</option>';
+      ok['m:'+g.m]=1;
+      subs.forEach(function(sb){h+='<option value="'+aesc(sb.s)+'">'+esc(sb.he)+'</option>';ok[sb.s]=1;});
+      h+='</optgroup>';
+    });
+    cs.innerHTML=h; if(ok[cur])cs.value=cur;
+    if(LINK.cat&&!LINK.catApplied&&ok[LINK.cat]){cs.value=LINK.cat;LINK.catApplied=true;}
+  } else {
+    var flat=Object.keys(cset).filter(function(k){return k.indexOf('s:')!==0;});
+    fill(cs,flat.sort(function(a,b){return a.localeCompare(b,'he');}),'כל הקטגוריות');
+    if(LINK.cat&&!LINK.catApplied&&cset[LINK.cat]){cs.value=LINK.cat;LINK.catApplied=true;}
+  }
 }
 function restoreBuyerLite(){   // שם, טלפון, עסק והערות — מאותה שמירה של האתר
   try{var d=JSON.parse(localStorage.getItem(BUYER_KEY)||'null');if(!d)return;
@@ -713,7 +874,7 @@ window.addEventListener('hashchange',function(){location.reload();});   // קי�
 """
 
 
-def build_order_page(groups, supa_cfg, site_url=""):
+def build_order_page(groups, supa_cfg, site_url="", cat_tree=None):
     """דף ההזמנה המהירה — מאותם נתונים ומאותו קוד של האתר."""
     slim = []
     for g in groups:
@@ -724,7 +885,7 @@ def build_order_page(groups, supa_cfg, site_url=""):
                        "barcode": v.get("barcode") or "", "imgs": list(v.get("imgs") or [])[:1],
                        "lead": _lead(v)})
         slim.append({"gid": g["gid"], "name_he": g["name_he"], "brand": g["brand"],
-                     "type": g.get("type") or "", "variants": vs})
+                     "type": g.get("type") or "", "cs": g.get("cs") or "", "variants": vs})
     T = TEMPLATE
     css = _slice(T, "\n<style>\n", "\n</style>\n")[len("\n<style>\n"):]
     parts = {
@@ -744,8 +905,9 @@ def build_order_page(groups, supa_cfg, site_url=""):
     out = ORDER_TEMPLATE
     for k, v in parts.items():
         out = out.replace(f"/*__{k}__*/", v)
-    out = out.replace("/*__GROUPS__*/", json.dumps(slim, ensure_ascii=False))
-    out = out.replace("__SUPABASE_CONFIG__", json.dumps(supa_cfg, ensure_ascii=False))
+    out = out.replace("/*__GROUPS__*/", _js(slim))
+    out = out.replace("/*__CATTREE__*/", _js(cat_tree or []))
+    out = out.replace("__SUPABASE_CONFIG__", _js(supa_cfg))
     out = out.replace("__SITE_URL__", (site_url or "").rstrip("/"))
     return out
 
@@ -775,6 +937,19 @@ def main():
 
     order_bc, order_desc = load_order_keys()
     db_content = fetch_db_content()   # הבק אופיס = מקור אמת לטקסטים
+    # 🧪 --overlay FILE — **לתצוגה מקדימה בלבד**: מחיל את ההרצה היבשה (סוג/קטגוריה/תכונות)
+    #    על התוכן מהמסד בזיכרון, כדי שנמרוד יראה את התוצאה לפני שכותבים למסד.
+    #    לעולם לא בבנייה לפרסום — הדגל מסרב לרוץ כשהפלט הוא catalog/ עצמו.
+    if "--overlay" in sys.argv:
+        if os.path.abspath(out_dir) == os.path.abspath(CAT):
+            raise SystemExit("⛔ --overlay אסור בבנייה לתיקיית catalog/ — רק עם --out לתצוגה מקדימה")
+        ovl = json.load(open(sys.argv[sys.argv.index("--overlay") + 1], encoding="utf-8"))
+        for sku, ch in ovl.items():
+            row = db_content.get(_nbc(sku)) if db_content else None
+            if row is not None:
+                row.update(ch)
+        print(f"🧪 overlay (תצוגה מקדימה): {len(ovl)} מוצרים")
+    cat_tree = fetch_categories()     # 🗂️ עץ שתי הרמות — מחליף את CATS השטוח
     excluded = []
     raw = []   # individual products (variants)
 
@@ -786,6 +961,29 @@ def main():
         except Exception as e:
             print("skip", pj, e); continue
         p = overlay_db_content(p, db_content.get(_nbc(p.get("barcode"))))
+
+        # 🚫 05/10/2026 — "לא לפרסום".
+        # ציוד החנות (כיסא לקוח · כיסא איפור · שולחן מניקור) נכנס לקטלוג
+        # מרשימת המועמדים "אולי נזמין" של 1,846 השורות — קיבל כרטיס ידע,
+        # תמונות, ונבנה לדף כמו כל מוצר. **כיבוי במסד לא הוציא אותו משם**,
+        # כי הבנייה קוראת מתיקיית הידע ולא מדגל `active` שבמסד: שני
+        # מקורות, ורק אחד מהם נוקה. מי שאינו מוצר מדף — לא נכנס לדף.
+        if p.get("publish") is False:
+            excluded.append(pid + " (לא לפרסום)")
+            continue
+
+        # 📦 06/10/2026 — "מעולם לא נקלט פיזית" לא נבנה לדף (נמרוד, דרך הניהול).
+        # 1,363 מוצרים מרשימת המועמדים הישנה נשאו נתונים בדף בלי שלקוחה תראה
+        # אותם אי פעם — 968 כרטיסים בלתי נראים שהכבידו על הטלפון. **הם לא
+        # נמחקים:** כרטיס הידע והשורה במסד נשארים כפי שהם, וביום שהמוצר ייקלט
+        # (stocked_ever=true) הוא חוזר לדף לבד בבנייה הבאה.
+        # 🔒 רק כשהמסד באמת נטען — בלי רשת db_content ריק, וסינון כאן היה
+        #    מרוקן את כל האתר.
+        if db_content:
+            _row = db_content.get(_nbc(p.get("barcode")))
+            if not _row or _row.get("stocked_ever") is not True:
+                excluded.append(pid + (" (מעולם לא נקלט)" if _row else " (אין במסד)"))
+                continue
 
         if order_bc is not None:
             try: num = int(pid.split("-")[0])
@@ -799,8 +997,12 @@ def main():
         # copy images
         src = os.path.join(d, "images"); imgs = []
         if os.path.isdir(src):
+            # ☁️ 12/10/2026 — כפילויות אייקלאוד ("01 2.jpg") לא נבנות: הן אינן בריפו (הפרסום מחריג
+            #    "* 2") ולכן נשברות באתר (כרטיס מורפי הציג "מ" במקום תמונה — הקובץ הראשון היה "01 2.jpg").
             files = sorted(f for f in os.listdir(src)
-                           if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp")))
+                           if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+                           and not re.search(r" \d+\.[a-z]+$", f, re.I)
+                           and f not in HIDDEN_IMAGES.get(pid, {}))   # 🚫 לא מקצועית — לא לאתר
             if files:
                 os.makedirs(os.path.join(IMGDIR, pid), exist_ok=True)
             for f in files:
@@ -808,6 +1010,13 @@ def main():
                 if not (fast and os.path.exists(dst)):   # מצב מהיר: דלג אם התמונה כבר קיימת
                     optimize_image(os.path.join(src, f), dst)
                 imgs.append(f"images/{pid}/{f}")
+
+        # 🖼️ כלל קבוע (הכרעת נמרוד 06/10): **מוצר בלי אף תמונה לא נבנה לדף** — עד
+        #    שמגיעה תמונה מקצועית. נשאר פעיל בבק ובדוחות; ביום שתמונה נכנסת ל-knowledge/
+        #    הכרטיס חוזר לבד. חל גם על מי שאיבד את כל התמונות לרשימת ההסתרה.
+        if not imgs:
+            excluded.append(pid + " (בלי תמונה)")
+            continue
 
         brand = norm_brand(p.get("brand"))
         if brand == "אחר":                          # מותג חסר → נסה לגזור משם המוצר
@@ -849,6 +1058,10 @@ def main():
             "imgs": imgs,
             "badges": badges,
             "color": p.get("shade_hex") or shade_color(p.get("shade") or "", is_complexion(p)),
+            "cslug": p.get("_cslug") or "",
+            "stype": p.get("_stype") or "",
+            "isset": bool(p.get("_isset")),
+            "attrs": p.get("_attrs") or {},
             "_key": group_key(p, brand),
         })
 
@@ -938,7 +1151,23 @@ def main():
         "סול דה \u05d6\u05f3\u05e0\u05e8\u05d5": "Sol de Janeiro",
         "טאצ'ה": "TATCHA", "גוצ'י": "GUCCI", "קילס": "Kiehl's", "קיהל'ס": "Kiehl's",
         "דולצ'ה וגבאנה": "Dolce&Gabbana", "לנייג'": "LANEIGE",
+        # 12/10/2026 — חסרו בכרטיסים (נמרוד)
+        "אסתי לאודר": "ESTÉE LAUDER", "אסתי לאודר ": "ESTÉE LAUDER",
+        "פאט מקגראת'": "PAT McGRATH LABS", "פט מקגראת'": "PAT McGRATH LABS",
+        "טארט": "tarte", "ביוטיבלנדר": "beautyblender", "דייז": "dae", "אוליביה אומה": "Olivia Umma",
     })
+
+    def _majority(members, key):
+        vals = [m.get(key) for m in members if m.get(key)]
+        return max(set(vals), key=vals.count) if vals else ""
+
+    def _attrs_union(members):
+        out = {}
+        for m in members:
+            for k, vals in (m.get("attrs") or {}).items():
+                if isinstance(vals, list):
+                    out.setdefault(k, set()).update(v for v in vals if isinstance(v, str) and v)
+        return {k: sorted(v) for k, v in out.items() if v}
 
     def make_group(members, base_he):
         members = sorted(members, key=lambda m: (m["shade"] or m["name_he"]))
@@ -946,6 +1175,10 @@ def main():
                 "name_en": _strip_trailing_shade(members[0]["name_en"]),
                 "brand": members[0]["brand"], "type": members[0]["type"],
                 "ben": _brand_en(members[0]["brand"], _strip_trailing_shade(members[0]["name_en"])),
+                "cs": _majority(members, "cslug"), "st": _majority(members, "stype"),
+                "set": any(m.get("isset") for m in members),
+                "at": _attrs_union(members),
+                "sts": sorted({m.get("stype") for m in members if m.get("stype")}),
                 "variants": [variant(m) for m in members]}
 
     for k, members in buckets.items():
@@ -957,6 +1190,10 @@ def main():
         groups.append({"gid": "g" + str(len(groups)), "name_he": p["name_he"],
                        "name_en": p["name_en"], "brand": p["brand"], "type": p["type"],
                        "ben": _brand_en(p["brand"], p["name_en"]),
+                       "cs": p.get("cslug") or "", "st": p.get("stype") or "",
+                       "set": bool(p.get("isset")),
+                       "at": _attrs_union([p]),
+                       "sts": [p["stype"]] if p.get("stype") else [],
                        "variants": [variant(p)]})
 
     # keep a stable, brand-grouped order
@@ -989,11 +1226,26 @@ def main():
     else:
         print("   Supabase לא מוגדר עדיין (catalog/supabase.config.json) — מצב וואטסאפ-טקסט בלבד")
 
-    out = TEMPLATE.replace("/*__GROUPS__*/", json.dumps(groups, ensure_ascii=False))
+    # 📱 --abs-img: כתובות תמונה מלאות אל האתר החי, במקום נתיבים יחסיים.
+    # כך **קובץ אחד** נפתח בטלפון עם תמונות אמיתיות, בלי שרת ובלי להעביר
+    # 10,745 קבצים. לתצוגה מקדימה בלבד — הפרסום האמיתי תמיד יחסי.
+    if "--abs-img" in sys.argv:
+        _n = 0
+        for _g in groups:
+            for _v in _g["variants"]:
+                _v["imgs"] = [(SITE_URL.rstrip("/") + "/" + i) if not i.startswith("http") else i
+                              for i in (_v.get("imgs") or [])]
+                _n += len(_v["imgs"])
+        print(f"📱 תמונות בכתובת מלאה: {_n} (תצוגה מקדימה לטלפון)")
+        _assets = True   # נכסי האתר עצמם מטופלים אחרי בניית ה-HTML
+
+    out = TEMPLATE.replace("/*__GROUPS__*/", _js(groups))
+    out = out.replace("/*__CATTREE__*/", _js(cat_tree))
+    out = out.replace("/*__POLICIES_AR__*/", _js(load_policies_ar()))
     out = out.replace("__COUNT__", str(len(groups)))
     out = out.replace("__OG_IMAGE__", og_image)
     out = out.replace("__SITE_URL__", SITE_URL.rstrip("/"))
-    out = out.replace("__SUPABASE_CONFIG__", json.dumps(supa_cfg, ensure_ascii=False))
+    out = out.replace("__SUPABASE_CONFIG__", _js(supa_cfg))
 
     # רשימת היישובים נצרבת לדף (18 ק"ב דחוסים) כדי שבחירת עיר תהיה מיידית
     # בלי סיבוב רשת. הרחובות דווקא נשלפים לפי דרישה מהמסד — 62,261 רחובות
@@ -1006,12 +1258,32 @@ def main():
     else:
         _cities = "[]"
         print("   ⚠️  catalog/cities.json חסר — בורר היישובים יעבוד כשדה חופשי")
+    # 🖼️ נכסי האתר (לוגו, אייקון, תמונות קטגוריה) — גם הם לכתובת מלאה
+    # במצב תצוגה מקדימה. בלי זה הלוגו פשוט לא מופיע בקובץ הבודד.
+    if "--abs-img" in sys.argv:
+        _site = SITE_URL.rstrip("/")
+        for _a in ('logo-bf.png', 'favicon-bf.png', 'cat/'):
+            out = out.replace('src="' + _a, 'src="' + _site + '/' + _a)
+            out = out.replace('href="' + _a, 'href="' + _site + '/' + _a)
+        print("🖼️  נכסי האתר בכתובת מלאה (לוגו, אייקון, תמונות קטגוריה)")
+
     out = out.replace("/*__CITIES__*/", _cities)
-    out = out.replace("/*__BRANDS_EN__*/", json.dumps(BRAND_EN, ensure_ascii=False))
+    out = out.replace("/*__BRANDS_EN__*/", _js(BRAND_EN))
     with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as f:
         f.write(out)
+    # 🏜️ 12/10/2026 — תמונת באנר הכניסה (נתיב יחסי) חייבת לשבת ליד הדף
+    _hb = os.path.join(CAT, "hero-banner.jpg")
+    if os.path.abspath(out_dir) != os.path.abspath(CAT) and os.path.exists(_hb):
+        shutil.copy2(_hb, os.path.join(out_dir, "hero-banner.jpg"))
     # 🛒 דף ההזמנה המהירה — מאותם נתונים ומאותו קוד (ראה build_order_page)
-    order_html = build_order_page(groups, supa_cfg, SITE_URL)
+    order_html = build_order_page(groups, supa_cfg, SITE_URL, cat_tree)
+    # 📱 אותו טיפול בנכסי האתר גם לדף ההזמנה — אחרת האייקון והלוגו נשברים
+    # בקובץ הבודד (נתפס בקובץ האתר 06/10, אותה סיבה בדיוק).
+    if "--abs-img" in sys.argv:
+        _site = SITE_URL.rstrip("/")
+        for _a in ('logo-bf.png', 'favicon-bf.png', 'cat/'):
+            order_html = order_html.replace('src="' + _a, 'src="' + _site + '/' + _a)
+            order_html = order_html.replace('href="' + _a, 'href="' + _site + '/' + _a)
     with open(os.path.join(out_dir, "order.html"), "w", encoding="utf-8") as f:
         f.write(order_html)
     print(f"✅ order.html: {sum(len(g['variants']) for g in groups)} שורות ({len(order_html.encode()) // 1024} ק\"ב)")
@@ -1023,7 +1295,9 @@ def main():
     print(f"   קבוצות-גוונים (>1 גוון): {len(multi)}")
     for g in sorted(multi, key=lambda g: -len(g["variants"]))[:8]:
         print(f"     · {g['name_he'][:42]} ({g['brand']}) — {len(g['variants'])} גוונים")
-    print(f"   הוסרו (לא בהזמנה 1): {len(excluded)}")
+    from collections import Counter as _C
+    _why = _C(x[x.rfind("(")+1:-1] if x.endswith(")") else "לא בהזמנה 1" for x in excluded)
+    print(f"   לא נבנו לדף: {len(excluded)} — " + " · ".join(f"{k} {n}" for k, n in _why.most_common()))
     if dup_barcodes:
         print(f"⚠️  ברקודים כפולים: {len(dup_barcodes)} (משפיע על מלאי/הזמנות לפי sku)")
         for bc, first_id, second_id in dup_barcodes[:10]:
@@ -1057,30 +1331,35 @@ TEMPLATE = r"""<!DOCTYPE html>
 <script>window.SUPA=__SUPABASE_CONFIG__;</script>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="__OG_IMAGE__">
-<meta name="theme-color" content="#171717">
+<meta name="theme-color" content="#3b2b20">
 <link rel="icon" type="image/png" href="favicon-bf.png">
 <link rel="apple-touch-icon" href="favicon-bf.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Cormorant+Garamond:wght@500;600&family=Dancing+Script:wght@500;600;700&family=Gveret+Levin+AlefAlefAlef&family=Suez+One&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;500;600;700&family=Playfair+Display:wght@400&family=Montserrat:wght@600&family=Cormorant+Garamond:wght@500;600&family=Dancing+Script:wght@500;600;700&family=Suez+One&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#ffffff; --surface:#ffffff; --border:#e6e6e6; --border2:#d4d4d4;
-  --accent:#171717; --accent-d:#000000; --accent-l:#3a3a3a; --accent-soft:#f2f2f2;
-  --text:#171717; --muted:#8a8a8a; --lux:#171717;
+  --bg:#fbf8f4; --surface:#ffffff; --border:#ebe2d8; --border2:#dccfc1;
+  /* 🏜️ 12/10/2026 — "חול ואבן" לפי הבאנר של המעצבת נועה. הקודם: שחור #171717 + ורוד-פטל #a85a6d (בגיבוי) */
+  --accent:#2e2219; --accent-d:#1f1610; --accent-l:#5a4636; --accent-soft:#f5eee6;
+  --text:#2e2219; --muted:#8c7b6d; --lux:#2e2219;
+  --brand:#a88266; --brand-d:#6f523c; --brand-soft:#f3eae0;
   --radius:16px; --shadow:0 6px 24px rgba(0,0,0,.06); --shadow-h:0 14px 40px rgba(0,0,0,.12);
-  --font:'Heebo',-apple-system,BlinkMacSystemFont,sans-serif;
-  --script:'Gveret Levin AlefAlefAlef','Heebo',cursive;
+  --font:'Assistant','Heebo',-apple-system,BlinkMacSystemFont,sans-serif;   /* 12/10: הגופן של המעצבת */
+  /* ✍️ 06/10/2026 — כתב היד הוסר מכל האתר (נמרוד). המשתנה נשאר
+     כדי שלא ישבר שימוש ישן, אבל הוא מצביע על אותו גופן. */
+  --script:var(--font);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-html,body{background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html,body{background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-x:clip}
 body{padding-bottom:90px}
 a{color:inherit}img{display:block}
 ::-webkit-scrollbar{height:0;width:0}
 
 /* promo bar (free shipping / coupon / delivery) */
-.promobar{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:nowrap;overflow:hidden;
-  background:linear-gradient(90deg,var(--accent-d),var(--accent) 55%,var(--accent-l));color:#fff;
+/* 📌 07/10: מקובע למעלה (נמרוד). z-index מעל שורת החיפוש הדביקה (60) ומתחת לסל ולחלונות. */
+.promobar{position:sticky;top:0;z-index:65;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:nowrap;overflow:hidden;
+  background:linear-gradient(90deg,#3b2b20,var(--brand-d) 55%,#8f6d55);color:#f6ebe0;
   font-size:12.5px;font-weight:600;letter-spacing:.2px;padding:7px 12px;text-align:center}
 .promobar span{white-space:nowrap}
 .promobar .pdot{opacity:.55;font-weight:400}
@@ -1093,14 +1372,45 @@ a{color:inherit}img{display:block}
 @keyframes promoIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 .brandbar{position:relative;display:flex;justify-content:center;align-items:center;padding:14px 16px 10px;background:var(--bg)}
-.brandbar img{height:58px;width:auto;display:block;transition:transform .25s ease}
+.brandbar img{height:84px;width:auto;display:block;transition:transform .25s ease}   /* 06/10: הוגדל מ-58 (נמרוד) */
 .brandbar img:hover{transform:translateY(-1px)}
+/* 🏜️ 12/10/2026 — באנר הכניסה של המעצבת. המיקומים באחוזים לפי הקובץ שלה (דף 810×1080),
+   כך שבטלפון הוא נראה בדיוק כמו העיצוב. במחשב: התמונה בצד, הכיתוב על משטח חול. */
+.brandbar{display:none}
+.dhero{position:relative;overflow:hidden;width:100%;aspect-ratio:3/4;max-height:92vh;text-align:center;
+  background:#5b4533 url(hero-banner.jpg) 100% 0/111.2% auto no-repeat}
+.dhero,.dhero *{color:#fff}
+.dhero .hlogo{position:absolute;top:4.5%;left:0;right:0;line-height:1;cursor:pointer}
+.dhero .hlogo b{display:block;font:400 clamp(34px,10.2vw,62px)/1 'Playfair Display',Georgia,serif;letter-spacing:-2px}
+.dhero .hlogo span{display:block;font:400 clamp(11px,3.1vw,19px)/1 'Playfair Display',Georgia,serif;letter-spacing:.18em;margin-top:.45em}
+.dhero .hlogo i{display:block;font:600 clamp(5.5px,1.15vw,7px)/1 'Montserrat',sans-serif;letter-spacing:.32em;font-style:normal;margin-top:.7em}
+.dhero h1{position:absolute;top:19.4%;left:4%;right:4%;margin:0;font:600 clamp(23px,6.5vw,52px)/1.1 'Assistant',sans-serif;text-wrap:balance}
+.dhero p{position:absolute;top:31.6%;left:5%;right:5%;margin:0;font:400 clamp(12px,3.25vw,26px)/1.35 'Assistant',sans-serif;text-wrap:balance}
+.dhero .hcta{position:absolute;top:80.7%;left:50%;transform:translateX(-50%);width:48.6%;height:10.9%;
+  background:rgba(197,158,127,.86);border:0;border-radius:clamp(12px,3.4vw,24px);
+  font:400 clamp(15px,4.2vw,26px)/1 'Assistant',sans-serif;cursor:pointer;
+  display:flex;gap:.6em;align-items:center;justify-content:center}
+.dhero .hcta .harr{font-size:1.25em}
+.dhero .langbtn{top:10px;transform:none;inset-inline-start:auto;left:10px;padding:6px 14px;font-size:13px;
+  background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.55);border-radius:20px;
+  box-shadow:none;backdrop-filter:blur(6px);color:#fff}
+.dhero .langbtn:hover{transform:scale(1.04);background:rgba(255,255,255,.26)}
+@media(min-width:900px){
+  .dhero{aspect-ratio:auto;height:600px;max-height:none;
+    background:url(hero-banner.jpg) left center/auto 100% no-repeat,linear-gradient(115deg,#8a6c55 0%,#b8977b 45%,#d9c2ab 100%)}
+  .dhero .hlogo,.dhero h1,.dhero p{left:44%;right:4%}
+  .dhero .hlogo{top:13%}
+  .dhero h1{top:37%;font-size:46px}
+  .dhero p{top:55%;font-size:20px}
+  .dhero .hcta{left:auto;right:calc(28% - 160px);transform:none;width:320px;height:64px;font-size:22px;top:auto;bottom:16%}
+}
+
 .langbtn{position:absolute;inset-inline-start:16px;top:50%;transform:translateY(-50%);
   background:var(--surface);border:1px solid var(--border2);color:var(--accent-d);
   font-family:var(--font);font-size:13px;font-weight:500;padding:7px 14px;border-radius:30px;
   cursor:pointer;box-shadow:var(--shadow);transition:background .2s,transform .15s}
 .langbtn:hover{background:var(--accent-soft);transform:translateY(-50%) scale(1.04)}
-@media(max-width:640px){.brandbar img{height:46px}.brandbar{padding:11px 16px 7px}.langbtn{font-size:12px;padding:6px 11px;inset-inline-start:12px}}
+@media(max-width:640px){.brandbar img{height:66px}.brandbar{padding:11px 16px 7px}.langbtn{font-size:12px;padding:6px 11px;inset-inline-start:12px}}
 .herobanner{position:relative;width:100%;overflow:hidden;border-bottom:1px solid var(--border);
   background:linear-gradient(rgba(255,255,255,.28),rgba(255,255,255,.40) 55%,rgba(255,255,255,.52)),url('hero.jpg') center/cover no-repeat}
 .herobanner::before,.herobanner::after{content:none}
@@ -1126,7 +1436,7 @@ a{color:inherit}img{display:block}
 .hero-line::before{right:-9px}.hero-line::after{left:-9px}
 .hero-sub{font-family:'Suez One',var(--font);font-size:clamp(15px,2.2vw,20px);font-weight:400;color:var(--text);letter-spacing:.2px}
 @media(max-width:640px){.hero-inner{padding:44px 16px 40px}.hero-kicker{letter-spacing:5px;font-size:11.5px}}
-.hero{text-align:center;padding:30px 18px 16px;background:radial-gradient(120% 90% at 50% -10%, #f4f4f4 0%, var(--bg) 60%);border-bottom:1px solid var(--border)}
+.hero{text-align:center;padding:30px 18px 16px;background:radial-gradient(120% 90% at 50% -10%, var(--brand-soft) 0%, var(--bg) 60%);border-bottom:1px solid var(--border)}
 .hero .mark{font-family:'Cormorant Garamond',serif;font-size:13px;letter-spacing:5px;text-transform:uppercase;color:var(--accent);font-weight:600}
 .hero h1{font-family:'Dancing Script','Cormorant Garamond',cursive;font-size:52px;font-weight:700;line-height:1.12;letter-spacing:.5px;margin:2px 0 6px;background:linear-gradient(90deg,var(--accent-d),var(--accent-l));-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero p{color:var(--muted);font-size:14px;font-weight:300}
@@ -1137,8 +1447,49 @@ a{color:inherit}img{display:block}
 
 /* category image tiles */
 .cattiles{display:flex;gap:12px;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;
-  max-width:1160px;margin:14px auto 2px;padding:4px 18px}
+  max-width:1400px;margin:14px auto 2px;padding:4px 18px}
 .cattiles::-webkit-scrollbar{display:none}
+/* 🗂️ ניווט העץ (06/10/2026) — אריח לכל קבוצה בצבע משלה, ומתחתיו שורת
+   תתי-הקטגוריות של הקבוצה שנבחרה. הצבע נושא את הזהות, האייקון הוא קו
+   בגוון הכהה של אותו צבע. הלוגו והפונט לא נגעו. */
+.cattiles.tree{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:none;
+  overflow:visible;padding:0 14px;margin:14px auto 0;max-width:1400px;border:0}
+@media(min-width:760px){.cattiles.tree{grid-template-columns:repeat(5,1fr);gap:14px;padding:0 18px}}
+/* ✏️ 12/10/2026 — לפי הדוגמה של המעצבת: התווית מימין, אייקון מאויר גדול משמאל */
+.cattiles.tree .cattile{display:flex;flex-direction:row-reverse;align-items:center;
+  justify-content:space-between;gap:8px;min-height:86px;padding:12px 14px;width:auto;
+  border-radius:12px;border:1px solid rgba(111,82,60,.10);box-shadow:0 1px 3px rgba(60,40,25,.05)}
+.cattiles.tree .cattile>span:last-child{font-size:15.5px;font-weight:500;line-height:1.25;text-align:start;color:var(--text)}
+.cattiles.tree .cattile:active{filter:brightness(.96)}
+.cattiles.tree .cattile.active{box-shadow:inset 0 0 0 2px var(--brand-d)}
+.cattile .ci.cticon{display:flex;align-items:center;justify-content:center;border:0;flex:none;box-shadow:none!important;padding:0;
+  width:auto;height:auto;border-radius:0;background:none!important}
+.cattile .ci.cticon svg{width:44px;height:44px;fill:none;stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round}
+@media(min-width:760px){.cattile .ci.cticon svg{width:52px;height:52px}}
+/* כותרת קטע מעל הרשת — כמו בהדמיה */
+.catsec{max-width:1400px;margin:22px auto 0;padding:0 18px;font-size:24px;font-weight:600;
+  letter-spacing:.01em}
+.catsec:empty{display:none}
+.subrow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;max-width:1160px;
+  margin:4px auto 0;padding:6px 18px 2px;cursor:grab}
+.subrow::-webkit-scrollbar{display:none}
+.subrow:empty{display:none}
+/* 🏷️ פס הכותרת של הקבוצה — אותו צבע של האריח שנלחץ, עם האייקון והשם
+   בערבית. בלעדיו הלקוחה לוחצת על אריח צבעוני ונוחתת ברשימה לבנה
+   שאינה אומרת לה איפה היא. */
+.cathead{max-width:1400px;margin:10px auto 0;padding:0 18px}
+.cathead:empty{display:none}
+.cathead .inner{display:flex;align-items:center;gap:13px;border-radius:14px;padding:16px 18px}
+.cathead svg{width:38px;height:38px;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cathead h2{font-size:21px;font-weight:600;letter-spacing:.01em;line-height:1.2}
+.cathead .ar{font-size:12.5px;opacity:.72;margin-top:3px}
+.cathead .found{margin-top:9px;font-size:12.5px;color:var(--muted)}
+.cathead .found b{color:var(--text);font-weight:600}
+.subchip{flex:0 0 auto;border:1px solid var(--border2);border-radius:999px;background:#fff;
+  padding:6px 14px;font-size:13.5px;cursor:pointer;white-space:nowrap;font-family:var(--font);color:var(--text)}
+.subchip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+@media(min-width:900px){.subrow{justify-content:center}}
 @media(min-width:900px){.cattiles{justify-content:center}}
 .cattile{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:pointer;
   background:none;border:none;font-family:var(--font);padding:2px}
@@ -1155,31 +1506,43 @@ a{color:inherit}img{display:block}
 @media(max-width:640px){.cattile .ci{width:66px;height:66px}.cattile span{font-size:11.5px}}
 
 /* brand picker button + modal */
-.brandpick{display:flex;justify-content:center;padding:6px 16px 2px}
+.brandpick{display:none}   /* 06/10/2026 — הכפתור עבר לשורת הסינון */
 @media(max-width:640px){.brandpick{padding:16px 16px 14px}}   /* ריווח לכפתור "כל המותגים" במובייל — צפוף מדי בלעדיו */
-.brandpickbtn{display:inline-flex;align-items:center;gap:10px;font-family:var(--font);font-size:12.5px;font-weight:500;letter-spacing:.16em;
-  cursor:pointer;padding:11px 30px;border-radius:3px;border:1px solid var(--accent);background:transparent;
-  color:var(--accent);box-shadow:none;transition:.25s ease}
-.brandpickbtn:hover{background:var(--accent);color:var(--surface);border-color:var(--accent);transform:none}
+.brandpickbtn{display:inline-flex;align-items:center;gap:7px;font-family:var(--font);font-size:12px;font-weight:500;
+  cursor:pointer;padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);
+  color:var(--muted);box-shadow:none;transition:.15s}
+.brandpickbtn:hover{color:var(--brand-d);border-color:var(--brand)}
 .brandpickbtn .bpi{display:none}
-.brandpickbtn .bpchev{font-size:9px;opacity:.55;margin-inline-start:3px;font-weight:400}
-.brandpickbtn.on{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.brandpickbtn .bpchev{font-size:9px;opacity:.6;margin-inline-start:2px;font-weight:400}
+/* נבחר מותג → הצ'יפ נצבע בגוון המותג, כמו כל סינון פעיל אחר */
+.brandpickbtn.on{background:var(--brand-soft);color:var(--brand-d);border-color:var(--brand)}
 .brandpickbtn.on .bpchev{opacity:.85}
 .brandpickbtn .clr{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
   background:rgba(255,255,255,.28);font-size:12px;line-height:1}
 .brandsheet{max-width:720px}
+/* 🎛️ חלון הסינון — מקטעים בסדר של טל, צ'יפים בצבע הקבוצה (כמו תתי-הקטגוריות) */
+.filtersheet{max-width:560px}
+.fsec{padding:12px 0;border-bottom:1px solid var(--border)}
+.fsec:last-of-type{border-bottom:none}
+.fsec h4{font-family:var(--font);font-size:14px;font-weight:600;margin:0 0 9px;color:var(--text)}
+.fopts{display:flex;flex-wrap:wrap;gap:8px}
+.fopt{font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;padding:7px 14px;border-radius:20px;border:none;transition:.15s}
+.fclear{display:block;margin:12px auto 0;background:none;border:none;font-family:var(--font);font-size:13px;color:var(--brand-d);cursor:pointer;text-decoration:underline}
 .bm{padding:6px 20px 24px}
-.bm h3{font-family:var(--script);font-size:24px;font-weight:400;letter-spacing:0;text-align:center;margin:6px 0 12px}
+.bm h3{font-family:var(--font);font-size:24px;font-weight:600;letter-spacing:0;text-align:center;margin:6px 0 12px}
 .bm .bsearch{position:relative;margin-bottom:14px}
 .bm .bsearch input{width:100%;font-size:16px;font-family:var(--font);padding:11px 40px;border:1px solid var(--border2);
   border-radius:30px;background:var(--surface);color:var(--text);outline:none}
-.bm .bsearch input:focus{border-color:var(--accent-l);box-shadow:0 0 0 3px var(--accent-soft)}
+.bm .bsearch input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
 .bm .bsearch .ico{position:absolute;right:15px;top:50%;transform:translateY(-50%);color:var(--accent-l);font-size:17px}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
 .bcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;
   background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 10px;min-height:106px;transition:.15s}
 .bcard:hover{border-color:var(--accent-l);box-shadow:var(--shadow);transform:translateY(-2px)}
-.bcard.on{border-color:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.bcard.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 4px 14px rgba(168,90,109,.22)}
+.bdone{position:sticky;bottom:0;width:100%;margin-top:14px;font-family:var(--font);font-size:15px;font-weight:700;color:#fff;
+  border:none;border-radius:14px;padding:13px;cursor:pointer;background:linear-gradient(90deg,var(--brand-d),var(--brand));
+  box-shadow:0 8px 22px rgba(168,90,109,.3)}
 .bcard .blogo{height:48px;max-width:92%;object-fit:contain;mix-blend-mode:multiply}
 .bcard .bwm{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--accent-d);text-align:center;line-height:1.15}
 /* אריח בלי קובץ לוגו מקבל סמליל טיפוגרפי בגובה זהה, כדי שהרשת תישאר
@@ -1207,7 +1570,7 @@ a{color:inherit}img{display:block}
   box-shadow:0 10px 26px rgba(37,211,102,.42);transition:.2s}
 .wafloat:hover{transform:scale(1.08)}
 .wafloat svg{width:30px;height:30px;fill:#fff}
-.wachat{position:fixed;right:16px;bottom:150px;z-index:71;width:300px;max-width:calc(100vw - 32px);
+.wachat{position:fixed;right:16px;bottom:150px;z-index:85;width:300px;max-width:calc(100vw - 32px);
   background:var(--surface);border:1px solid var(--border2);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.22);
   overflow:hidden;display:none;animation:waUp .22s cubic-bezier(.2,.8,.2,1)}
 .wachat.open{display:block}
@@ -1233,7 +1596,7 @@ a{color:inherit}img{display:block}
 .cat.active{background:linear-gradient(90deg,var(--accent-d),var(--accent));color:#fff;border-color:transparent;box-shadow:0 4px 14px rgba(0,0,0,.28)}
 
 /* search + autocomplete */
-.search-wrap{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);padding:10px 16px 8px;border-bottom:1px solid var(--border)}
+.search-wrap{position:sticky;top:var(--pbh,0px);z-index:60;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);padding:10px 16px 8px;border-bottom:1px solid var(--border)}
 .search{position:relative;max-width:640px;margin:0 auto}
 .search input{width:100%;font-size:16px;font-family:var(--font);padding:12px 46px;border:1px solid var(--border2);border-radius:30px;background:var(--surface);color:var(--text);outline:none;transition:.2s;box-shadow:var(--shadow)}
 .search input:focus{border-color:var(--accent-l);box-shadow:0 0 0 4px var(--accent-soft)}
@@ -1247,7 +1610,7 @@ a{color:inherit}img{display:block}
 .ac-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;font-size:14px}
 .ac-item:hover,.ac-item.hl{background:var(--accent-soft)}
 .ac-item .b{font-size:11px;color:var(--accent-l);font-weight:700;text-transform:uppercase}
-.ac-item img{width:30px;height:30px;object-fit:contain;border-radius:6px;background:#f2f2f2}
+.ac-item img{width:30px;height:30px;object-fit:contain;border-radius:6px;background:var(--brand-soft)}
 .ac-item .ac-nm{display:flex;flex-direction:column;min-width:0;flex:1}
 .ac-item .ac-en{font-size:11px;color:var(--muted);font-weight:300;font-style:normal;direction:ltr;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -1265,7 +1628,77 @@ a{color:inherit}img{display:block}
 select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;cursor:pointer;outline:none}
 
 /* grid */
-.rescount{max-width:1160px;margin:8px auto 0;padding:0 20px;font-size:12.5px;color:var(--muted);font-weight:500;text-align:right}
+.rescount{max-width:1400px;margin:8px auto 0;padding:0 20px;font-size:12.5px;color:var(--muted);font-weight:500;text-align:right}
+/* 🎛️ 12/10/2026 — מגירת סינון אחת. הסרגל הישן, הבועות והפס הכחול — מוסתרים (הלוגיקה חיה) */
+.toolbar,.subrow,#actFil{display:none!important}
+.fbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:1400px;margin:12px auto 0;padding:0 18px}
+.fbtn{display:inline-flex;align-items:center;gap:7px;font-family:var(--font);font-size:14px;font-weight:600;color:var(--text);
+  background:var(--surface);border:1px solid var(--border2);border-radius:30px;padding:9px 16px;cursor:pointer;box-shadow:var(--shadow)}
+.fbtn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.fbtn .fbn{display:none;min-width:20px;height:20px;border-radius:10px;background:var(--brand-d);color:#fff;font-size:12px;line-height:20px;text-align:center;padding:0 6px}
+.fbtn.on{border-color:var(--brand-d);color:var(--brand-d)}
+.fbtn.on .fbn{display:inline-block}
+.fbar .fbcount{font-size:13px;color:var(--muted);font-weight:500;white-space:nowrap}
+.fbar #sort{margin:0}
+.fbchips{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 100%}
+.fbchips:empty{display:none}
+.fbchip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--brand-d);
+  background:var(--brand-soft);border:1px solid transparent;border-radius:20px;padding:5px 10px}
+.fbchip button{all:unset;cursor:pointer;font-size:13px;line-height:1;opacity:.7}
+.fbchip button:hover{opacity:1}
+.fback{position:fixed;inset:0;z-index:205;background:rgba(40,26,16,.42);display:none}
+.fback.open{display:block}
+.fdrawer{position:fixed;top:0;bottom:0;inset-inline-start:0;width:min(86vw,360px);z-index:210;background:var(--surface);
+  display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);
+  box-shadow:-12px 0 40px rgba(0,0,0,.18)}
+[dir=ltr] .fdrawer{transform:translateX(-100%)}
+.fdrawer.open{transform:none}
+.fdhead{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;border-bottom:1px solid var(--border)}
+.fdhead h3{font-family:var(--font);font-size:19px;font-weight:600;margin:0}
+.fdx{all:unset;cursor:pointer;font-size:18px;color:var(--muted);padding:4px 6px}
+.fdbody{flex:1;overflow-y:auto;padding:4px 18px 12px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
+.fdrawer{overscroll-behavior:contain}
+.fback{touch-action:none}
+body.pglock{position:fixed;left:0;right:0;width:100%;overflow:hidden}
+.fdq{position:relative;padding:10px 18px 8px;border-bottom:1px solid var(--border)}
+.fdq input{width:100%;box-sizing:border-box;font-family:var(--font);font-size:16px;padding:10px 38px 10px 12px;
+  border:1px solid var(--border2);border-radius:24px;background:var(--bg);color:var(--text)}
+.fdq .ico{position:absolute;top:50%;transform:translateY(-50%);inset-inline-start:32px;color:var(--muted);font-size:16px;pointer-events:none}
+@media(min-width:900px){.fdq{padding:8px 16px}}
+.fdsec{border-bottom:1px solid var(--border)}
+.fdsec summary{list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  padding:13px 0;font-size:15px;font-weight:600;color:var(--text)}
+.fdsec summary::-webkit-details-marker{display:none}
+.fdsec summary .chev{font-size:11px;color:var(--muted);transition:transform .2s}
+.fdsec[open] summary .chev{transform:rotate(180deg)}
+.fdsec summary .sel{font-size:12px;font-weight:500;color:var(--brand-d);margin-inline-start:8px;flex:1;text-align:start;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fdlist{padding:0 0 10px}
+/* הבועות בשורה התחתונה הקבועה: שורה אחת, גלילה הצידה, לא זזות עם הרשימה */
+.fdfoot{flex-wrap:wrap}
+.fdchips{flex:1 1 100%;display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.fdchips::-webkit-scrollbar{display:none}
+.fdchips:empty{display:none}
+.fdchips .fbchip{flex:none;white-space:nowrap}
+.fdopt{display:flex;align-items:center;gap:10px;padding:7px 2px;cursor:pointer;font-size:14px;color:var(--text)}
+.fdopt .box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:5px;flex:none;display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:#fff;background:var(--surface)}
+.fdopt.radio .box{border-radius:50%}
+.fdopt.on .box{background:var(--brand-d);border-color:var(--brand-d)}
+.fdopt .n{margin-inline-start:auto;font-size:12px;color:var(--muted)}
+.fdopt.on{font-weight:600}
+.fdbq{width:100%;box-sizing:border-box;font-family:var(--font);font-size:14px;padding:8px 12px;border:1px solid var(--border2);border-radius:10px;margin:2px 0 8px;background:var(--bg)}
+.fdmore{all:unset;cursor:pointer;font-size:13px;color:var(--brand-d);text-decoration:underline;padding:4px 2px 8px;display:block}
+.fdfoot{display:flex;gap:10px;padding:12px 18px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border);background:var(--surface)}
+.fdclear{flex:0 0 auto;font-family:var(--font);font-size:14px;font-weight:600;color:var(--text);background:var(--surface);
+  border:1px solid var(--border2);border-radius:30px;padding:12px 16px;cursor:pointer}
+.fdshow{flex:1;font-family:var(--font);font-size:15px;font-weight:700;color:#fff;background:var(--brand-d);border:none;border-radius:30px;padding:12px 16px;cursor:pointer}
+@media(min-width:900px){
+  /* 💻 12/10 (נמרוד): גם במחשב המגירה נשלפת מהצד כמו בטלפון — המוצרים נשארים ברוחב מלא.
+     (הגרסה עם עמודה קבועה — בגיבוי build_catalog-*-לפני-סבב6.py) */
+  .fdrawer{width:380px}
+  .fbtn{font-size:15px;padding:10px 20px}
+}
 /* 🔵 סרגל הסינונים הפעילים — מופיע רק כשיש סינון, כדי שתמיד יהיה ברור מה מצומצם ואיך לחזור להכל */
 .actfil{display:none;max-width:1160px;margin:10px auto 0;padding:10px 14px;gap:8px;align-items:center;flex-wrap:wrap;
   background:var(--accent-soft);border:1px solid var(--accent-l);border-radius:14px}
@@ -1276,23 +1709,33 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .aftag button{all:unset;cursor:pointer;font-size:14px;line-height:1;color:var(--muted);padding:0 1px}
 .aftag button:hover{color:var(--accent-d)}
 .afclear{margin-inline-start:auto;cursor:pointer;font-family:var(--font);font-size:13px;font-weight:700;
-  color:#fff;background:var(--accent);border:none;border-radius:20px;padding:8px 18px;transition:.15s;white-space:nowrap}
+  color:#fff;background:var(--brand);border:none;border-radius:20px;padding:8px 18px;transition:.15s;white-space:nowrap}
 .afclear:hover{filter:brightness(.93)}
 @media(max-width:600px){.afclear{width:100%;margin-inline-start:0;text-align:center}}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;max-width:1160px;margin:8px auto 40px;padding:0 18px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:.22s;position:relative}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;max-width:1400px;margin:8px auto 40px;padding:0 18px}
+/* 💻 12/10 (נמרוד): פחות שטח מת במחשב — 4 עמודות ממסך 1100, 5 ממסך 1500 */
+@media(min-width:1100px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1500px){.grid{grid-template-columns:repeat(5,1fr)}}
+.card{background:var(--surface);border:1px solid #efe7e9;border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:.22s;position:relative}
 .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h);border-color:var(--border2)}
-.card .imgbox{position:relative;aspect-ratio:1/1;background:linear-gradient(160deg,#fafafa,#f2f2f2);display:flex;align-items:center;justify-content:center;padding:14px}
-.card .imgbox img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply}
+.card .imgbox{position:relative;aspect-ratio:1/1;background:linear-gradient(160deg,#fff,var(--brand-soft));display:flex;align-items:center;justify-content:center;padding:14px;overflow:hidden}
+/* 🖼️ 12/10 (נמרוד: "לא יושבים טוב / מאורכים"): בספארי max-height:100% בתוך aspect-ratio לא הגביל
+   את התמונה והיא מתחה את הכרטיס. מיקום אבסולוטי = הריבוע קובע, התמונה נכנסת בו במרכז. */
+.card .imgbox img{position:absolute;inset:14px;width:calc(100% - 28px);height:calc(100% - 28px);max-width:none;max-height:none;object-fit:contain;mix-blend-mode:multiply}
 .ph{font-family:'Cormorant Garamond',serif;font-size:46px;color:var(--accent-l);opacity:.5}
 .fav{position:absolute;top:9px;left:9px;z-index:3;width:34px;height:34px;border-radius:50%;border:1px solid rgba(0,0,0,.12);background:#fff;backdrop-filter:blur(4px);cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;color:#8a8a8a;transition:.15s;box-shadow:0 2px 10px rgba(0,0,0,.14)}
-.fav:hover{transform:scale(1.12)}.fav.on{color:#171717;border-color:rgba(0,0,0,.2)}
+.fav:hover{transform:scale(1.12)}
+/* ❤️ 06/10/2026 — העיגול **מתמלא** ורוד בבחירה (נמרוד). קודם רק הלב
+   השחור התמלא, ובכרטיס לבן קטן זה כמעט לא נראה. */
+.fav.on{background:var(--brand);color:#fff;border-color:var(--brand);
+  box-shadow:0 2px 12px rgba(168,90,109,.45)}
 .bdgs{position:absolute;top:9px;right:9px;z-index:3;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
 .bdg{font-size:10px;font-weight:700;color:#fff;padding:2px 8px;border-radius:20px;letter-spacing:.3px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
-.bdg.sale{background:#171717}.bdg.new{background:#171717}.bdg.bestseller{background:var(--accent)}
-.bdg.soldout{background:#6b7280}.bdg.limited{background:#3d3a35}.bdg.vegan{background:#3d3a35}
+.bdg.sale{background:var(--brand-d)}.bdg.new{background:var(--brand)}
+.bdg.bestseller{background:#b4714f}
+.bdg.soldout{background:#9a9aa2}.bdg.limited{background:#8a6a4b}.bdg.vegan{background:#4e7a5e}
 .card .body{padding:11px 13px 13px;display:flex;flex-direction:column;gap:5px;flex:1}
-.card .brand{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-l)}
+.card .brand{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--brand-d)}
 /* שם המותג באנגלית לצד העברי — כך הלקוח מזהה את המותג גם כשהשם
    האנגלי של המוצר עצמו אינו פותח בו. השם האנגלי של המוצר לא נגע. */
 .brand-en{font-weight:500;opacity:.72;letter-spacing:.3px}
@@ -1313,10 +1756,10 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .sw.txt.on{background:var(--accent-soft);color:var(--accent-d)}
 .nsh{font-size:10.5px;color:var(--accent-l);font-weight:600;align-self:flex-start}
 .card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:8px}
-.price{font-size:17px;font-weight:700;color:var(--text)}
+.price{font-size:17px;font-weight:700;color:var(--brand-d)}
 .price .was{font-size:12px;font-weight:500;color:var(--muted);text-decoration:line-through;margin-inline-start:5px}
 .price.sale{color:var(--accent)}
-.add{width:34px;height:34px;border-radius:11px;border:none;cursor:pointer;font-size:20px;line-height:1;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-d));box-shadow:0 4px 12px rgba(0,0,0,.28);transition:.15s;touch-action:manipulation}
+.add{width:34px;height:34px;border-radius:11px;border:none;cursor:pointer;font-size:20px;line-height:1;color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand-d));box-shadow:0 4px 12px rgba(168,90,109,.26);transition:.15s;touch-action:manipulation}
 .add:hover{transform:translateY(-1px) scale(1.05)}
 .cardqty{display:flex;align-items:center;border:1px solid var(--accent-l);border-radius:11px;overflow:hidden;background:var(--surface);box-shadow:0 2px 8px rgba(0,0,0,.1)}
 .cardqty button{width:30px;height:34px;border:none;background:var(--accent-soft);color:var(--accent-d);font-size:18px;line-height:1;cursor:pointer;touch-action:manipulation;transition:.12s}
@@ -1330,7 +1773,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .cartbar{position:fixed;left:0;right:0;bottom:0;z-index:80;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-top:1px solid var(--border2);padding:11px 18px;display:flex;align-items:center;gap:14px;justify-content:center;box-shadow:0 -8px 30px rgba(0,0,0,.1);transform:translateY(120%);transition:.32s cubic-bezier(.2,.8,.2,1)}
 .cartbar.show{transform:translateY(0)}
 .cartbar .sum{font-weight:500;font-size:14px}.cartbar .sum b{color:var(--accent-d)}
-.cartbar button{font-family:var(--font);font-size:14px;font-weight:600;color:#fff;cursor:pointer;border:none;border-radius:30px;padding:11px 26px;background:linear-gradient(90deg,var(--accent-d),var(--accent));box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.cartbar button{font-family:var(--font);font-size:14px;font-weight:600;color:#fff;cursor:pointer;border:none;border-radius:30px;padding:11px 26px;background:linear-gradient(90deg,var(--brand-d),var(--brand));box-shadow:0 6px 18px rgba(168,90,109,.3)}
 .totop{position:fixed;left:16px;bottom:84px;z-index:70;width:46px;height:46px;border-radius:50%;border:1px solid var(--border2);background:rgba(255,255,255,.94);backdrop-filter:blur(10px);color:var(--accent-d);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;transform:translateY(14px) scale(.9);pointer-events:none;transition:.25s cubic-bezier(.2,.8,.2,1)}
 .totop.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
 .totop:hover{background:linear-gradient(135deg,var(--accent),var(--accent-d));color:#fff;border-color:transparent}
@@ -1338,21 +1781,34 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 /* modals */
 .ov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.46);backdrop-filter:blur(3px);display:none;align-items:flex-end;justify-content:center}
 .ov.open{display:flex}
-.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.22);animation:up .3s cubic-bezier(.2,.8,.2,1)}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;border-radius:22px 22px 0 0;box-shadow:0 -20px 60px rgba(0,0,0,.22);animation:up .3s cubic-bezier(.2,.8,.2,1)}
 @media(min-width:600px){.ov{align-items:center}.sheet{border-radius:22px}}
 @keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
 .sheet .x{position:sticky;top:0;float:left;margin:12px 12px 0 0;width:46px;height:46px;border-radius:50%;border:none;background:var(--accent-soft);color:var(--accent-d);font-size:24px;line-height:1;cursor:pointer;z-index:5;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
 .sheet .x:hover{background:var(--accent-l);color:#fff}
 .pd-gal{display:flex;gap:8px;overflow-x:auto;padding:16px 18px 4px;scroll-snap-type:x mandatory}
-.pd-gal img{height:220px;width:auto;border-radius:14px;background:#f2f2f2;object-fit:contain;scroll-snap-align:center;border:1px solid var(--border);padding:8px;flex:0 0 auto;max-width:88%}
-.pd-gal .ph{height:220px;width:220px;display:flex;align-items:center;justify-content:center;background:#f2f2f2;border-radius:14px}
+.pd-gal img{height:220px;width:auto;border-radius:14px;background:linear-gradient(160deg,#fff,var(--brand-soft));object-fit:contain;scroll-snap-align:center;cursor:zoom-in;border:1px solid var(--border);padding:8px;flex:0 0 auto;max-width:88%}
+.zoomov{position:fixed;inset:0;z-index:300;background:rgba(43,30,22,.92);display:none;align-items:center;justify-content:center}
+.zoomov.on{display:flex}
+.zoomov .ztrack{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;
+  overscroll-behavior:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.zoomov .ztrack::-webkit-scrollbar{display:none}
+.zoomov .zslide{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;scroll-snap-stop:always}
+.zoomov img{max-width:94vw;max-height:84vh;object-fit:contain;border-radius:14px;background:#fff;padding:10px;-webkit-user-drag:none;user-select:none}
+.zoomov .zx,.zoomov .zn,.zoomov .zc{z-index:2}
+.zoomov .zc{direction:ltr;unicode-bidi:isolate}   /* "3 / 6" ולא "6 / 3" */
+.zoomov .zx{position:absolute;top:14px;left:14px;width:44px;height:44px;border-radius:50%;border:none;background:#fff;color:var(--brand-d);font-size:20px;cursor:pointer}
+.zoomov .zn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,.9);color:var(--brand-d);font-size:26px;cursor:pointer}
+.zoomov .zp{right:12px}.zoomov .zf{left:12px}
+.zoomov .zc{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:#fff;font-size:13px;letter-spacing:.06em}
+.pd-gal .ph{height:220px;width:220px;display:flex;align-items:center;justify-content:center;background:var(--brand-soft);border-radius:14px}
 .pd{padding:6px 22px 26px}
-.pd .b{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent-l)}
+.pd .b{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--brand-d)}
 .pd h2{font-size:21px;font-weight:700;line-height:1.25;margin:3px 0 2px}
 .pd .en{font-size:13px;color:var(--muted);font-weight:300;margin-bottom:8px}
 .pd .row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .pd .row .tag{font-size:12px;padding:3px 11px}
-.pd .pr{font-size:26px;font-weight:700;color:var(--accent-d);margin:8px 0 2px}
+.pd .pr{font-size:26px;font-weight:700;color:var(--brand-d);margin:8px 0 2px}
 .pd .pr-cons{font-size:13.5px;color:var(--muted);font-weight:500;margin:0 0 12px}
 .pricewrap{display:flex;flex-direction:column;min-width:0}
 .price-cons{font-size:10.5px;color:var(--muted);font-weight:500;line-height:1.2;margin-top:1px;white-space:nowrap}
@@ -1362,29 +1818,32 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .pd-sw{display:flex;gap:7px;flex-wrap:wrap}
 .pd-sw button{font-family:var(--font);font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;transition:.12s}
 .pd-sw button.out{opacity:.5;text-decoration:line-through;border-style:dashed}
-.pd-sw button.on{background:var(--accent);color:#fff;border-color:transparent}
+.pd-sw button.on{background:var(--brand);color:#fff;border-color:transparent}
 .pd-sw .dot{display:inline-block;width:13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.12);margin-inline-end:6px;vertical-align:middle}
-.pd h4{font-family:var(--script);font-size:17px;font-weight:400;letter-spacing:0;color:var(--accent-d);margin:16px 0 5px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.pd h4{font-family:var(--font);font-size:17px;font-weight:600;letter-spacing:0;color:var(--brand-d);margin:16px 0 5px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 .pd p,.pd li{font-size:13.5px;line-height:1.6;color:#444444;font-weight:300}
-.pd .pd-lead{font-size:14.5px;line-height:1.55;color:#171717;font-weight:600;margin:14px 0 2px;padding:11px 13px;background:var(--card2,#f6f5f3);border-radius:10px;border-inline-start:3px solid var(--accent,#171717)}
+.pd .pd-attrs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
+.pd .pd-attrs .pa{font-size:12.5px;line-height:1.4;padding:5px 11px;border-radius:16px;background:var(--brand-soft);color:var(--brand-d)}
+.pd .pd-attrs b{font-weight:600}
+.pd .pd-lead{font-size:14.5px;line-height:1.55;color:#171717;font-weight:600;margin:14px 0 2px;padding:11px 13px;background:var(--brand-soft);border-radius:10px;border-inline-start:3px solid var(--brand)}
 .pd ul{padding-right:18px;margin-top:4px}
 .pd .barc{font-size:12px;color:var(--muted);margin-top:14px;font-family:monospace;direction:ltr;text-align:right}
-.pd .cta{width:100%;margin-top:18px;font-family:var(--font);font-size:16px;font-weight:600;color:#fff;border:none;border-radius:14px;padding:14px;cursor:pointer;background:linear-gradient(90deg,var(--accent-d),var(--accent));box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.pd .cta{width:100%;margin-top:18px;font-family:var(--font);font-size:16px;font-weight:600;color:#fff;border:none;border-radius:14px;padding:14px;cursor:pointer;background:linear-gradient(90deg,var(--brand-d),var(--brand));box-shadow:0 8px 22px rgba(0,0,0,.28)}
 .pdfav{display:inline-flex;align-items:center;gap:7px;font-family:var(--font);font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--surface);color:var(--accent-d);border-radius:30px;padding:8px 16px;margin:2px 0 6px;transition:.15s}
-.pdfav:hover{border-color:var(--accent-l)}.pdfav .h{color:#cbcbcb;font-size:15px}.pdfav.on{background:var(--accent-soft);border-color:var(--border2);color:#171717}.pdfav.on .h{color:#171717}
+.pdfav:hover{border-color:var(--accent-l)}.pdfav .h{color:#cbcbcb;font-size:15px}.pdfav.on{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-d)}.pdfav.on .h{color:var(--brand)}
 .sim{margin-top:22px}
-.sim h4{font-family:var(--script);font-size:17px;font-weight:400;letter-spacing:0;color:var(--accent-d);margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.sim h4{font-family:var(--font);font-size:17px;font-weight:600;letter-spacing:0;color:var(--brand-d);margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--border)}
 .sim-row{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
 .sim-row::-webkit-scrollbar{display:none}
 .sim-card{flex:0 0 96px;cursor:pointer}
-.sim-card .si{width:96px;height:96px;border-radius:12px;background:#f2f2f2;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:7px}
+.sim-card .si{width:96px;height:96px;border-radius:12px;background:var(--brand-soft);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:7px}
 .sim-card img{max-width:100%;max-height:100%;object-fit:contain;mix-blend-mode:multiply}
 .sim-card .sn{font-size:10.5px;line-height:1.25;color:var(--text);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sim-card .sp{font-size:11.5px;font-weight:700;color:var(--accent-d)}
 
 /* order modal */
 .om{padding:8px 20px 24px}
-.om h3{font-family:var(--script);font-size:24px;font-weight:400;letter-spacing:0;margin:6px 0 12px;text-align:center}
+.om h3{font-family:var(--font);font-size:24px;font-weight:600;letter-spacing:0;margin:6px 0 12px;text-align:center}
 .om-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
 .om-row .om-img{width:46px;height:46px;flex:0 0 46px;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:8px;padding:3px}
 @media(max-width:640px){.om-row .om-img{width:40px;height:40px;flex-basis:40px}}
@@ -1437,14 +1896,14 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .f-pop li[aria-selected="true"],.f-pop li:hover{background:var(--accent-soft,#f7f4f2)}
 .f-pop li.none{color:var(--muted);cursor:default;font-size:13px}
 .f-pop li .sub{color:var(--muted);font-size:12.5px;margin-inline-start:6px}
-.form h4{font-family:var(--script);font-size:17px;font-weight:400;letter-spacing:0;color:var(--accent-d);margin-bottom:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.form h4{font-family:var(--font);font-size:17px;font-weight:600;letter-spacing:0;color:var(--brand-d);margin-bottom:1px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 .fld,.notes{width:100%;font-family:var(--font);font-size:16px;padding:11px 13px;border-radius:11px;border:1px solid var(--border2);outline:none;background:var(--surface);color:var(--text)}
 .notes{resize:vertical;min-height:58px}
 .fld:focus,.notes:focus{border-color:var(--accent-l);box-shadow:0 0 0 3px var(--accent-soft)}
 .send{width:100%;margin-top:14px;font-family:var(--font);font-size:16px;font-weight:700;color:#fff;border:none;border-radius:14px;padding:15px;cursor:pointer;background:linear-gradient(90deg,#16a34a,#15803d);box-shadow:0 8px 22px rgba(22,163,74,.28)}
-.send.pay{background:linear-gradient(90deg,var(--accent-d),var(--accent));box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.send.pay{background:linear-gradient(90deg,var(--brand-d),var(--brand));box-shadow:0 8px 22px rgba(168,90,109,.3)}
 .send:disabled{opacity:.6;cursor:progress}
-.send.locked{opacity:.5;cursor:not-allowed;box-shadow:none;filter:grayscale(.25)}
+.send.locked{opacity:.55;cursor:not-allowed;box-shadow:none}   /* 06/10: בלי grayscale — נמרוד: 'עדיין אפור' */
 .agree{display:flex;gap:9px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--text);line-height:1.55;cursor:pointer}
 .agree input{width:18px;height:18px;margin-top:1px;flex:0 0 auto;accent-color:var(--accent-d);cursor:pointer}
 .agree a{color:var(--accent-d);text-decoration:underline;font-weight:600}
@@ -1468,7 +1927,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .sitefooter{margin-top:40px;padding:26px 18px 28px;background:#111111;color:#dcdcdc;border-top:1px solid rgba(255,255,255,.16)}
 .sitefooter .fdisc{max-width:1000px;margin:0 auto 20px;text-align:center;font-size:12.5px;color:#bcbcbc;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 16px}
 .sitefooter .fcols{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.sitefooter h4{font-family:var(--script);font-size:18px;color:#fff;margin-bottom:10px;font-weight:400;letter-spacing:0}
+.sitefooter h4{font-family:var(--font);font-size:18px;color:#fff;margin-bottom:10px;font-weight:600;letter-spacing:0}
 .sitefooter p{font-size:13px;line-height:1.7;margin:2px 0;color:#dcdcdc}
 .sitefooter a{color:#eeeeee;text-decoration:none}
 .sitefooter .flink{display:block;background:none;border:none;color:#dcdcdc;font-family:var(--font);font-size:13px;padding:4px 0;cursor:pointer;text-align:start}
@@ -1477,9 +1936,9 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .sitefooter .fcopy{max-width:1000px;margin:22px auto 0;text-align:center;font-size:12px;color:#8a8a8a;border-top:1px solid rgba(255,255,255,.1);padding-top:14px}
 @media(max-width:640px){.sitefooter .fcols{grid-template-columns:1fr;gap:18px;text-align:center}.sitefooter .flink{text-align:center}}
 .policy{padding:8px 26px 26px;line-height:1.75}
-.policy h2{font-family:var(--script);font-size:28px;font-weight:400;letter-spacing:0;color:var(--accent-d);margin-bottom:4px}
+.policy h2{font-family:var(--font);font-size:28px;font-weight:600;letter-spacing:0;color:var(--brand-d);margin-bottom:4px}
 .policy .note{font-size:12px;color:var(--muted);background:var(--accent-soft);border-radius:10px;padding:8px 12px;margin:8px 0 16px}
-.policy h3{font-family:var(--script);font-size:18px;font-weight:400;letter-spacing:0;color:var(--text);margin:16px 0 4px}
+.policy h3{font-family:var(--font);font-size:18px;font-weight:600;letter-spacing:0;color:var(--text);margin:16px 0 4px}
 .policy p,.policy li{font-size:14px;color:var(--text);margin:4px 0}
 .policy ul{padding-inline-start:20px}
 .bndl{display:flex;flex-direction:column;gap:7px;margin-top:6px}
@@ -1534,16 +1993,16 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .promos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 12px 0;max-width:1160px}
 @media(min-width:900px){.promos{margin:18px auto 0}}
 .ptile{border-radius:16px;overflow:hidden;padding:20px;min-height:190px;display:flex;flex-direction:column;justify-content:center;position:relative;border:1px solid var(--border);cursor:pointer}
-.ptile.a{background:var(--accent-soft)}.ptile.b{background:#f7f7f7}
+.ptile.a{background:var(--accent-soft)}.ptile.b{background:var(--brand-soft)}
 .ptile .pimg{position:absolute;inset-inline-end:12px;bottom:12px;height:130px;object-fit:contain;border-radius:10px}
-.ptile h3{font-family:var(--script);font-weight:400;font-size:24px;line-height:1.15;max-width:60%;margin-bottom:4px}
+.ptile h3{font-family:var(--font);font-weight:600;font-size:24px;line-height:1.15;max-width:60%;margin-bottom:4px}
 .ptile p{font-size:13px;color:var(--muted);max-width:55%;margin-bottom:14px}
 .ptile .cta{align-self:flex-start;background:#171717;color:#fff;border:none;font-size:13px;font-weight:700;padding:9px 22px;border-radius:30px;cursor:pointer}
 @media(max-width:640px){.promos{grid-template-columns:1fr}.ptile .pimg{height:110px}}
 /* section header */
 .shead{display:flex;align-items:center;justify-content:space-between;margin:26px 16px 12px;max-width:1160px}
 @media(min-width:900px){.shead{margin:26px auto 12px}}
-.shead h4{font-family:var(--script);font-weight:400;font-size:22px}
+.shead h4{font-family:var(--font);font-weight:600;font-size:22px}
 .shead .more{font-size:13px;color:var(--muted);text-decoration:none;font-weight:600;background:none;border:none;cursor:pointer}
 /* brand logos row */
 .brandrow{display:flex;gap:30px;align-items:center;padding:6px 16px 4px;overflow-x:auto;scrollbar-width:none;max-width:1160px;margin:0 auto}
@@ -1562,8 +2021,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .pcard .nm{font-size:12.5px;font-weight:500;line-height:1.3;margin:2px 0 6px;min-height:32px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pcard .pr{font-size:15px;font-weight:700}
 /* shop-all heading */
-.shopall{max-width:1160px;margin:28px auto 2px;padding:0 16px}
-.shopall h4{font-family:var(--script);font-weight:400;font-size:24px}
+.shopall{max-width:1400px;margin:28px auto 2px;padding:0 16px}
+.shopall h4{font-family:var(--font);font-weight:600;font-size:24px}
 /* bottom nav */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:90;background:#fff;border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:7px 4px calc(7px + env(safe-area-inset-bottom))}
 .bnav button{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:600;flex:1;font-family:var(--font)}
@@ -1571,21 +2030,37 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .bnav button.on{color:#171717}
 .bnav button.wa{color:#25d366}.bnav button.wa svg{fill:#25d366;stroke:none}
 /* stacking with the fixed bottom nav */
-.cartbar{bottom:62px}
-.totop{bottom:130px}
+.cartbar{bottom:calc(60px + env(safe-area-inset-bottom,0px))}
+.totop{bottom:calc(128px + env(safe-area-inset-bottom,0px))}
 .wafloat{display:none}
-.wachat{bottom:80px;inset-inline-end:12px}
+.wachat{bottom:calc(78px + env(safe-area-inset-bottom,0px));inset-inline-end:12px}
+/* 🟢 12/10: כשפס הסל מוצג — חלון הצ'אט מעליו, לא מאחוריו */
+body.has-cart .wachat{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
 <div class="promobar" id="promobar">
+  <span id="promo0">✔ מוצרים מקוריים בלבד</span><span class="pdot">·</span>
   <span id="promo1">🚚 משלוח חינם מעל ₪299</span><span class="pdot">·</span>
   <span id="promo3">⏱ אספקה עד 72 שעות</span>
 </div>
+<!-- 🏜️ 12/10/2026 — באנר הכניסה של המעצבת נועה. הלוגו שבתוכו מחליף את פס הלוגו
+     (שנשאר מוסתר — להחזרה: להסיר את .brandbar{display:none}). הכיתוב טקסט חי
+     ומתורגם (hero_*), הרקע = שכבת התמונה מה-PDF שלה, בלי הכיתוב. -->
+<section class="dhero" id="dhero" aria-label="Beauty Favorites">
+  <div class="hlogo" onclick="goTop()"><b>BF</b><span>BEAUTY FAVORITES</span><i>BEAUTY &amp; SKINCARE</i></div>
+  <h1><span id="dhH1a">כל המוצרים הנחשקים</span><br><span id="dhH1b">של עולם הביוטי במקום אחד</span></h1>
+  <p id="dhSub">מוצרים מקוריים מהמותגים המובילים בעולם שנבחרו במיוחד בשבילך</p>
+  <button class="hcta" type="button" onclick="goRecs()"><span id="dhCta">למומלצים שלנו</span><span class="harr" aria-hidden="true">&#10230;</span></button>
+  <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
+</section>
 <div class="brandbar">
   <img class="brandlogo" src="logo-bf.png" width="140" height="68" onclick="goTop()" style="cursor:pointer" alt="Beauty Favorites — Beauty &amp; Skincare">
-  <button class="langbtn" id="langBtn" onclick="toggleLang()" aria-label="Language">العربية</button>
 </div>
+<!-- 🧹 06/10/2026 — באנר ההירו הוסר לבקשת נמרוד ("כמו בספורה").
+     הוא תפס מסך שלם בטלפון ודחף את הקטגוריות מתחת לקו הקיפול.
+     להחזרה: הסר את הערת ה-HTML. -->
+<!--
 <div class="ebanner" id="ebanner" onclick="goRecs()">
   <picture class="eb-d">
     <source srcset="banner-desktop.webp" type="image/webp">
@@ -1599,9 +2074,12 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   <button class="ehot d" onclick="event.stopPropagation();goRecs()"><span id="ebtnD">למומלצים שלנו</span></button>
   <button class="ehot m" onclick="event.stopPropagation();goRecs()"><span id="ebtnM">למומלצים שלנו</span></button>
 </div>
+-->
 
 
+<div class="catsec" id="catsec"></div>
 <div class="cattiles" id="cattiles"></div>
+<div class="subrow" id="subrow"></div>
 
 <div class="search-wrap">
   <div class="search">
@@ -1621,13 +2099,18 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   </div>
 </div>
 
-<!-- service icons -->
+<!-- 🧹 06/10/2026 — הוסתר לבקשת נמרוד: "לא צריך את כל השורות מתחת לחיפוש".
+     משלוח חינם, החזרות, מקוריות ותשלום מאובטח **נשארים בפוטר ובמסמכי
+     המדיניות** — לא נמחק שום מידע, רק ירד הרעש מעל המוצרים.
+     להחזרה: הסר את הערת ה-HTML. -->
+<!--
 <div class="services">
   <div class="svc"><svg viewBox="0 0 24 24"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="7" cy="17" r="1.6"/><circle cx="17.5" cy="17" r="1.6"/></svg><b id="svc1a">משלוח חינם</b><small id="svc1b">בקנייה מעל ₪299</small></div>
   <div class="svc"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5l2 2M20 12a8 8 0 0 1-14 5l-2-2"/><path d="M20 4v5h-5M4 20v-5h5"/></svg><b id="svc2a">החזרות חינם</b><small id="svc2b">עד 30 יום</small></div>
   <div class="svc"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><b id="svc3a">מוצרים מקוריים</b><small id="svc3b">100% מקורי</small></div>
   <div class="svc"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M9 15h3"/></svg><b id="svc4a">תשלום מאובטח</b><small id="svc4b">הצפנה מלאה</small></div>
 </div>
+-->
 
 <!-- promo tiles — הוסתרו זמנית לבקשת המשתמש (2026-07-12) עד שיוחלט תוכן; להחזרה: הסר את הערת ה-HTML -->
 <!--
@@ -1638,13 +2121,17 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 -->
 
 
-<!-- brand logos -->
+<!-- 🧹 06/10/2026 — רצועת המותגים וקרוסלת "מומלץ בשבילך" הוסתרו לבקשת
+     נמרוד: "לא את המומלצים והמותגים… כל העניין היה לפשט את החיפוש".
+     **שתיהן עדיין נבנות ב-JS** (buildBrandRow/buildRecs) ולכן החזרה היא
+     הסרת הערה בלבד; בורר המותגים המלא נשאר זמין מכפתור הסינון.
+     להחזרה: הסר את הערת ה-HTML. -->
+<!--
 <div class="shead"><h4 id="brTitle">המותגים האהובים</h4><button class="more" onclick="openBrandModal()" id="brMore">לכל המותגים ›</button></div>
 <div class="brandrow" id="brandRow"></div>
-
-<!-- recommended -->
 <div class="shead"><h4 id="recTitle">מומלץ בשבילך</h4><button class="more" onclick="goShop()" id="recMore">לכל המוצרים ›</button></div>
 <div class="recs" id="recRow"></div>
+-->
 
 <div class="wsbanner" id="wsBanner" style="display:none">
   <span id="wsBannerTxt">מצב סיטונאי פעיל — מוצגים מחירי סיטונאי</span>
@@ -1652,12 +2139,13 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 </div>
 
 <div class="shopall"><h4 id="shopAllT">כל המוצרים</h4></div>
-<div class="brandpick">
+<div class="toolbar">
   <button class="brandpickbtn" id="brandPickBtn" onclick="openBrandModal()">
     <span class="bpi">🏷️</span><span id="brandPickLbl">כל המותגים</span><span class="bpchev">▾</span>
   </button>
-</div>
-<div class="toolbar">
+  <button class="brandpickbtn" id="filterBtn" onclick="openFilterModal()" style="display:none">
+    <span id="filterLbl">סינון</span><span class="bpchev">▾</span>
+  </button>
   <button class="chip favbtn" id="favchip" onclick="toggleFavOnly()">♥ המועדפים שלי</button>
   <button class="chip" id="resetchip" onclick="resetFilters()">↺ נקה הכל</button>
   <span class="spacer"></span>
@@ -1669,9 +2157,35 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   </select>
 </div>
 
+<!-- 🎛️ 12/10/2026 — מגירת סינון אחת (כמו בספורה) במקום שלוש שכבות. בטלפון: נשלפת מהצד;
+     במחשב: עמודה קבועה ליד הרשת. סרגל הכלים הישן (.toolbar), בועות תת-הקטגוריה (.subrow)
+     ופס "מסונן לפי" (.actfil) נשארים ב-DOM מוסתרים — הלוגיקה שלהם עדיין בשימוש. -->
+<div class="shopwrap" id="shopwrap">
+<aside class="fdrawer" id="fdrawer" aria-label="סינון">
+  <div class="fdhead"><h3 id="fdTitle">סינון</h3><button class="fdx" type="button" onclick="closeDrawer()" aria-label="סגירה">✕</button></div>
+  <div class="fdq"><span class="ico" aria-hidden="true">⌕</span><input id="fdQ" type="search" autocomplete="off" placeholder="חיפוש מוצר, מותג או ברקוד…" oninput="drawerSearch(this.value)"></div>
+  <div class="fdbody" id="fdBody"></div>
+  <div class="fdfoot">
+    <div class="fdchips" id="fdChips"></div>
+    <button class="fdclear" id="fdClear" type="button" onclick="drawerClear()">נקה הכל</button>
+    <button class="fdshow" id="fdShow" type="button" onclick="closeDrawer()">הצגה</button>
+  </div>
+</aside>
+<div class="shopmain">
+<div class="cathead" id="cathead"></div>
+<div class="fbar" id="fbar">
+  <button class="fbtn" id="fbBtn" type="button" onclick="openDrawer()">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    <span id="fbLbl">סינון מומלץ</span><b class="fbn" id="fbN"></b>
+  </button>
+  <span class="fbcount" id="rescount"></span>
+  <div class="fbchips" id="fbChips"></div>
+</div>
 <div class="actfil" id="actFil"></div>
-<div class="rescount" id="rescount"></div>
 <main class="grid" id="grid"></main>
+</div>
+</div>
+<div class="fback" id="fback" onclick="closeDrawer()"></div>
 
 
 <footer class="sitefooter">
@@ -1727,6 +2241,15 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 </div>
 
 <div class="ov" id="pdModal"><div class="sheet"><button class="x" onclick="closePd()">✕</button><div id="pdContent"></div></div></div>
+<!-- 🔍 06/10/2026 — הגדלת תמונה (נמרוד). לחיצה על תמונה בגלריה פותחת אותה
+     במסך מלא; חיצים/החלקה בין התמונות; לחיצה ברקע, ✕ או Escape סוגרים. -->
+<div class="zoomov" id="zoomOv" onclick="if(event.target===this)closeZoom()" role="dialog" aria-modal="true" aria-label="תמונה מוגדלת">
+  <button class="zx" onclick="closeZoom()" aria-label="סגירה">✕</button>
+  <button class="zn zp" onclick="zoomStep(-1)" aria-label="הקודמת">›</button>
+  <div class="ztrack" id="zoomTrack" dir="rtl"></div>
+  <button class="zn zf" onclick="zoomStep(1)" aria-label="הבאה">‹</button>
+  <div class="zc" id="zoomCnt"></div>
+</div>
 
 <div class="ov" id="orderModal"><div class="sheet">
   <button class="x" onclick="closeOrder()">✕</button>
@@ -1820,6 +2343,15 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <h3 id="brandModalTitle">בחירת מותג</h3>
     <div class="bsearch"><span class="ico">⌕</span><input id="brandSearch" type="search" autocomplete="off" placeholder="חיפוש מותג…" oninput="renderBrandGrid()"></div>
     <div class="bgrid" id="brandGrid"></div>
+    <button class="bdone" id="brandDone" onclick="closeOv('brandModal')">סגירה</button>
+  </div>
+</div></div>
+
+<div class="ov" id="filterModal"><div class="sheet filtersheet"><button class="x" onclick="closeOv('filterModal')">✕</button>
+  <div class="bm">
+    <h3 id="filterTitle">סינון</h3>
+    <div id="filterBody"></div>
+    <button class="bdone" id="filterDone" onclick="closeOv('filterModal')">סגירה</button>
   </div>
 </div></div>
 
@@ -1829,7 +2361,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <p id="clubSub" style="font-size:14px;line-height:1.7;color:#473d5e;margin:2px 0 16px">מספרה, מאפרת או חנות? הצטרפו למועדון העסקים שלנו וקבלו גישה למחירון סיטונאי מיוחד, שירות אישי והטבות לעסקים.</p>
     <a class="send" id="clubJoin" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none"
        href="https://wa.me/972534555501?text=%D7%A9%D7%9C%D7%95%D7%9D%21%20%D7%90%D7%A0%D7%99%20%D7%9E%D7%A2%D7%95%D7%A0%D7%99%D7%99%D7%9F%2F%D7%AA%20%D7%9C%D7%94%D7%A6%D7%98%D7%A8%D7%A3%20%D7%9C%D7%9E%D7%95%D7%A2%D7%93%D7%95%D7%9F%20%D7%94%D7%A2%D7%A1%D7%A7%D7%99%D7%9D%20%28%D7%9E%D7%97%D7%99%D7%A8%D7%95%D7%9F%20%D7%A1%D7%99%D7%98%D7%95%D7%A0%D7%90%D7%99%29">📲 הצטרפות בוואטסאפ</a>
-    <button class="send pay" id="clubHave" onclick="closeOv('clubModal');openWsCode()" style="margin-top:10px">🔑 יש לי קוד סיטונאי</button>
+    <button class="send pay" id="clubHave" onclick="closeOvNow('clubModal');openWsCode()" style="margin-top:10px">🔑 יש לי קוד סיטונאי</button>
   </div>
 </div></div>
 
@@ -1845,7 +2377,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 <nav class="bnav" id="bnav">
   <button class="on" onclick="goTop()"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7M6 10v9h12v-9"/></svg><span id="nvHome">בית</span></button>
-  <button onclick="focusSearch()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span id="nvSearch">חיפוש</span></button>
+  <button onclick="navFilter()"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span id="nvSearch">חיפוש</span></button>
   <button onclick="showFavs()"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.3-9C1 8.5 3 5 6.5 5 8.7 5 10.5 6.4 12 8.4 13.5 6.4 15.3 5 17.5 5 21 5 23 8.5 21.3 12 19 16.4 12 21 12 21z"/></svg><span id="nvFav">מועדפים</span></button>
   <button onclick="openOrder()"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.2 11h9.6l1.7-8H6.4"/></svg><span id="nvCart">עגלה</span></button>
   <button class="wa" id="navWa" onclick="toggleWaChat()"><svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38c1.45.79 3.08 1.2 4.79 1.2h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2m4.52 11.99c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.42h-.48c-.16 0-.43.06-.66.31-.22.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29"/></svg><span id="nvWa">וואטסאפ</span></button>
@@ -1853,6 +2385,9 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 <script>
 const GROUPS = /*__GROUPS__*/;
+// 🗂️ עץ הקטגוריות — 8 קבוצות ו-50 תתי-קטגוריות מהמסד (06/10/2026).
+// מחליף את CATS השטוח. ריק = אין רשת בבנייה, והאתר נופל לשכבה הישנה.
+const CATTREE = /*__CATTREE__*/;
 const BRAND_ALIASES={
  "Dior":"דיור","DIOR":"דיור","דיור (Dior)":"דיור",
  // 🔴 תוקן 06/09/2026 — המפה הזו רצה **בדפדפן** וממפה את המותג אחרי הבנייה.
@@ -1893,7 +2428,7 @@ const I18N={
   items:'מוצרים',cart_items:'פריטים',empty:'לא נמצאו מוצרים מתאימים 🔍',
   view_order:'צפה בהזמנה ←',totop:'חזרה למעלה',
   c_איפור:'איפור',c_טיפוח:'טיפוח',c_שיער:'שיער',c_בושם:'בושם',c_מארזים:'מארזים',c_ציפורניים:'ציפורניים',c_אביזרים:'אביזרים',c_ציוד:'ציוד',c_אחר:'אחר',
-  cat_hot:'🔥 Best Seller',
+  cat_hot:'הנמכרים ביותר',   /* 12/10 נמרוד, כמו בדוגמת המעצבת. היה '🔥 Best Seller' */
   go_to_product:'הצג בקטלוג',clear_cart:'נקה את הסל',clear_cart_ask:'להסיר את כל {n} הפריטים מהסל?',
   b_sale:'מבצע',b_new:'חדש',b_bestseller:'רב-מכר',b_soldout:'אזל',b_limited:'מהדורה מוגבלת',b_vegan:'טבעוני',
   shades:'גוונים',feats:'מאפיינים עיקריים',ingredients:'רכיבים',usage:'אופן שימוש',contents_h:'מה כלול במבחר',
@@ -1923,6 +2458,12 @@ const I18N={
   alert_terms:'יש לאשר את התקנון ומדיניות הפרטיות לפני שליחת ההזמנה',
   agree_txt:'קראתי ואני מסכים/ה ל<a href="#" onclick="openPolicy(\'terms\');return false">תקנון</a> ול<a href="#" onclick="openPolicy(\'privacy\');return false">מדיניות הפרטיות</a>',
   f_about:'אודות',
+  found_in:'נמצא ב:',
+  brands_n:'מותגים', show_n:'הצגת {n} מוצרים', bm_close:'סגירה', filter:'סינון', f_clear:'ניקוי הסינון',
+  fb_lbl:'סינון מומלץ', fd_sort:'מיון', sort_rec:'מומלץ', fd_sub:'תת־קטגוריה', fd_brand:'מותג', fd_price:'מחיר', fd_misc:'עוד', fd_bq:'חיפוש מותג…', fd_more:'עוד {n} מותגים', fd_less:'פחות מותגים',
+  cat_sec:'קטגוריות',
+  dh_h1a:'כל המוצרים הנחשקים',dh_h1b:'של עולם הביוטי במקום אחד',
+  dh_sub:'מוצרים מקוריים מהמותגים המובילים בעולם שנבחרו במיוחד בשבילך',dh_cta:'למומלצים שלנו',
   f_disc:'מכירה עצמאית של מוצרים מקוריים · כל הסימנים המסחריים שייכים לבעליהם',
   hero_sub:'הקולקציה הנבחרת — איפור · טיפוח · שיער · בושם',
   ebtn:'למומלצים שלנו',
@@ -1934,6 +2475,7 @@ const I18N={
   f_ship:'משלוחים ואספקה',f_ret:'החזרות וביטולים',f_terms:'תקנון',f_priv:'מדיניות פרטיות',
   f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ',
   pb_ship:'משלוחים',pb_ret:'החזרות',pb_priv:'פרטיות',
+  promo_orig:'✔ מוצרים מקוריים בלבד',
   promo_free:'🚚 משלוח חינם מעל ₪299',promo_coupon:'🎁 10% הנחה עם קופון BEAUTY10',promo_eta:'⏱ אספקה עד 72 שעות',
   club_link:'💼 מועדון עסקים',club_footer:'💼 מועדון עסקים — מחירון סיטונאי',club_title:'💼 מועדון העסקים',
   club_sub:'מספרה, מאפרת או חנות? הצטרפו למועדון העסקים שלנו וקבלו גישה למחירון סיטונאי מיוחד, שירות אישי והטבות לעסקים.',
@@ -1951,7 +2493,7 @@ const I18N={
   items:'منتج',cart_items:'عناصر',empty:'لم يتم العثور على منتجات مطابقة 🔍',
   view_order:'عرض الطلب ←',totop:'العودة للأعلى',
   c_איפור:'مكياج',c_טיפוח:'العناية بالبشرة',c_שיער:'العناية بالشعر',c_בושם:'عطر',c_מארזים:'مجموعات',c_ציפורניים:'العناية بالأظافر',c_אביזרים:'إكسسوارات',c_ציוד:'معدات',c_אחר:'أخرى',
-  cat_hot:'🔥 Best Seller',
+  cat_hot:'الأكثر مبيعًا',
   go_to_product:'عرض في الكتالوج',clear_cart:'إفراغ السلة',clear_cart_ask:'إزالة كل الـ{n} منتجات من السلة؟',
   b_sale:'تخفيض',b_new:'جديد',b_bestseller:'الأكثر مبيعاً',b_soldout:'نفد',b_limited:'إصدار محدود',b_vegan:'نباتي',
   shades:'ألوان',feats:'أبرز المزايا',ingredients:'المكوّنات',usage:'طريقة الاستخدام',contents_h:'ما الذي تشمله التشكيلة',
@@ -1981,6 +2523,12 @@ const I18N={
   alert_terms:'يجب الموافقة على شروط الاستخدام وسياسة الخصوصية قبل إرسال الطلب',
   agree_txt:'قرأت وأوافق على <a href="#" onclick="openPolicy(\'terms\');return false">شروط الاستخدام</a> و<a href="#" onclick="openPolicy(\'privacy\');return false">سياسة الخصوصية</a>',
   f_about:'حول المتجر',
+  found_in:'موجود في:',
+  brands_n:'علامات تجارية', show_n:'عرض {n} منتجات', bm_close:'إغلاق', filter:'تصفية', f_clear:'مسح التصفية',
+  fb_lbl:'تصفية موصى بها', fd_sort:'الترتيب', sort_rec:'موصى به', fd_sub:'الفئة الفرعية', fd_brand:'الماركة', fd_price:'السعر', fd_misc:'المزيد', fd_bq:'ابحث عن ماركة…', fd_more:'{n} ماركات أخرى', fd_less:'عرض أقل',
+  cat_sec:'الفئات',
+  dh_h1a:'كل المنتجات المرغوبة',dh_h1b:'من عالم الجمال في مكان واحد',
+  dh_sub:'منتجات أصلية من أبرز الماركات العالمية، مختارة خصيصًا لكِ',dh_cta:'إلى توصياتنا',
   f_disc:'بيع مستقل لمنتجات أصلية · جميع العلامات التجارية ملك لأصحابها',
   hero_sub:'التشكيلة المختارة — مكياج · عناية · شعر · عطر',
   ebtn:'إلى توصياتنا',
@@ -1992,6 +2540,7 @@ const I18N={
   f_ship:'الشحن والتوصيل',f_ret:'الإرجاع والإلغاء',f_terms:'شروط الاستخدام',f_priv:'سياسة الخصوصية',
   f_order:'الطلبات',f_free:'توصيل مجاني للطلبات فوق ₪299',f_eta:'التوصيل خلال 72 ساعة من استلام المندوب للطرد',f_wa:'اطلب عبر واتساب',
   pb_ship:'الشحن',pb_ret:'الإرجاع',pb_priv:'الخصوصية',
+  promo_orig:'✔ منتجات أصلية فقط',
   promo_free:'🚚 توصيل مجاني فوق ₪299',promo_coupon:'🎁 خصم 10% مع كوبون BEAUTY10',promo_eta:'⏱ التوصيل خلال 72 ساعة',
   club_link:'💼 نادي الأعمال',club_footer:'💼 نادي الأعمال — أسعار الجملة',club_title:'💼 نادي الأعمال',
   club_sub:'صالون، خبيرة مكياج أو متجر؟ انضموا إلى نادي الأعمال لدينا واحصلوا على أسعار جملة خاصة وخدمة شخصية ومزايا للأعمال.',
@@ -2005,7 +2554,10 @@ const I18N={
 };
 let LANG=localStorage.getItem('sf_lang')||'he';
 function t(k){return (I18N[LANG]&&I18N[LANG][k]!=null)?I18N[LANG][k]:(I18N.he[k]!=null?I18N.he[k]:k);}
-function catLabel(c){return t('c_'+c)||c;}
+function catLabel(c){
+  if(CT_BY[c])return (LANG==='ar'&&CT_BY[c].ar)?CT_BY[c].ar:CT_BY[c].he;
+  if(CT_SUB[c])return (LANG==='ar'&&CT_SUB[c].ar)?CT_SUB[c].ar:CT_SUB[c].he;
+  return t('c_'+c)||c;}
 function setText(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
 function setPh(id,v){var e=document.getElementById(id);if(e)e.placeholder=v;}
 function applyStatic(){
@@ -2041,8 +2593,8 @@ function applyStatic(){
   setText('fOrderT',t('f_order'));setText('fShipFree',t('f_free'));setText('fEta',t('f_eta'));setText('fWa',t('f_wa'));
   setText('pbAbout',t('f_about'));setText('pbBiz',t('f_contact'));setText('pbShip',t('pb_ship'));setText('pbRet',t('pb_ret'));setText('pbTerms',t('f_terms'));setText('pbPriv',t('pb_priv'));
   setText('wsTitle',t('ws_title'));setText('wsSub',t('ws_sub'));setPh('wsCode',t('ws_ph'));setText('wsGo',t('ws_go'));setText('wsBannerTxt',t('ws_active'));
-  setText('brandModalTitle',t('brand_title'));setPh('brandSearch',t('brand_search'));if(typeof updateBrandBtn==='function')updateBrandBtn();
-  setText('promo1',t('promo_free'));setText('promo3',t('promo_eta'));
+  setText('brandModalTitle',t('brand_title'));setText('filterTitle',t('filter'));if(typeof updateFilterBtn==='function')updateFilterBtn();setPh('brandSearch',t('brand_search'));if(typeof updateBrandBtn==='function')updateBrandBtn();
+  setText('promo0',t('promo_orig'));setText('promo1',t('promo_free'));setText('promo3',t('promo_eta'));
   setText('tr1',t('tr_orig'));setText('tr2',t('tr_eta'));setText('tr3',t('tr_wa'));
   setText('clubTitle',t('club_title'));setText('clubSub',t('club_sub'));setText('clubJoin',t('club_join'));setText('clubHave',t('club_have'));
   setText('fAccess',t('f_access'));setText('fClub',t('club_footer'));
@@ -2058,6 +2610,8 @@ function applyStatic(){
   setText('nvHome',t('nv_home'));setText('nvSearch',t('nv_search'));setText('nvFav',t('nv_fav'));setText('nvCart',t('nv_cart'));setText('nvWa',t('nv_wa'));
   updateWsUI();
   var lb=document.getElementById('langBtn');if(lb)lb.textContent=t('other');
+  setText('fdTitle',t('filter'));setText('fbLbl',t('fb_lbl'));setText('fdClear',t('reset_all'));
+  setText('dhH1a',t('dh_h1a'));setText('dhH1b',t('dh_h1b'));setText('dhSub',t('dh_sub'));setText('dhCta',t('dh_cta'));
 }
 function toggleLang(){LANG=(LANG==='he')?'ar':'he';localStorage.setItem('sf_lang',LANG);applyLang();}
 function applyLang(){applyStatic();buildNav();render();renderCart();
@@ -2081,6 +2635,13 @@ function eff(v){var p=STOCK_READY?priceMap()[nbc(v.barcode)]:undefined;return (p
 const BADGE_LABEL={sale:'מבצע',new:'חדש',bestseller:'רב-מכר',soldout:'אזל',limited:'מהדורה מוגבלת',vegan:'טבעוני'};
 const BADGE_ORDER=['sale','bestseller','new','limited','soldout','vegan'];
 
+// 🗂️ מפות העץ. CT_MAIN: slug של תת-קטגוריה → מפתח הקבוצה.
+const CT_BY={},CT_MAIN={},CT_SUB={};
+for(const _g of CATTREE){CT_BY[_g.m]=_g;for(const _s of _g.subs){CT_MAIN[_s.s]=_g.m;CT_SUB[_s.s]=_s;}}
+const HAS_TREE=CATTREE.length>0;
+function gMain(g){return CT_MAIN[g.cs||'']||'';}
+// 🔁 השכבה הישנה נשארת כנפילה לאחור: אם העץ לא נשלף בבנייה (אין רשת),
+//    הניווט חוזר לקטגוריות השטוחות ושום דבר לא נעלם מהאתר.
 const CATS=['איפור','טיפוח','שיער','בושם','מארזים','ציפורניים','אביזרים','ציוד'].filter(t=>GROUPS.some(g=>g.type===t));
 // תמונת קטגוריה ייעודית (נחתכה מהקולאז' של דף הכניסה); קטגוריה ללא תמונה כאן → נפילה לתמונת מוצר מייצג
 const CAT_IMG={'איפור':'cat/makeup.jpg?v=2','טיפוח':'cat/skincare.jpg?v=2','שיער':'cat/hair.jpg?v=2','בושם':'cat/fragrance.jpg?v=2','מארזים':'cat/sets.jpg?v=2','אביזרים':'cat/accessories.jpg?v=2'};
@@ -2089,19 +2650,78 @@ const HOT_SKUS=new Set(['3548752203166','3548752227018','3548752215862','1942511
 function isHot(g){return g.variants.some(v=>HOT_SKUS.has(nbc(v.barcode)));}
 // קטגוריות להצגה: רק כאלה עם מוצר במלאי (עד שהמלאי נטען — כולן)
 function catsInStock(){
+  if(HAS_TREE){
+    const keys=CATTREE.map(x=>x.m);
+    if(!STOCK_READY)return keys.filter(m=>GROUPS.some(g=>gMain(g)===m));
+    return keys.filter(m=>GROUPS.some(g=>gMain(g)===m&&g.variants.some(inDB)));
+  }
   if(!STOCK_READY)return CATS;
   return CATS.filter(c=>GROUPS.some(g=>g.type===c&&g.variants.some(inDB)));
+}
+// תתי-הקטגוריות של הקבוצה שנבחרה — **רק כאלה שיש בהן מוצר**, כדי שלקוחה
+// לא תיכנס למסך ריק. מאז שהוסרו המספרים זה הדבר היחיד שמונע את זה.
+function subsInStock(m){
+  const g=CT_BY[m];if(!g)return [];
+  return g.subs.filter(sb=>GROUPS.some(x=>x.cs===sb.s&&(!STOCK_READY||x.variants.some(inDB))));
 }
 const BRANDS=(()=>{const c={};GROUPS.forEach(g=>c[g.brand]=(c[g.brand]||0)+1);
   return Object.keys(c).sort((a,b)=>a==='אחר'?1:b==='אחר'?-1:c[b]-c[a]);})();
 // מותגים להצגה: רק כאלה עם מוצר במלאי (עד שהמלאי נטען — כולם)
+function inCatScope(g){
+  if(curCat==='__hot__')return isHot(g);
+  if(curCat==='__all__')return true;
+  if(HAS_TREE&&CT_BY[curCat]){
+    if(gMain(g)!==curCat)return false;
+    return curSub==='__all__'||g.cs===curSub;
+  }
+  return g.type===curCat;
+}
 function brandsInStock(){
-  if(!STOCK_READY)return BRANDS;
-  return BRANDS.filter(b=>GROUPS.some(g=>g.brand===b&&g.variants.some(inDB)));
+  const inStock=g=>!STOCK_READY||g.variants.some(inDB);
+  return BRANDS.filter(b=>GROUPS.some(g=>g.brand===b&&inCatScope(g)&&inStock(g)));
 }
 const PRICES=[{l:'עד ₪50',mn:0,mx:50},{l:'₪50–100',mn:50,mx:100},{l:'₪100–200',mn:100,mx:200},{l:'₪200+',mn:200,mx:1e9}];
 
-let curCat='__all__',curBrand='__all__',curPrice=-1,favOnly=false,inStockOnly=false;
+let curCat='__all__',curSub='__all__',curPrice=-1,favOnly=false,inStockOnly=false;
+// 🏷️ 06/10/2026 — כמה מותגים בבת אחת (נמרוד). ריק = כל המותגים.
+const BSEL=new Set();
+// 🎛️ 07/10/2026 — סינון לפי תכונות, בסדר של הרשימות של טל:
+//    סוג → רמת כיסוי → גימור → סוג עור → גוון → תכונות נוספות.
+//    בתוך מקטע "או", בין מקטעים "וגם". מוצר שאין לו ערך במקטע שנבחר — לא מוצג:
+//    לא מנחשים שהוא מתאים (שדה ריק עדיף על ניחוש, גם בסינון).
+const ATTR_SEC=[
+  {k:'st',he:'סוג',ar:'النوع'},
+  {k:'coverage',he:'רמת כיסוי',ar:'درجة التغطية'},
+  {k:'finish',he:'גימור',ar:'اللمسة النهائية'},
+  {k:'skin',he:'סוג עור',ar:'نوع البشرة'},
+  {k:'tone',he:'גוון',ar:'اللون'},
+  {k:'extra',he:'תכונות נוספות',ar:'مزايا إضافية'}];
+const ATTR_KEYS=new Set(ATTR_SEC.map(d=>d.k));
+const ATTR_ORDER={st:['נוזלי','קרם','מוס','ג׳לי','טינט','סטיק','דחוסה/אבקה','דחוסה','בתפזורת','פלטה','עיפרון'],
+  coverage:['קל','בינוני','מלא','ניתן לבנייה'],finish:['מאט','טבעי','סאטן','זוהר','שימרי','מטאלי'],
+  skin:['יבש','שמן','מעורב','רגיש'],tone:['שקופה','בגוון'],extra:['עמיד למים','ארוך טווח','טבעוני','ללא אכזריות']};
+// הערכים נשמרים במסד כפי שהמחקר חילץ אותם; כאן רק התווית ללקוחה
+const ATTR_HE={'סאטן':'סאטני','זוהר':'זוהר / גלואי','ארוך טווח':'עמיד לאורך זמן','עמיד למים':'עמיד במים','דחוסה/אבקה':'אבקה'};
+const ATTR_AR={'מאט':'مطفي','טבעי':'طبيعي','סאטן':'ساتان','זוהר':'متوهج','שימרי':'لامع','מטאלי':'معدني',
+  'קל':'خفيفة','בינוני':'متوسطة','מלא':'كاملة','ניתן לבנייה':'قابلة للبناء',
+  'יבש':'جافة','שמן':'دهنية','מעורב':'مختلطة','רגיש':'حساسة','שקופה':'شفافة','בגוון':'ملوّنة',
+  'עמיד למים':'مقاوم للماء','ארוך טווח':'يدوم طويلاً','טבעוני':'نباتي','ללא אכזריות':'خالٍ من القسوة',
+  'נוזלי':'سائل','קרם':'كريمي','דחוסה/אבקה':'بودرة','דחוסה':'مضغوطة','בתפזורת':'سائبة','סטיק':'ستيك',
+  'פלטה':'باليت','עיפרון':'قلم','טינט':'تينت','ג׳לי':'جل','מוס':'موس','עם גוון':'ملوّن','ללא גוון':'بدون لون',
+  'נפח':'كثافة','הארכה':'تطويل','סלסול':'تجعيد','לגוף ולשיער':'للجسم والشعر','לגוף':'للجسم','לשיער':'للشعر',
+  'אפרסק':'خوخي','ורוד':'وردي','מבהיר':'مُفتّح'};
+const ST_SEC={'face-corrector':{he:'גוון מתקן',ar:'لون التصحيح'},'eyes-mascara':{he:'אפקט',ar:'التأثير'},
+  'skin-mist':{he:'שימוש',ar:'الاستخدام'},'face-setting':{he:'גימור',ar:'اللمسة النهائية'},'lips-balm':{he:'גוון',ar:'اللون'}};
+function secLbl(d){const o=(d.k==='st'&&ST_SEC[curSub])||d;return LANG==='ar'?o.ar:o.he;}
+function attrLbl(v){return (LANG==='ar'&&ATTR_AR[v])?ATTR_AR[v]:(ATTR_HE[v]||v);}
+const FSEL={};   // k -> Set של ערכים שנבחרו
+function gAttr(g,k){
+  if(k==='st')return g.sts||(g.st?[g.st]:[]);   // כל הסוגים של הגוונים — לא רק הרוב
+  const a=g.at||{};
+  if(k==='extra')return (a.wear||[]).concat(a.ethics||[]);
+  return a[k]||[];
+}
+function fselCount(){let n=0;for(const k in FSEL)n+=FSEL[k].size;return n;}
 const sel={};   // gid -> variant index
 const FAVS=new Set(JSON.parse(localStorage.getItem('sf_favs')||'[]'));
 function saveFavs(){localStorage.setItem('sf_favs',JSON.stringify([...FAVS]))}
@@ -2111,7 +2731,7 @@ function imgErr(img){img.style.display='none';const ph=document.createElement('d
 // default displayed variant = first IN-STOCK shade (so the card never defaults to a sold-out shade)
 function defaultV(g){
   if(STOCK_READY){
-    var f=g.variants.findIndex(function(v){return STOCK[nbc(v.barcode)]>0;});
+    var f=g.variants.findIndex(function(v){return STOCK[nbc(v.barcode)]>0&&!isSold(v);});
     if(f>=0)return f;
     var d=g.variants.findIndex(inDB);
     if(d>=0)return d;
@@ -2134,16 +2754,85 @@ function buildNav(){
   if(curCat!=='__all__'&&curCat!=='__hot__'&&!cats.includes(curCat))curCat='__all__';   // קטגוריה שנבחרה אזלה → חזרה להכל (אריחי הקטגוריות הם הניווט היחיד)
 
   const brands=brandsInStock();
-  if(curBrand!=='__all__'&&!brands.includes(curBrand))curBrand='__all__';   // מותג שנבחר אזל → חזרה להכל
+  for(const b of [...BSEL])if(!brands.includes(b))BSEL.delete(b);   // מותג שאין לו מלאי בתחום → יוצא מהבחירה
   updateBrandBtn();
+  pruneAttrs();updateFilterBtn();
 
   buildCatTiles();
   buildBrandRow();
   buildRecs();
 }
 // ---- ניווט עמוד-הבית: קטגוריה/חנות/חיפוש/מועדפים ----
-function goShop(){var el=document.getElementById('shopAllT')||document.getElementById('grid');if(el){var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;window.scrollTo({top:y,behavior:'smooth'});}}
-function goCat(c){curCat=c;curBrand='__all__';favOnly=false;var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');buildNav();render();goShop();}
+function goShop(){var el=document.getElementById('cathead');if(!el||!el.innerHTML)el=document.getElementById('shopAllT')||document.getElementById('grid');if(el){var y=el.getBoundingClientRect().top+(window.pageYOffset||document.documentElement.scrollTop||0)-70;window.scrollTo({top:y,behavior:'smooth'});}}
+function buildSubRow(){
+  const el=document.getElementById('subrow');if(!el)return;
+  const subs=(HAS_TREE&&CT_BY[curCat])?subsInStock(curCat):[];
+  if(!subs.length){el.innerHTML='';return;}
+  const g=CT_BY[curCat]||{bg:'#f3eae1',ink:'#6f523c'};
+  const chip=(key,label)=>{const on=curSub===key;
+    return `<button class="subchip${on?' active':''}" data-s="${aesc(esc(key))}" style="`
+      +(on?`background:${g.ink};border-color:${g.ink};color:#fff`
+          :`background:${g.bg};border-color:transparent;color:${g.ink}`)+`">${esc(label)}</button>`;};
+  el.innerHTML=chip('__all__',t('all'))
+    +subs.map(sb=>chip(sb.s,(LANG==='ar'&&sb.ar)?sb.ar:sb.he)).join('');
+  el.onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;goSub(b.dataset.s);};
+}
+// 🏷️ פס הכותרת. מופיע רק כשיש קבוצה נבחרת — ובחיפוש מוצג במקומו
+//    "נמצא ב:", שמראה ללקוחה **באילו קטגוריות** נפלו התוצאות שלה.
+function buildCatHead(){
+  const el=document.getElementById('cathead'); if(!el)return;
+  const q=(document.getElementById('q')||{}).value||'';
+  if(q.trim()){ el.innerHTML=foundInHtml(); return; }
+  const g=HAS_TREE?CT_BY[curCat]:null;
+  var sa=document.querySelector('.shopall');if(sa)sa.style.display=g?'none':'';
+  if(!g){el.innerHTML='';return;}
+  const sub=(curSub!=='__all__'&&CT_SUB[curSub])?CT_SUB[curSub]:null;
+  const he=sub?((LANG==='ar'&&sub.ar)?sub.ar:sub.he):((LANG==='ar'&&g.ar)?g.ar:g.he);
+  const ar=sub?sub.ar:g.ar;
+  el.innerHTML='<div class="inner" style="background:'+g.bg+';color:'+g.ink+'">'
+    +'<svg viewBox="0 0 48 48" style="stroke:'+g.ink+';color:'+g.ink+'">'+g.ic+'</svg>'
+    +'<div><h2>'+esc(he)+'</h2>'+((ar&&LANG!=='ar')?'<div class="ar">'+esc(ar)+'</div>':'')+'</div></div>';
+}
+// 🔎 "נמצא ב:" — שלוש הקטגוריות שבהן יש הכי הרבה תוצאות לחיפוש.
+//    זה מה שהופך חיפוש כושל ("גלוס") למסלול: הלקוחה רואה שהתוצאות
+//    יושבות ב"גלוסים" ולוחצת ישר לשם.
+function foundInHtml(){
+  if(!HAS_TREE||!VIS||!VIS.length)return '';
+  const by={};
+  for(const g of VIS){if(g.cs)by[g.cs]=(by[g.cs]||0)+1;}
+  const top=Object.keys(by).sort((a,b)=>by[b]-by[a]).slice(0,3);
+  if(!top.length)return '';
+  return '<div class="found">'+esc(t('found_in'))+' '
+    +top.map(sl=>'<b class="fin" style="cursor:pointer" data-m="'+aesc(esc(CT_MAIN[sl]))+'" data-s="'+aesc(esc(sl))+'">'
+      +esc(catLabel(sl))+'</b>').join(' · ')+'</div>';
+}
+function goSub(sl){curSub=sl;writeHash();buildNav();render();goShop();}
+// 🛡️ "נמצא ב:" — מאזין אחד, והערכים מאומתים מול העץ לפני שימוש (לא מחרוזת JS מהמסד)
+document.addEventListener('click',function(e){
+  const b=e.target.closest&&e.target.closest('#cathead .fin'); if(!b)return;
+  const m=b.dataset.m, sl=b.dataset.s;
+  if(!CT_BY[m]||CT_MAIN[sl]!==m)return;
+  goCat(m); goSub(sl);
+});
+// 🔗 קישור עמוק: #c=<קבוצה>&s=<תת-קטגוריה>. נכתב לכתובת בלי לרענן,
+//    כך ש"שלח לי את הסומקים" הוא קישור אחד שנפתח ישר במקום הנכון.
+function writeHash(){
+  try{
+    let h='';
+    if(HAS_TREE&&CT_BY[curCat]){h='#c='+curCat;if(curSub!=='__all__')h+='&s='+curSub;}
+    history.replaceState(history.state,'',h||location.pathname+location.search);
+  }catch(e){}
+}
+function applyHash(){
+  if(!HAS_TREE)return false;
+  const p=new URLSearchParams((location.hash||'').replace(/^#/,''));
+  const c=p.get('c'), sb=p.get('s');
+  if(!c||!CT_BY[c])return false;
+  curCat=c; curSub=(sb&&CT_SUB[sb]&&CT_MAIN[sb]===c)?sb:'__all__';
+  return true;
+}
+function clearSearchQ(){var fq=document.getElementById('fdQ');if(fq)fq.value='';var q=document.getElementById('q');if(q&&q.value){q.value='';var ac=document.getElementById('ac');if(ac)ac.classList.remove('show');if(typeof toggleClr==='function')toggleClr();}}
+function goCat(c){clearSearchQ();curSub='__all__';curCat=c;BSEL.clear();for(const k in FSEL)delete FSEL[k];favOnly=false;var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');writeHash();buildNav();render();goShop();}
 // כפתור "חיפוש" בסרגל התחתון → נוחתים בדיוק על שדה החיפוש והמקלדת נפתחת.
 // ⚠️ הנקודה הקריטית: focus() חייב לרוץ **בתוך אירוע הלחיצה עצמו**. הגרסה
 // הקודמת קראה לו מתוך setTimeout של 360 מ"ש, וסאפארי בנייד מתייחס לזה
@@ -2208,12 +2897,33 @@ function buildRecs(){
 function buildCatTiles(){
   const el=document.getElementById('cattiles');if(!el)return;
   const cats=catsInStock();
-  const allTile=`<button class="cattile ${curCat==='__all__'?'active':''}" data-c="__all__"><span class="ci"><img src="cat/all.jpg?v=2" loading="lazy" alt="" onerror="this.parentNode.classList.add('ci-all');this.outerHTML='<span class=&quot;ph&quot;>✦</span>'"></span><span>${t('all')}</span></button>`;
+  const ICO_ALL='<rect x="8" y="8" width="14" height="14" rx="3"/><rect x="26" y="8" width="14" height="14" rx="3"/>'
+               +'<rect x="8" y="26" width="14" height="14" rx="3"/><rect x="26" y="26" width="14" height="14" rx="3"/>';
+  const ICO_HOT='<path d="M18 14c1 8.5 3 10.5 11.5 11.5C21 26.5 19 28.5 18 37c-1-8.5-3-10.5-11.5-11.5C15 24.5 17 22.5 18 14z"/>'
+               +'<path d="M35 5c.6 4.2 1.8 5.4 6 6-4.2.6-5.4 1.8-6 6-.6-4.2-1.8-5.4-6-6 4.2-.6 5.4-1.8 6-6z"/>'
+               +'<path d="M36 29c.4 3 1 3.6 4 4-3 .4-3.6 1-4 4-.4-3-1-3.6-4-4 3-.4 3.6-1 4-4z"/>';
+  const tile=(key,ico,label,bg,ink)=>`<button class="cattile ${curCat===key?'active':''}" data-c="${aesc(esc(key))}" style="background:${bg}">`
+    +`<span class="ci cticon"><svg viewBox="0 0 48 48" style="stroke:${ink};color:${ink}">${ico}</svg></span>`
+    +`<span>${esc(label)}</span></button>`;
+  const allTile=HAS_TREE?tile('__all__',ICO_ALL,t('all'),'#f3eae1','#6f523c')
+    :`<button class="cattile ${curCat==='__all__'?'active':''}" data-c="__all__"><span class="ci"><img src="cat/all.jpg?v=2" loading="lazy" alt="" onerror="this.parentNode.classList.add('ci-all');this.outerHTML='<span class=&quot;ph&quot;>✦</span>'"></span><span>${t('all')}</span></button>`;
   const hg=GROUPS.filter(x=>isHot(x)&&!x._noimg&&(!STOCK_READY||x.variants.some(v=>STOCK[nbc(v.barcode)]>0)))
     .sort((a,b)=>prestige(a.brand)-prestige(b.brand))[0];
   const hv=hg?hg.variants.find(x=>x.imgs&&x.imgs.length):null;
   const hotIm=hv?`<img src="${aesc(hv.imgs[0])}" loading="lazy" alt="" onerror="this.style.display='none'">`:'<span class="ph">🔥</span>';
-  const hotTile=hg?`<button class="cattile ${curCat==='__hot__'?'active':''}" data-c="__hot__"><span class="ci">${hotIm}</span><span>${t('cat_hot')}</span></button>`:'';
+  const hotTile=!hg?'':(HAS_TREE?tile('__hot__',ICO_HOT,t('cat_hot'),'#f2e4d9','#a0664d')
+    :`<button class="cattile ${curCat==='__hot__'?'active':''}" data-c="__hot__"><span class="ci">${hotIm}</span><span>${t('cat_hot')}</span></button>`);
+  if(HAS_TREE){
+    el.className='cattiles tree';
+    const sec=document.getElementById('catsec'); if(sec)sec.textContent=t('cat_sec');
+    el.innerHTML=allTile+hotTile+cats.map(m=>{
+      const g=CT_BY[m];
+      return tile(m,g.ic,catLabel(m),g.bg,g.ink);
+    }).join('');
+    el.onclick=e=>{const b=e.target.closest('[data-c]');if(!b)return;goCat(b.dataset.c);};
+    buildSubRow();
+    return;
+  }
   el.innerHTML=allTile+hotTile+cats.map(c=>{
     let im;
     if(CAT_IMG[c]){
@@ -2246,7 +2956,7 @@ function initHeroDeco(){
 }
 // ---- פס פרומו: במובייל מציג הודעה אחת מתחלפת ----
 (function(){
-  const ids=['promo1','promo3'];let pi=0;
+  const ids=['promo0','promo1','promo3'];let pi=0;
   const e0=document.getElementById(ids[0]);if(e0)e0.classList.add('cur');
   setInterval(function(){
     if(window.innerWidth>640)return;
@@ -2333,7 +3043,7 @@ const BRAND_LOGO_PAIRS=[
 const BRAND_LOGOS={};
 BRAND_LOGO_PAIRS.forEach(function(p){p[1].forEach(function(n){BRAND_LOGOS[normText(n)]=p[0];});});
 function brandLogo(b){return BRAND_LOGOS[normText(b)];}
-function brandCount(b){return GROUPS.reduce((s,g)=>s+((g.brand===b&&(!STOCK_READY||g.variants.some(v=>STOCK[nbc(v.barcode)]>0)))?1:0),0);}
+function brandCount(b){return GROUPS.reduce((s,g)=>s+((g.brand===b&&inCatScope(g)&&(!STOCK_READY||g.variants.some(v=>STOCK[nbc(v.barcode)]>0)))?1:0),0);}
 const BRANDS_EN=/*__BRANDS_EN__*/;
 function brandEn(b){return BRANDS_EN[b]||'';}
 // לכל מותג יש סמליל: קובץ לוגו כשקיים, ואחרת סמליל טיפוגרפי מהשם
@@ -2346,10 +3056,10 @@ function brandVisual(b){
 }
 function updateBrandBtn(){
   const lbl=document.getElementById('brandPickLbl'),btn=document.getElementById('brandPickBtn');if(!lbl||!btn)return;
-  lbl.textContent=(curBrand==='__all__')?t('all_brands'):curBrand;
-  btn.classList.toggle('on',curBrand!=='__all__');
+  lbl.textContent=BSEL.size===0?t('all_brands'):(BSEL.size===1?[...BSEL][0]:(BSEL.size+' '+t('brands_n')));
+  btn.classList.toggle('on',BSEL.size>0);
 }
-function openBrandModal(){const s=document.getElementById('brandSearch');if(s)s.value='';renderBrandGrid();openOv('brandModal');
+function openBrandModal(){const s=document.getElementById('brandSearch');if(s)s.value='';renderBrandGrid();updateBrandDone();openOv('brandModal');
   setTimeout(function(){if(s)s.focus();},60);}
 function renderBrandGrid(){
   const grid=document.getElementById('brandGrid');if(!grid)return;
@@ -2357,13 +3067,75 @@ function renderBrandGrid(){
   let brands=brandsInStock();
   if(q)brands=brands.filter(b=>normText(b).includes(q)||expandSearch(b).includes(q));
   const total=brandsInStock().length;
-  const allCard=(!q)?`<div class="bcard allb ${curBrand==='__all__'?'on':''}" data-b="__all__"><span class="bwm">${t('all_brands')}</span><span class="bcount">${total}</span></div>`:'';
+  const allCard=(!q)?`<div class="bcard allb ${BSEL.size===0?'on':''}" data-b="__all__"><span class="bwm">${t('all_brands')}</span><span class="bcount">${total}</span></div>`:'';
   grid.innerHTML=allCard+brands.map(b=>{
-    return `<div class="bcard ${curBrand===b?'on':''}" data-b="${aesc(b)}">${brandVisual(b)}<span class="bname">${esc(b)}</span><span class="bcount">${brandCount(b)}</span></div>`;}).join('');
+    return `<div class="bcard ${BSEL.has(b)?'on':''}" data-b="${aesc(b)}">${brandVisual(b)}<span class="bname">${esc(b)}</span><span class="bcount">${brandCount(b)}</span></div>`;}).join('');
   if(!brands.length)grid.innerHTML='<div class="bempty">'+t('empty')+'</div>';
   grid.onclick=e=>{const c=e.target.closest('[data-b]');if(!c)return;pickBrand(c.dataset.b);};
 }
-function pickBrand(b){curBrand=b;closeOv('brandModal');buildNav();render();}
+function pickBrand(b){
+  if(b==='__all__'){BSEL.clear();closeOv('brandModal');}
+  else if(BSEL.has(b))BSEL.delete(b); else BSEL.add(b);
+  buildNav();render();renderBrandGrid();updateBrandDone();
+}
+// כפתור "הצגת N מוצרים" בתחתית החלון — הלקוחה רואה כמה יוצא לפני שהיא סוגרת
+function updateBrandDone(){const b=document.getElementById('brandDone');if(!b)return;
+  b.textContent=BSEL.size?(t('show_n').replace('{n}',VIS.length.toLocaleString())):t('bm_close');}
+
+// 🎛️ המקטעים שיש בהם מה לבחור — **רק בתוך קבוצה** (נוזלי של סומק ונוזלי של מייקאפ
+//    אינם אותו דבר), וה"סוג" רק בתוך תת-קטגוריה. ערך יחיד שמשותף לכל המוצרים — מוסתר.
+function attrScope(){return GROUPS.filter(g=>inCatScope(g)&&(!STOCK_READY||g.variants.some(inDB))&&(!BSEL.size||BSEL.has(g.brand)));}
+function attrSections(){
+  if(!(HAS_TREE&&CT_BY[curCat]))return [];
+  const sc=attrScope(); if(!sc.length)return [];
+  const out=[];
+  for(const d of ATTR_SEC){
+    if(d.k==='st'&&curSub==='__all__')continue;
+    const cnt={};
+    for(const g of sc)for(const v of new Set(gAttr(g,d.k)))cnt[v]=(cnt[v]||0)+1;
+    const opts=Object.keys(cnt);
+    if(!opts.length||(opts.length===1&&cnt[opts[0]]===sc.length))continue;
+    const ord=ATTR_ORDER[d.k]||[];
+    opts.sort((a,b)=>{const ia=ord.indexOf(a),ib=ord.indexOf(b);return ((ia<0?99:ia)-(ib<0?99:ib))||(cnt[b]-cnt[a]);});
+    out.push({d,opts});
+  }
+  return out;
+}
+// ערך שנבחר ואינו קיים יותר בתחום (החלפת תת-קטגוריה/מותג) — יוצא מהבחירה
+function pruneAttrs(){
+  const av={};for(const x of attrSections())av[x.d.k]=new Set(x.opts);
+  for(const k in FSEL){for(const v of [...FSEL[k]])if(!(av[k]&&av[k].has(v)))FSEL[k].delete(v);if(!FSEL[k].size)delete FSEL[k];}
+}
+function updateFilterBtn(){
+  const btn=document.getElementById('filterBtn'),lbl=document.getElementById('filterLbl');if(!btn||!lbl)return;
+  const n=fselCount();
+  btn.style.display=(n||attrSections().length)?'':'none';
+  lbl.textContent=t('filter')+(n?' · '+n:'');
+  btn.classList.toggle('on',n>0);
+}
+function openFilterModal(){renderFilterBody();updateFilterDone();openOv('filterModal');}
+function renderFilterBody(){
+  const el=document.getElementById('filterBody');if(!el)return;
+  const g=CT_BY[curCat]||{bg:'#f3eae1',ink:'#6f523c'};
+  el.innerHTML=attrSections().map(({d,opts})=>'<div class="fsec"><h4>'+esc(secLbl(d))+'</h4><div class="fopts">'
+    +opts.map(v=>{const on=!!(FSEL[d.k]&&FSEL[d.k].has(v));
+      return '<button type="button" class="fopt'+(on?' on':'')+'" data-k="'+aesc(esc(d.k))+'" data-v="'+aesc(esc(v))+'" style="'
+        +(on?'background:'+g.ink+';color:#fff':'background:'+g.bg+';color:'+g.ink)+'">'+esc(attrLbl(v))+'</button>';}).join('')
+    +'</div></div>').join('')
+    +(fselCount()?'<button type="button" class="fclear" data-clear="1">'+esc(t('f_clear'))+'</button>':'');
+  el.onclick=e=>{const b=e.target.closest('[data-k]');if(b){toggleAttr(b.dataset.k,b.dataset.v);return;}
+    if(e.target.closest('[data-clear]'))clearAttrs();};
+}
+function toggleAttr(k,v){
+  if(!ATTR_KEYS.has(k))return;
+  const s=FSEL[k]||(FSEL[k]=new Set());
+  if(s.has(v))s.delete(v);else s.add(v);
+  if(!s.size)delete FSEL[k];
+  render();renderFilterBody();updateFilterDone();updateFilterBtn();
+}
+function clearAttrs(){for(const k in FSEL)delete FSEL[k];render();renderFilterBody();updateFilterDone();updateFilterBtn();}
+function updateFilterDone(){const b=document.getElementById('filterDone');if(!b)return;
+  b.textContent=fselCount()?(t('show_n').replace('{n}',VIS.length.toLocaleString())):t('bm_close');}
 
 // ===== כפתור וואטסאפ צף: חלון עם שדה הודעה שהלקוח ממלא ואז שולח =====
 function toggleWaChat(){const c=document.getElementById('waChat');if(!c)return;
@@ -2392,13 +3164,147 @@ document.addEventListener('click',function(e){var c=document.getElementById('waC
      &&!e.target.closest('#waFloat')&&!e.target.closest('#navWa'))c.classList.remove('open');});
 
 buildNav();
+// ===== 🎛️ 12/10/2026 — מגירת סינון אחת (ספורה) =====
+// מקטעים: תת-קטגוריה → מותג → מחיר → התכונות של טל → מועדפים/מלאי. כל לחיצה מסננת מיד
+// (הספירה בכפתור "הצגת N" מתעדכנת), והבחירות מופיעות כבועות בשורת הסינון עם ✕.
+const DOPEN={};          // אילו מקטעים פתוחים (ברירת מחדל: הכל חוץ מהתכונות)
+let DBQ='', DBMORE=false;  // חיפוש מותג + "עוד מותגים"
+// 🔎 חיפוש חופשי מתוך המגירה — אותו שדה חיפוש של הדף, בתוך התחום שנבחר (קטגוריה/מותג/תכונות)
+function drawerSearch(v){const q=document.getElementById('q');if(!q)return;q.value=v;
+  if(typeof toggleClr==='function')toggleClr();var ac=document.getElementById('ac');if(ac)ac.classList.remove('show');render();}
+function drawerRefresh(){writeHash();buildNav();render();}
+function drawerClear(){var so=document.getElementById('sort');if(so)so.value='default';clearSearchQ();curCat='__all__';curSub='__all__';BSEL.clear();for(const k in FSEL)delete FSEL[k];curPrice=-1;favOnly=false;inStockOnly=false;
+  var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');
+  var sc=document.getElementById('stockchip');if(sc)sc.classList.remove('active');
+  DBQ='';drawerRefresh();}
+function drawerCount(pred){return GROUPS.reduce((n,g)=>n+((pred(g)&&(!STOCK_READY||g.variants.some(inDB)))?1:0),0);}
+function activeFilterN(){return activeFilterList().filter(f=>f.k!=='cat'&&f.k!=='q').length;}
+function sortLbl(v){const m={'price-asc':'sort_pa','price-desc':'sort_pd','name':'sort_name'};return m[v]?t(m[v]):'';}
+// כל הבחירות לבועות: קטגוריה, תת-קטגוריה, מותגים, תכונות, מחיר, מועדפים, חיפוש — ומיון שאינו "מומלץ"
+function chipList(){
+  const out=activeFilterList();
+  const so=document.getElementById('sort');
+  if(so&&so.value!=='default')out.push({k:'sort',val:sortLbl(so.value)});
+  return out;
+}
+function chipsHtml(){return chipList().map(f=>'<span class="fbchip">'+esc(String(f.val))+'<button type="button" aria-label="'+esc(t('reset_all'))+'" data-k="'+aesc(esc(f.k))+'">✕</button></span>').join('');}
+function chipClear(k){if(k==='sort'){const so=document.getElementById('sort');if(so)so.value='default';render();return;}clearOneFilter(k);}
+// 🔎 12/10 (נמרוד): "חיפוש" בסרגל התחתון פותח את הסינון מתחילתו. במחשב הסינון הוא עמודה
+//    קבועה — גוללים אליה במקום לפתוח מגירה (שהייתה נועלת את גלילת הדף).
+function navFilter(){openDrawer();}
+// 🔒 נעילת גלילת הדף בזמן שהמגירה פתוחה. overflow:hidden לבד לא עוצר את אייפון —
+//    נועלים את body במקום (position:fixed) ושומרים את מיקום הגלילה לחזרה.
+function openDrawer(){if(drawerOpen())return;renderDrawer();var _fb=document.getElementById('fdBody');if(_fb)_fb.scrollTop=0;document.getElementById('fdrawer').classList.add('open');document.getElementById('fback').classList.add('open');pushOvState('drawer','fdrawer');
+  lockPage();}
+function closeDrawer(){if(!drawerOpen())return;if(popOvState('drawer','fdrawer'))return;document.getElementById('fdrawer').classList.remove('open');document.getElementById('fback').classList.remove('open');unlockPage();}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.getElementById('fdrawer').classList.contains('open'))closeDrawer();});
+function renderFbar(){
+  const btn=document.getElementById('fbBtn'),n=document.getElementById('fbN'),ch=document.getElementById('fbChips');if(!btn)return;
+  const so=document.getElementById('sort');
+  const k=activeFilterN()+((so&&so.value!=='default')?1:0); n.textContent=k; btn.classList.toggle('on',k>0);
+  ch.innerHTML=chipsHtml();
+  ch.querySelectorAll('button').forEach(b=>{b.onclick=()=>chipClear(b.dataset.k);});
+}
+function dsec(key,title,sel,inner,openDef){
+  const open=(key in DOPEN)?DOPEN[key]:openDef;
+  return '<details class="fdsec" data-sec="'+key+'"'+(open?' open':'')+'><summary><span>'+esc(title)+'</span>'
+    +(sel?'<span class="sel">'+esc(sel)+'</span>':'')+'<span class="chev">▼</span></summary><div class="fdlist">'+inner+'</div></details>';
+}
+function dopt(cls,on,label,n,data){return '<div class="fdopt '+cls+(on?' on':'')+'" '+data+'><span class="box">'+(on?'✓':'')+'</span><span>'+esc(label)+'</span>'+(n!=null?'<span class="n">'+n+'</span>':'')+'</div>';}
+function renderDrawer(){
+  const el=document.getElementById('fdBody');if(!el)return;
+  const had=document.activeElement&&document.activeElement.id==='fdBrandQ';
+  const fc=document.getElementById('fdChips');
+  if(fc){fc.innerHTML=chipsHtml();fc.querySelectorAll('button[data-k]').forEach(b=>{b.onclick=()=>chipClear(b.dataset.k);});}
+  let h='';
+  // קבוצה ראשית — גם מי שפתח את הסינון לפני שבחר אריח יכול לבחור כאן
+  {
+    const cats=catsInStock();
+    const hasHot=GROUPS.some(g=>isHot(g)&&(!STOCK_READY||g.variants.some(inDB)));
+    let inner=dopt('radio',curCat==='__all__',t('all'),drawerCount(()=>true),'data-cat="__all__"');
+    if(hasHot)inner+=dopt('radio',curCat==='__hot__',t('cat_hot'),drawerCount(g=>isHot(g)),'data-cat="__hot__"');
+    for(const m of cats)inner+=dopt('radio',curCat===m,catLabel(m),drawerCount(g=>HAS_TREE&&CT_BY[m]?gMain(g)===m:g.type===m),'data-cat="'+aesc(esc(m))+'"');
+    h+=dsec('cat',t('af_cat'),curCat!=='__all__'?(curCat==='__hot__'?t('cat_hot'):catLabel(curCat)):'',inner,true);
+  }
+  // מיון — בתוך המגירה (במקום הבורר הנפרד)
+  {
+    const so=document.getElementById('sort'),cur=so?so.value:'default';
+    const opts=[['default',t('sort_rec')],['price-asc',t('sort_pa')],['price-desc',t('sort_pd')],['name',t('sort_name')]];
+    h+=dsec('sort',t('fd_sort'),cur!=='default'?sortLbl(cur):'',opts.map(([v,l])=>dopt('radio',cur===v,l,null,'data-sort="'+v+'"')).join(''),true);
+  }
+  // תת-קטגוריה
+  if(HAS_TREE&&CT_BY[curCat]){
+    const subs=subsInStock(curCat);
+    if(subs.length){
+      const all=drawerCount(g=>gMain(g)===curCat);
+      let inner=dopt('radio',curSub==='__all__',t('all'),all,'data-sub="__all__"');
+      for(const sb of subs)inner+=dopt('radio',curSub===sb.s,(LANG==='ar'&&sb.ar)?sb.ar:sb.he,drawerCount(g=>g.cs===sb.s),'data-sub="'+aesc(esc(sb.s))+'"');
+      h+=dsec('sub',t('fd_sub'),curSub!=='__all__'?catLabel(curSub):'',inner,true);
+    }
+  }
+  // מותג
+  {
+    let brands=brandsInStock().slice().sort((a,b)=>a.localeCompare(b,'he'));   // א"ב (נמרוד 12/10)
+    const q=normText(DBQ);
+    if(q)brands=brands.filter(b=>normText(b).includes(q)||expandSearch(b).includes(q)||normText(BRANDS_EN[b]||'').includes(q));
+    const LIM=8, more=brands.length>LIM&&!DBMORE&&!q;
+    const shown=more?brands.slice(0,LIM):brands;
+    let inner=(brandsInStock().length>LIM?'<input class="fdbq" id="fdBrandQ" type="search" autocomplete="off" placeholder="'+esc(t('fd_bq'))+'" value="'+aesc(esc(DBQ))+'">':'');
+    inner+=shown.map(b=>dopt('',BSEL.has(b),b+(BRANDS_EN[b]?' · '+BRANDS_EN[b]:''),brandCount(b),'data-brand="'+aesc(b)+'"')).join('');
+    if(!shown.length)inner+='<div class="fdopt" style="color:var(--muted)">'+esc(t('empty'))+'</div>';
+    if(more)inner+='<button type="button" class="fdmore" data-more="1">'+esc(t('fd_more').replace('{n}',brands.length-LIM))+'</button>';
+    else if(DBMORE&&!q&&brands.length>LIM)inner+='<button type="button" class="fdmore" data-more="0">'+esc(t('fd_less'))+'</button>';
+    h+=dsec('brand',t('fd_brand'),BSEL.size?(BSEL.size===1?[...BSEL][0]:BSEL.size+' '+t('brands_n')):'',inner,true);
+  }
+  // מחיר
+  {
+    let inner=dopt('radio',curPrice<0,t('all_prices'),null,'data-price="-1"');
+    PRICES.forEach((pr,i)=>{inner+=dopt('radio',curPrice===i,pr.l,drawerCount(g=>inCatScope(g)&&g.minp>=pr.mn&&g.minp<pr.mx),'data-price="'+i+'"');});
+    h+=dsec('price',t('fd_price'),curPrice>=0?PRICES[curPrice].l:'',inner,true);
+  }
+  // התכונות של טל — לפי הקטגוריה
+  for(const {d,opts} of attrSections()){
+    const sc=attrScope();
+    const inner=opts.map(v=>dopt('',!!(FSEL[d.k]&&FSEL[d.k].has(v)),attrLbl(v),sc.filter(g=>gAttr(g,d.k).includes(v)).length,'data-k="'+aesc(esc(d.k))+'" data-v="'+aesc(esc(v))+'"')).join('');
+    const sel=FSEL[d.k]?[...FSEL[d.k]].map(attrLbl).join(', '):'';
+    h+=dsec('attr:'+d.k,secLbl(d),sel,inner,true);
+  }
+  // מועדפים / במלאי
+  {
+    let inner=dopt('',favOnly,t('fav_only'),FAVS.size,'data-fav="1"');
+    if(STOCK_READY)inner+=dopt('',inStockOnly,t('in_stock'),null,'data-stock="1"');
+    h+=dsec('misc',t('fd_misc'),'',inner,true);
+  }
+  el.innerHTML=h;
+  const show=document.getElementById('fdShow');if(show)show.textContent=t('show_n').replace('{n}',VIS.length.toLocaleString());
+  const clr=document.getElementById('fdClear');if(clr)clr.style.visibility=chipList().length?'':'hidden';
+  const fq=document.getElementById('fdQ'),pq=document.getElementById('q');
+  if(fq&&pq&&document.activeElement!==fq&&fq.value!==pq.value)fq.value=pq.value;
+  el.querySelectorAll('details').forEach(d=>{d.addEventListener('toggle',()=>{DOPEN[d.dataset.sec]=d.open;});});
+  const bq=document.getElementById('fdBrandQ');
+  if(bq){bq.oninput=()=>{DBQ=bq.value;renderDrawer();};if(had){bq.focus();try{bq.setSelectionRange(bq.value.length,bq.value.length);}catch(_){}}}
+  el.onclick=e=>{
+    const o=e.target.closest('[data-cat],[data-sub],[data-brand],[data-price],[data-k],[data-fav],[data-stock],[data-more],[data-sort]');if(!o)return;
+    if(o.dataset.cat!=null){clearSearchQ();const c=o.dataset.cat;
+      if(c!==curCat){curCat=c;curSub='__all__';for(const k in FSEL)delete FSEL[k];}
+      drawerRefresh();return;}
+    if(o.dataset.sort!=null){const so=document.getElementById('sort');if(so)so.value=o.dataset.sort;render();return;}
+    if(o.dataset.more!=null){DBMORE=o.dataset.more==='1';renderDrawer();return;}
+    if(o.dataset.sub!=null){clearSearchQ();curSub=o.dataset.sub;drawerRefresh();return;}
+    if(o.dataset.brand!=null){const b=o.dataset.brand;if(BSEL.has(b))BSEL.delete(b);else BSEL.add(b);drawerRefresh();return;}
+    if(o.dataset.price!=null){curPrice=+o.dataset.price;drawerRefresh();return;}
+    if(o.dataset.k!=null){toggleAttr(o.dataset.k,o.dataset.v);return;}
+    if(o.dataset.fav!=null){favOnly=!favOnly;var fc=document.getElementById('favchip');if(fc)fc.classList.toggle('active',favOnly);render();return;}
+    if(o.dataset.stock!=null){inStockOnly=!inStockOnly;var sc=document.getElementById('stockchip');if(sc)sc.classList.toggle('active',inStockOnly);render();return;}
+  };
+}
 function toggleFavOnly(){favOnly=!favOnly;document.getElementById('favchip').classList.toggle('active',favOnly);render()}
 function resetFilters(){   // איפוס כל הסינונים (קטגוריה/מותג/מחיר/מועדפים/חיפוש)
-  curCat='__all__';curBrand='__all__';curPrice=-1;favOnly=false;inStockOnly=false;
+  curCat='__all__';curSub='__all__';BSEL.clear();for(const k in FSEL)delete FSEL[k];curPrice=-1;favOnly=false;inStockOnly=false;
   var q=document.getElementById('q');if(q)q.value='';
   var fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');
   var ac=document.getElementById('ac');if(ac)ac.classList.remove('show');
-  buildNav();render();
+  writeHash();buildNav();render();
 }
 function toggleStockOnly(){inStockOnly=!inStockOnly;document.getElementById('stockchip').classList.toggle('active',inStockOnly);render()}
 
@@ -2506,8 +3412,15 @@ function visible(){
   const q=document.getElementById('q').value.trim().toLowerCase();
   let r=GROUPS.filter(g=>{
     if(curCat==='__hot__'){if(!isHot(g))return false;}
-    else if(curCat!=='__all__'&&g.type!==curCat)return false;
-    if(curBrand!=='__all__'&&g.brand!==curBrand)return false;
+    else if(curCat!=='__all__'){
+      // 🗂️ בעץ הסינון הוא על הקבוצה; `curSub` מצמצם לתת-קטגוריה.
+      if(HAS_TREE&&CT_BY[curCat]){
+        if(gMain(g)!==curCat)return false;
+        if(curSub!=='__all__'&&g.cs!==curSub)return false;
+      } else if(g.type!==curCat)return false;
+    }
+    if(BSEL.size&&!BSEL.has(g.brand))return false;
+    for(const k in FSEL){const s=FSEL[k];if(s.size&&!gAttr(g,k).some(v=>s.has(v)))return false;}
     if(curPrice>=0){const pr=PRICES[curPrice];if(!(g.minp>=pr.mn&&g.minp<pr.mx))return false}
     if(favOnly&&!FAVS.has(g.gid))return false;
     if(STOCK_READY&&!g.variants.some(inDB))return false;   // הסתרת מוצרים שאינם ב-DB (לא ניתנים להזמנה)
@@ -2549,6 +3462,7 @@ function priceHtml(v,cls){
   var c=WHOLESALE?PRICE_CONS[nbc(v.barcode)]:null;   // במצב סיטונאי — להציג גם מחיר צרכן מומלץ
   var sub=(c!=null&&c>0)?`<div class="price-cons">${t('cons_rec')} ₪${c}</div>`:'';
   var p=eff(v);
+  if(p==null||!(p>0))return `<div class="pricewrap"><div class="price ${cls||''}">—</div></div>`;   // אין מחיר — לא "₪null"
   var was=(!WHOLESALE&&v.was&&v.was>p)?`<span class="was">₪${v.was}</span>`:'';   // מחיר-לפני (price_before) — מצב צרכן בלבד
   return `<div class="pricewrap"><div class="price ${was?'sale':(cls||'')}">₪${p}${was}</div>${sub}</div>`;
 }
@@ -2559,6 +3473,12 @@ function lowStockHtml(v){   // דחיפות מלאי חיה: "נותרו רק X!
 }
 
 // ===== grid =====
+// 🎨 גוון רקע עדין לפי הקבוצה. מוחזר כתכונת style מוכנה או כמחרוזת ריקה,
+// כדי שמוצר בלי שיוך ייראה בדיוק כמו קודם ולא ייפול.
+function CARD_TINT(g){
+  const m=HAS_TREE?gMain(g):''; const c=m&&CT_BY[m];
+  return c?` style="background:linear-gradient(160deg,#fff,${c.bg})"`:'';
+}
 function cardHtml(g){
   const v=selV(g);
   const gsold=grpSold(g);   // כל הגוונים אזלו → הכרטיס נשאר, מעומעם ומסומן
@@ -2572,7 +3492,7 @@ function cardHtml(g){
   }
   const nInStock=STOCK_READY?g.variants.filter(vv=>STOCK[nbc(vv.barcode)]>0).length:0;
   return `<div class="card${gsold?' sold':''}" id="card-${g.gid}" role="button" tabindex="0" aria-label="${esc(g.name_he||'')} — לפרטים" onclick="openPd(${g._i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPd(${g._i})}">
-      <div class="imgbox">
+      <div class="imgbox"${CARD_TINT(g)}>
         <button class="fav ${fav}" aria-label="הוסף למועדפים" onclick="event.stopPropagation();toggleFav('${g.gid}',this)">♥</button>
         ${badgesHtml(v)}${img}
         ${gsold?`<span class="soldflag">${t('sold_out')}</span>`:''}
@@ -2602,7 +3522,11 @@ function activeFilterList(){
   const q=(document.getElementById('q')||{}).value||'';
   if(curCat==='__hot__')out.push({k:'cat',lbl:t('af_cat'),val:t('cat_hot')});
   else if(curCat!=='__all__')out.push({k:'cat',lbl:t('af_cat'),val:catLabel(curCat)});
-  if(curBrand!=='__all__')out.push({k:'brand',lbl:t('af_brand'),val:curBrand});
+  // 🗂️ תת-הקטגוריה חייבת להופיע כאן גם היא — אחרת הלקוחה רואה 22 מתוך 81
+  //    בלי שום רמז למה, ואין לה דרך לנקות את הסינון.
+  if(curSub!=='__all__')out.push({k:'sub',lbl:t('af_cat'),val:catLabel(curSub)});
+  for(const b of BSEL)out.push({k:'brand:'+b,lbl:t('af_brand'),val:b});
+  for(const d of ATTR_SEC){const s=FSEL[d.k];if(s)for(const v of s)out.push({k:'attr:'+d.k+':'+v,lbl:secLbl(d),val:attrLbl(v)});}
   if(curPrice>=0&&typeof PRICES!=='undefined'&&PRICES[curPrice])out.push({k:'price',lbl:t('af_price'),val:PRICES[curPrice].l});
   if(favOnly)out.push({k:'fav',lbl:'',val:t('af_fav')});
   if(inStockOnly)out.push({k:'stock',lbl:'',val:t('af_stock')});
@@ -2610,13 +3534,16 @@ function activeFilterList(){
   return out;
 }
 function clearOneFilter(k){
-  if(k==='cat')curCat='__all__';
-  else if(k==='brand')curBrand='__all__';
+  if(k==='cat'){curCat='__all__';curSub='__all__';}
+  if(k==='sub')curSub='__all__';
+  else if(k.indexOf('brand:')===0)BSEL.delete(k.slice(6));
+  else if(k.indexOf('attr:')===0){const i=k.indexOf(':',5),kk=k.slice(5,i),v=k.slice(i+1);
+    if(FSEL[kk]){FSEL[kk].delete(v);if(!FSEL[kk].size)delete FSEL[kk];}}
   else if(k==='price')curPrice=-1;
   else if(k==='fav'){favOnly=false;const fc=document.getElementById('favchip');if(fc)fc.classList.remove('active');}
   else if(k==='stock'){inStockOnly=false;const sc=document.getElementById('stockchip');if(sc)sc.classList.remove('active');}
   else if(k==='q'){const q=document.getElementById('q');if(q)q.value='';const ac=document.getElementById('ac');if(ac)ac.classList.remove('show');}
-  buildNav();render();
+  writeHash();buildNav();render();
 }
 function renderActiveFilters(){
   const bar=document.getElementById('actFil'); if(!bar)return;
@@ -2639,6 +3566,8 @@ function render(){
   const grid=document.getElementById('grid');
   const cnt=document.getElementById('rescount'); if(cnt)cnt.textContent=VIS.length.toLocaleString()+' '+t('items');
   renderActiveFilters();
+  buildCatHead();
+  renderFbar();renderDrawer();
   grid.innerHTML='';
   if(!VIS.length){grid.innerHTML='<div class="empty">'+t('empty')+'</div>';return}
   loadMore();
@@ -2697,6 +3626,39 @@ document.addEventListener('click',e=>{if(!e.target.closest('.search'))document.g
 
 // ===== product detail =====
 function openPd(i){renderPd(GROUPS[i]);openOv('pdModal');}
+// 🔍 הגדלה — הגלריה של מסך המוצר. האזנה אחת על המסמך, כי הגלריה נבנית מחדש בכל פתיחה.
+let ZOOM=[],ZI=0;
+document.addEventListener('click',function(e){
+  const im=e.target.closest&&e.target.closest('.pd-gal img'); if(!im)return;
+  ZOOM=[...im.parentNode.querySelectorAll('img')].filter(x=>x.style.display!=='none').map(x=>x.src);
+  ZI=Math.max(0,ZOOM.indexOf(im.src)); showZoom();
+});
+// 🖼️ 12/10/2026 — רצועת תמונות עם הגלילה של הטלפון עצמו (scroll-snap). קודם: מעקב אצבע ידני
+//    שלא טיפל ב-touchcancel ולכן "נתקע לפעמים". כאן אין קוד מגע בכלל — הדפדפן מחליק.
+function zoomTrackEl(){return document.getElementById('zoomTrack');}
+function zoomGo(i,smooth){const tr=zoomTrackEl();if(!tr)return;const w=tr.clientWidth||window.innerWidth;
+  const rtl=getComputedStyle(tr).direction==='rtl';tr.scrollTo({left:(rtl?-1:1)*i*w,behavior:smooth?'smooth':'auto'});}
+function zoomCount(){document.getElementById('zoomCnt').textContent=ZOOM.length>1?(ZI+1)+' / '+ZOOM.length:'';}
+function showZoom(){const o=document.getElementById('zoomOv'),tr=zoomTrackEl();if(!o||!tr||!ZOOM.length)return;
+  tr.innerHTML=ZOOM.map(src=>'<div class="zslide"><img src="'+aesc(src)+'" alt="" draggable="false"></div>').join('');
+  o.querySelectorAll('.zn').forEach(b=>b.style.display=ZOOM.length>1?'':'none');
+  o.classList.add('on');zoomCount();
+  zoomGo(ZI,false);   // קריאת הרוחב בתוך zoomGo מכריחה פריסה — אין צורך לחכות לציור
+  tr.onscroll=()=>{const w=tr.clientWidth||1,i=Math.round(Math.abs(tr.scrollLeft)/w);
+    if(i!==ZI&&i>=0&&i<ZOOM.length){ZI=i;zoomCount();}};
+  tr.onclick=e=>{if(e.target===tr||e.target.classList.contains('zslide'))closeZoom();};}
+function zoomStep(d){if(!ZOOM.length)return;ZI=(ZI+d+ZOOM.length)%ZOOM.length;zoomCount();zoomGo(ZI,true);}
+function closeZoom(){const o=document.getElementById('zoomOv');if(o)o.classList.remove('on');}
+document.addEventListener('keydown',function(e){const o=document.getElementById('zoomOv');if(!o||!o.classList.contains('on'))return;
+  if(e.key==='Escape'){e.stopPropagation();closeZoom();}else if(e.key==='ArrowLeft')zoomStep(1);else if(e.key==='ArrowRight')zoomStep(-1);},true);
+// 🎛️ אותן מילים כמו בחלון הסינון — הלקוחה רואה במוצר בדיוק את מה שסיננה לפיו
+function pdAttrsHtml(g){
+  const h=['coverage','finish','skin','tone','extra'].map(k=>{const ord=ATTR_ORDER[k]||[];
+    const vs=gAttr(g,k).slice().sort((a,b)=>ord.indexOf(a)-ord.indexOf(b));if(!vs.length)return '';
+    const d=ATTR_SEC.find(x=>x.k===k);
+    return '<span class="pa"><b>'+esc(LANG==='ar'?d.ar:d.he)+':</b> '+vs.map(x=>esc(attrLbl(x))).join(' · ')+'</span>';}).join('');
+  return h?'<div class="pd-attrs">'+h+'</div>':'';
+}
 function renderPd(g){
   const v=selV(g);
   const gal=v.imgs.length?v.imgs.map(s=>`<img src="${aesc(s)}" loading="lazy" data-l="${aesc(g.name_he[0]||'✦')}" onerror="imgErr(this)">`).join(''):`<div class="ph">${esc(g.name_he[0]||'✦')}</div>`;
@@ -2735,6 +3697,7 @@ function renderPd(g){
       ${pr}
       <button class="pdfav ${FAVS.has(g.gid)?'on':''}" id="pdFav" onclick="toggleFavFromModal('${g.gid}')"><span class="h">♥</span><span class="t">${FAVS.has(g.gid)?t('fav_remove'):t('fav_add')}</span></button>
       ${_sum?`<p class="pd-lead">${esc(_sum)}</p>`:''}
+      ${pdAttrsHtml(g)}
       ${_dsc?`<h4>${t('desc')}</h4><p>${esc(_dsc)}</p>`:''}
       ${contents}
       ${feats}${ing}${use}
@@ -2771,6 +3734,7 @@ function cartChange(vid,delta){
 }
 function cartTotals(){let qty=0,sub=0;Object.values(CART).forEach(it=>{qty+=it.qty;sub+=it.qty*it.price});return{qty,sub};}
 function renderCart(){const {qty,sub}=cartTotals();const bar=document.getElementById('cartbar');
+  document.body.classList.toggle('has-cart',qty>0);
   if(qty===0){bar.classList.remove('show');return}bar.classList.add('show');
   document.getElementById('cartsum').innerHTML=`${qty} ${t('cart_items')} · <b>₪${sub}</b>`;}
 function pruneUnavailableCart(){Object.keys(CART).forEach(vid=>{const m=VMAP[vid];if(m&&isSold(m.v))delete CART[vid];});}
@@ -3144,7 +4108,7 @@ function goToProduct(vid){
   closeOv('orderModal');
   const gi=m.g.variants.indexOf(m.v); if(gi>=0)sel[m.g.gid]=gi;   // הכרטיס יציג את הגוון שנבחר בסל
   if(visible().indexOf(m.g)<0){   // מסונן החוצה → מנקים סינון, אחרת הקפיצה תוביל לשום מקום
-    curCat='__all__';curBrand='__all__';curPrice=-1;favOnly=false;inStockOnly=false;
+    curCat='__all__';curSub='__all__';BSEL.clear();for(const k in FSEL)delete FSEL[k];curPrice=-1;favOnly=false;inStockOnly=false;
     const q=document.getElementById('q'); if(q&&q.value){q.value='';toggleClr();}
     const fc=document.getElementById('favchip'); if(fc)fc.classList.remove('active');
     const sc=document.getElementById('stockchip'); if(sc)sc.classList.remove('active');
@@ -3238,7 +4202,9 @@ function priceMap(){return WHOLESALE?PRICE_WS:PRICE_CONS;}   // המפה הפע�
 function hasConsPrice(v){var m=PRICE_CONS[nbc(v&&v.barcode)];return m!=null&&m>0;}   // יש מחיר צרכן?
 function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}   // ברקוד → מפתח השוואה. אותיות נשמרות — יש מותגים עם ברקוד אלפאנומרי (ויקטוריהס סיקרט)
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
-function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
+function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);
+  if(!WHOLESALE&&!hasConsPrice(v))return true;   // 12/10: גוון בלי מחיר צרכן — לא למכירה לצרכן (היה מציג ₪null)
+  return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
 // כל הוריאנטים אזלו? (החלטת 24/08: מוצר כזה נשאר בקטלוג עם תג "אזל" ואינו נעלם)
 function grpSold(g){return STOCK_READY && !g.variants.some(function(v){return STOCK[nbc(v.barcode)]>0;});}
 // מה שאזל תמיד יורד לסוף הרשימה — לא תופס את הכרטיסים הראשונים.
@@ -3355,9 +4321,45 @@ async function payNow(){
 }
 
 var __ovReturnFocus=null;
+// ⬅️ 12/10 (נמרוד): "אחורה" בטלפון סוגר את החלון הפתוח. כל פתיחה דוחפת רשומה להיסטוריה;
+//    חזרה אחורה (popstate) סוגרת את העליון; ✕ עושה history.back() כדי שלא תישאר רשומה מיותרת.
+// 🔒 נעילת הדף — יושבת כאן כדי שתועתק גם לדף ההזמנה המהירה (ביקורת 13/10: שם היא הייתה חסרה
+//    וכל פתיחת חלון זרקה ReferenceError). drawerOpen סובלני לדף בלי מגירה.
+let _lockY=0;
+function lockPage(){if(document.body.classList.contains('pglock'))return;   // חלון מעל חלון — נועלים פעם אחת
+  _lockY=window.pageYOffset||document.documentElement.scrollTop||0;
+  document.body.style.top=(-_lockY)+'px';document.body.classList.add('pglock');}
+function anyOvOpen(){return [...document.querySelectorAll('.ov')].some(o=>o.classList.contains('open'));}
+function drawerOpen(){const d=document.getElementById('fdrawer');return !!(d&&d.classList.contains('open'));}
+function unlockPage(){if(!document.body.classList.contains('pglock'))return;
+  if(anyOvOpen()||drawerOpen())return;   // עדיין יש חלון פתוח — נשארים נעולים
+  document.body.classList.remove('pglock');document.body.style.top='';window.scrollTo(0,_lockY);}
+let _popClosing=false;
+function pushOvState(kind,id){try{history.pushState({bf:kind,id:id},'',location.href);}catch(e){}}
+function popOvState(kind,id){const st=history.state;if(!_popClosing&&st&&st.bf===kind&&st.id===id){try{history.back();return true;}catch(e){}}return false;}
+function ovStateOpen(st){   // האם החלון שברשומת ההיסטוריה באמת פתוח
+  if(!st||!st.bf)return false;
+  if(st.bf==='drawer')return drawerOpen();
+  const m=document.getElementById(st.id);return !!(m&&m.classList.contains('open'));}
+window.addEventListener('popstate',function(){
+  const st=history.state;
+  if(ovStateOpen(st))return;   // עדיין יש חלון פתוח מתחת — לא שלנו לסגור
+  _popClosing=true;
+  try{
+    if(typeof drawerOpen==='function'&&drawerOpen()&&typeof closeDrawer==='function')closeDrawer();
+    const zo=document.getElementById('zoomOv');if(zo&&zo.classList.contains('on')&&typeof closeZoom==='function')closeZoom();
+    [...document.querySelectorAll('.ov.open')].reverse().forEach(o=>closeOv(o.id));
+  }finally{_popClosing=false;}
+  if(typeof writeHash==='function')writeHash();   // הכתובת לפי המצב בדף, לא לפי הרשומה שחזרנו אליה
+});
+// רשומה ישנה שמזכירה חלון (חזרה מדף התשלום / ריענון בזמן שחלון פתוח) — מנקים, אחרת הסגירה הראשונה נבלעת
+try{if(history.state&&history.state.bf)history.replaceState(null,'',location.href);}catch(e){}
+function closeOvNow(id){const m=document.getElementById(id);if(!m)return;m.classList.remove('open');document.body.style.overflow='';unlockPage();}
 function openOv(id){
   __ovReturnFocus=document.activeElement;
-  const m=document.getElementById(id); m.classList.add('open'); document.body.style.overflow='hidden';
+  const m=document.getElementById(id); if(m.classList.contains('open'))return; m.classList.add('open'); document.body.style.overflow='hidden';
+  pushOvState('ov',id);
+  lockPage();   // 📱 12/10: באייפון overflow:hidden לא עוצר את הדף מאחורי "ההזמנה שלי" — נועלים באמת
   // 🔴 ל-.sheet יש overflow-y:auto והוא שומר את מיקום הגלילה מהפעם הקודמת.
   // בלי איפוס, פתיחת מוצר אחרי שגללנו בקודם נוחתת באמצע הכרטיס והלקוח
   // צריך לגלול למעלה כדי לראות את השם ואת התמונה.
@@ -3368,7 +4370,10 @@ function openOv(id){
   setTimeout(function(){const f=m.querySelector('input:not([type=hidden]),.x,button,[tabindex]'); (f||sheet).focus();},40);
 }
 function closeOv(id){
-  const m=document.getElementById(id); m.classList.remove('open'); document.body.style.overflow='';
+  const m=document.getElementById(id); if(!m.classList.contains('open'))return;
+  if(popOvState('ov',id))return;   // ה-popstate יקרא לנו שוב — ואז נסגור באמת
+  m.classList.remove('open'); document.body.style.overflow='';
+  unlockPage();
   if(__ovReturnFocus&&__ovReturnFocus.focus){try{__ovReturnFocus.focus();}catch(e){}} __ovReturnFocus=null;
 }
 // סגירת החלון הפתוח העליון ב-Escape (נגישות מקלדת)
@@ -3446,13 +4451,17 @@ const POLICIES={
   <h3>יצירת קשר בנושאי פרטיות</h3><p>שניר שריקי · טלפון: <a href="tel:0534555501">053-4555501</a> · אימייל: <a href="mailto:beautyfavorites2026@gmail.com">beautyfavorites2026@gmail.com</a></p>
   <p>מדיניות הפרטיות עודכנה לאחרונה: יולי 2026.</p>`,
 };
-function openPolicy(k){var b=document.getElementById('policyBody');if(b)b.innerHTML=POLICIES[k]||'';openOv('policyModal');}
+// 🌐 06/10/2026 — מסמכי המדיניות בערבית (תרגום צ'אט המחקר, נאמן ולא ניסוח מחדש;
+//    בראש כל מסמך: "הנוסח העברי הוא הקובע"). נטען מקובץ בבנייה; מסמך שחסר
+//    בערבית נופל לעברית — לעולם לא לחלון ריק.
+const POLICIES_AR=/*__POLICIES_AR__*/;
+function openPolicy(k){var b=document.getElementById('policyBody');if(b)b.innerHTML=((LANG==='ar'&&POLICIES_AR[k])||POLICIES[k]||'');openOv('policyModal');}
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)closeOv(ov.id)}));
 // ---- תוויות נגישות חד-פעמיות ----
 document.querySelectorAll('.ov .x, .wachat .wx').forEach(b=>{if(!b.getAttribute('aria-label'))b.setAttribute('aria-label','סגור');});
 (function(){var q=document.getElementById('q');if(q&&!q.getAttribute('aria-label'))q.setAttribute('aria-label','חיפוש מוצר, מותג או ברקוד');
   var bs=document.getElementById('brandSearch');if(bs)bs.setAttribute('aria-label','חיפוש מותג');})();
-document.addEventListener('touchstart',()=>{if(![...document.querySelectorAll('.ov')].some(o=>o.classList.contains('open')))document.body.style.overflow=''},{passive:true});
+document.addEventListener('touchstart',()=>{if(![...document.querySelectorAll('.ov')].some(o=>o.classList.contains('open'))&&!(typeof drawerOpen==='function'&&drawerOpen()))document.body.style.overflow=''},{passive:true});
 
 function goTop(){window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0;}
 window.addEventListener('scroll',()=>{
@@ -3462,8 +4471,13 @@ window.addEventListener('scroll',()=>{
 },{passive:true});
 
 applyStatic();
+(function(){var pb=document.getElementById('promobar');if(!pb)return;
+  var set=function(){document.documentElement.style.setProperty('--pbh',pb.offsetHeight+'px');};
+  set();window.addEventListener('resize',set,{passive:true});
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(set);})();
 // שחזור לפני הציור הראשון, כדי שסרגל הסל יופיע מלא מיד
 restoreCart(); restoreBuyer();
+if(applyHash())buildNav();   // 🔗 קישור עמוק לקטגוריה — לפני הציור הראשון
 render();
 if(SB){var _pb=document.getElementById('payBtn');if(_pb)_pb.style.display='';loadStock();}
 // חזרה מדף התשלום של פיי פלוס (?pay=success/failure&order=N) — הודעה וניקוי הכתובת
