@@ -1212,7 +1212,7 @@ def main():
             else:
                 barcode_seen[bc] = v["id"]
 
-    og_image = (SITE_URL.rstrip("/") + "/og-image.png?v=bf1") if SITE_URL else "og-image.png?v=bf1"
+    og_image = (SITE_URL.rstrip("/") + "/og-image.jpg?v=noa1") if SITE_URL else "og-image.jpg?v=noa1"   # 14/10: תמונת השיתוף של נועה
 
     # ---- חיבור Supabase: מוזרק לדף כ-window.SUPA. ריק → הקטלוג עובד במצב וואטסאפ-טקסט בלבד ----
     supa_cfg = {"url": "", "anon": ""}
@@ -1262,7 +1262,7 @@ def main():
     # במצב תצוגה מקדימה. בלי זה הלוגו פשוט לא מופיע בקובץ הבודד.
     if "--abs-img" in sys.argv:
         _site = SITE_URL.rstrip("/")
-        for _a in ('logo-bf.png', 'favicon-bf.png', 'cat/'):
+        for _a in ('logo-bf.png', 'logo-bf-white.png', 'favicon-bf.png', 'cat/'):
             out = out.replace('src="' + _a, 'src="' + _site + '/' + _a)
             out = out.replace('href="' + _a, 'href="' + _site + '/' + _a)
         print("🖼️  נכסי האתר בכתובת מלאה (לוגו, אייקון, תמונות קטגוריה)")
@@ -1272,16 +1272,17 @@ def main():
     with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as f:
         f.write(out)
     # 🏜️ 12/10/2026 — תמונת באנר הכניסה (נתיב יחסי) חייבת לשבת ליד הדף
-    _hb = os.path.join(CAT, "hero-banner.jpg")
-    if os.path.abspath(out_dir) != os.path.abspath(CAT) and os.path.exists(_hb):
-        shutil.copy2(_hb, os.path.join(out_dir, "hero-banner.jpg"))
+    for _hn in ("hero-banner.jpg", "hero-banner-desktop.jpg"):
+        _hb = os.path.join(CAT, _hn)
+        if os.path.abspath(out_dir) != os.path.abspath(CAT) and os.path.exists(_hb):
+            shutil.copy2(_hb, os.path.join(out_dir, _hn))
     # 🛒 דף ההזמנה המהירה — מאותם נתונים ומאותו קוד (ראה build_order_page)
     order_html = build_order_page(groups, supa_cfg, SITE_URL, cat_tree)
     # 📱 אותו טיפול בנכסי האתר גם לדף ההזמנה — אחרת האייקון והלוגו נשברים
     # בקובץ הבודד (נתפס בקובץ האתר 06/10, אותה סיבה בדיוק).
     if "--abs-img" in sys.argv:
         _site = SITE_URL.rstrip("/")
-        for _a in ('logo-bf.png', 'favicon-bf.png', 'cat/'):
+        for _a in ('logo-bf.png', 'logo-bf-white.png', 'favicon-bf.png', 'cat/'):
             order_html = order_html.replace('src="' + _a, 'src="' + _site + '/' + _a)
             order_html = order_html.replace('href="' + _a, 'href="' + _site + '/' + _a)
     with open(os.path.join(out_dir, "order.html"), "w", encoding="utf-8") as f:
@@ -1378,12 +1379,10 @@ a{color:inherit}img{display:block}
    כך שבטלפון הוא נראה בדיוק כמו העיצוב. במחשב: התמונה בצד, הכיתוב על משטח חול. */
 .brandbar{display:none}
 .dhero{position:relative;overflow:hidden;width:100%;aspect-ratio:3/4;max-height:92vh;text-align:center;
-  background:#5b4533 url(hero-banner.jpg) 100% 0/111.2% auto no-repeat}
+  background:#5b4533 url(hero-banner.jpg) center top/cover no-repeat}   /* 14/10: באנר נועה 1080×1440 */
 .dhero,.dhero *{color:#fff}
 .dhero .hlogo{position:absolute;top:4.5%;left:0;right:0;line-height:1;cursor:pointer}
-.dhero .hlogo b{display:block;font:400 clamp(34px,10.2vw,62px)/1 'Playfair Display',Georgia,serif;letter-spacing:-2px}
-.dhero .hlogo span{display:block;font:400 clamp(11px,3.1vw,19px)/1 'Playfair Display',Georgia,serif;letter-spacing:.18em;margin-top:.45em}
-.dhero .hlogo i{display:block;font:600 clamp(5.5px,1.15vw,7px)/1 'Montserrat',sans-serif;letter-spacing:.32em;font-style:normal;margin-top:.7em}
+.dhero .hlogo img{display:block;margin:0 auto;width:clamp(108px,30vw,200px);height:auto}   /* 14/10: הלוגו של נועה */
 .dhero h1{position:absolute;top:19.4%;left:4%;right:4%;margin:0;font:600 clamp(23px,6.5vw,52px)/1.1 'Assistant',sans-serif;text-wrap:balance}
 .dhero p{position:absolute;top:31.6%;left:5%;right:5%;margin:0;font:400 clamp(12px,3.25vw,26px)/1.35 'Assistant',sans-serif;text-wrap:balance}
 .dhero .hcta{position:absolute;top:80.7%;left:50%;transform:translateX(-50%);width:48.6%;height:10.9%;
@@ -1396,13 +1395,15 @@ a{color:inherit}img{display:block}
   box-shadow:none;backdrop-filter:blur(6px);color:#fff}
 .dhero .langbtn:hover{transform:scale(1.04);background:rgba(255,255,255,.26)}
 @media(min-width:900px){
-  .dhero{aspect-ratio:auto;height:600px;max-height:none;
-    background:url(hero-banner.jpg) left center/auto 100% no-repeat,linear-gradient(115deg,#8a6c55 0%,#b8977b 45%,#d9c2ab 100%)}
-  .dhero .hlogo,.dhero h1,.dhero p{left:44%;right:4%}
-  .dhero .hlogo{top:13%}
-  .dhero h1{top:37%;font-size:46px}
-  .dhero p{top:55%;font-size:20px}
-  .dhero .hcta{left:auto;right:calc(28% - 160px);transform:none;width:320px;height:64px;font-size:22px;top:auto;bottom:16%}
+  /* 14/10: הבאנר הרחב של נועה (2400×900) — המוצרים משמאל, הכיתוב על הקיר הנקי מימין */
+  .dhero{aspect-ratio:8/3;height:auto;max-height:78vh;min-height:420px;
+    background:#5b4533 url(hero-banner-desktop.jpg) left center/cover no-repeat}
+  .dhero .hlogo,.dhero h1,.dhero p{left:auto;right:5%;width:42%}
+  .dhero .hlogo{top:12%}
+  .dhero .hlogo img{width:clamp(170px,14vw,230px)}
+  .dhero h1{top:38%;font-size:clamp(34px,3.2vw,50px)}
+  .dhero p{top:58%;font-size:clamp(16px,1.35vw,21px)}
+  .dhero .hcta{left:auto;right:calc(5% + 21% - 160px);transform:none;width:320px;height:62px;font-size:22px;top:auto;bottom:11%}
 }
 
 .langbtn{position:absolute;inset-inline-start:16px;top:50%;transform:translateY(-50%);
@@ -2048,7 +2049,7 @@ body.has-cart .wachat{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
      (שנשאר מוסתר — להחזרה: להסיר את .brandbar{display:none}). הכיתוב טקסט חי
      ומתורגם (hero_*), הרקע = שכבת התמונה מה-PDF שלה, בלי הכיתוב. -->
 <section class="dhero" id="dhero" aria-label="Beauty Favorites">
-  <div class="hlogo" onclick="goTop()"><b>BF</b><span>BEAUTY FAVORITES</span><i>BEAUTY &amp; SKINCARE</i></div>
+  <div class="hlogo" onclick="goTop()"><img src="logo-bf-white.png" alt="Beauty Favorites — Beauty &amp; Skincare" width="812" height="430"></div>
   <h1><span id="dhH1a">כל המוצרים הנחשקים</span><br><span id="dhH1b">של עולם הביוטי במקום אחד</span></h1>
   <p id="dhSub">מוצרים מקוריים מהמותגים המובילים בעולם שנבחרו במיוחד בשבילך</p>
   <button class="hcta" type="button" onclick="goRecs()"><span id="dhCta">למומלצים שלנו</span><span class="harr" aria-hidden="true">&#10230;</span></button>
