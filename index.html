@@ -2077,12 +2077,29 @@ function buildHay(g){
 // חיפוש מק"ט/ברקוד: שאילתה של ספרות בלבד (4+) נבדקת מול הברקודים בלבד ולא מול
 // תיאורים — אחרת קידומת יצרן כמו 6093 מחזירה מאות תוצאות. התאמה מהסוף (הספרות
 // שהלקוח מקליד הן תמיד האחרונות שהוא רואה) או הכלה, וגם מק"ט מלא עם/בלי ספרת בידוק.
-function bcMatch(g,d){
-  return g.variants.some(v=>{
-    const b=String(v.barcode||'').replace(/\D/g,'');
-    if(!b)return false;
-    return b===d||b.endsWith(d)||b.includes(d);
+// 🔎 15/10/2026 — נמרוד: "סורקים ברקוד ונפתח גוון אחר". קודם הקבוצה נמצאה לפי הכלה, והכרטיס נפתח
+//    על הגוון הראשון שלה. עכשיו: ברקוד מלא (12+ ספרות) = התאמה מדויקת בלבד; וכל התאמה בוחרת את
+//    **הגוון שתאם** (sel), כך שהכרטיס, ההשלמה האוטומטית והמגירה מציגים אותו. אפסים מובילים לא נספרים
+//    (בכרטיסים יש 0609… ובמסד 609…).
+function bcKey(x){return String(x||'').replace(/\D/g,'').replace(/^0+/,'');}
+function bcIdx(g,d){
+  const raw=String(d||'').replace(/\D/g,''), q=bcKey(raw);
+  if(!q)return -1;
+  const full=raw.length>=12;
+  let best=-1,score=9;
+  g.variants.forEach((v,i)=>{
+    const b=bcKey(v.barcode); if(!b)return;
+    const sc=b===q?0:full?9:b.endsWith(q)?1:b.includes(q)?2:9;
+    if(sc<score){score=sc;best=i;}
   });
+  g._bscore=score;
+  return score<9?best:-1;
+}
+function bcMatch(g,d){
+  const i=bcIdx(g,d);
+  if(i<0)return false;
+  sel[g.gid]=i;   // הכרטיס נפתח על הגוון שהברקוד שלו תאם
+  return true;
 }
 // כתיב חסר מול כתיב מלא: "נרס" מול "נארס", "עפרון" מול "עיפרון".
 // אמות הקריאה א/ו/י/ה הן מה שמשתנה בין שני הכתיבים, ולכן הסרתן משני
@@ -2126,10 +2143,7 @@ function visible(){
   // חיפוש מק"ט: התאמה מדויקת קודמת, אחריה התאמה מהסוף, ורק אז הכלה חלקית
   const dq=normText(q).replace(/\s/g,'');
   if(/^\d{4,}$/.test(dq)){
-    const rank=g=>Math.min(...g.variants.map(v=>{
-      const b=String(v.barcode||'').replace(/\D/g,'');
-      return b===dq?0:(b.endsWith(dq)?1:2);
-    }));
+    const rank=g=>(g._bscore!=null?g._bscore:9);   // 0 מדויק · 1 מהסוף · 2 הכלה (bcIdx)
     return r.sort((a,b)=>bySold(a,b)||rank(a)-rank(b)||a.name_he.localeCompare(b.name_he,'he'));
   }
   // cards without an image always sink to the bottom (regardless of sort)
