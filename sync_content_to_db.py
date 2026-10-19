@@ -4,8 +4,9 @@
 סנכרון תוכן: קבצי הידע (knowledge/) → מסד הנתונים (products) — שלב חובה אחרי כל העשרה.
 
 דוחף שדות תוכן בלבד דרך RPC מאובטח (sync_product_content):
-  description (חדש מנצח) · brand · category · main_category · name_he (רק לכרטיס דק) · image_url (רק אם ריק)
-לעולם לא נוגע ב: מחירים, מלאי, sku, name_en, active.
+  description (חדש מנצח) · brand · category · main_category · name_he (רק לכרטיס דק, או עם --force-names)
+  · name_en (רק אם ריק, או עם --force-text) · image_url (רק אם ריק, או עם --force-images / --force-text)
+לעולם לא נוגע ב: מחירים, מלאי, sku, active.
 
 🔴 תוקן 09/09/2026 — הקטגוריה הראשית נדרסה בכל סנכרון (ראה fetch_existing_main).
    מעכשיו: ערך קיים במסד נשמר, וגזירה מהשם קורית רק לכרטיס שאין לו קטגוריה.
@@ -14,6 +15,9 @@
   python3 catalog/sync_content_to_db.py                  # כל המוצרים שבידע
   python3 catalog/sync_content_to_db.py 0123... 0456...  # ברקודים מסוימים בלבד
   python3 catalog/sync_content_to_db.py --force-names 0123...  # גם דריסת שם עברי לברקודים אלה
+  python3 catalog/sync_content_to_db.py --force-images 0123... # גם דריסת כתובת התמונה (למשל אחרי שינוי שם תיקיית כרטיס)
+  python3 catalog/sync_content_to_db.py --force-text 0123...   # דריסת כל שדות הטקסט המוגנים (name_he, name_en, image_url) — נרשם ביומן
+  (אפשר את שני הדגלים יחד; כל דגל חל על הברקודים שאחריו עד הדגל הבא)
 
 דרישות: backoffice/.sync-env עם CONTENT_SYNC_SECRET (מקומי, לא בריפו).
 """
@@ -88,11 +92,29 @@ def first_image_url(card_dir):
     d = os.path.join(KNOW, card_dir, "images")
     if not os.path.isdir(d):
         return ""
-    files = sorted(f for f in os.listdir(d) if f.lower().endswith(IMG_EXT))
+    # ☁️ 19/10/2026 (המחקר) — אותו סינון כמו בבנייה (מ-12/10): כפילויות אייקלאוד ("01 2.jpg") ותמונות
+    #    שהוסתרו (catalog/hidden_images.json) לא נבנות לאתר — ולכן כתובת אליהן היא 404. ב-14 כרטיסים
+    #    הקובץ הראשון אלפביתית היה כפילות; --force-images/--force-text היו כותבים כתובת שבורה.
+    hidden = _hidden_images().get(card_dir, {})
+    files = sorted(f for f in os.listdir(d)
+                   if f.lower().endswith(IMG_EXT) and not re.search(r" \d+\.[a-z]+$", f, re.I) and f not in hidden)
     return f"{SITE}/images/{card_dir}/{files[0]}" if files else ""
 
 
-def collect_rows(only_barcodes=None, force_names=None, existing_main=None):
+_HIDDEN = None
+def _hidden_images():
+    """catalog/hidden_images.json — אותה רשימה שהבנייה מדלגת עליה ({תיקיית כרטיס: {קובץ: סיבה}})."""
+    global _HIDDEN
+    if _HIDDEN is None:
+        try:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "hidden_images.json"), encoding="utf-8") as fh:
+                _HIDDEN = {k: v for k, v in json.load(fh).items() if not k.startswith("_") and isinstance(v, dict)}
+        except Exception:
+            _HIDDEN = {}
+    return _HIDDEN
+
+
+def collect_rows(only_barcodes=None, force_names=None, existing_main=None, force_images=None, force_text=None):
     rows, seen = [], set()
     for pj in glob.glob(os.path.join(KNOW, "*", "product.json")):
         try:
@@ -122,12 +144,20 @@ def collect_rows(only_barcodes=None, force_names=None, existing_main=None):
                 or ("" if (existing_main or {}).get(bc) else ptype(p))
             ),
             "name_he": (p.get("name_he") or "").strip(),
+            # 🔤 19/10/2026 (המחקר): name_en לא נשלח בכלל — ה-RPC ידע לקבל אותו ונשאר ריק. נכתב רק כשריק במסד, או עם --force-text
+            "name_en": (p.get("name_en") or "").strip(),
             # תמונה ראשית — ה-RPC כותב אותה **רק אם השדה במסד ריק**,
             # ולכן זה לעולם לא ידרוס תמונה שנבחרה ידנית בבק אופיס.
             "image_url": first_image_url(os.path.basename(os.path.dirname(pj))),
         }
         if force_names and bc in force_names:
             row["force_name"] = "1"
+        # 🖼️ 18/10/2026 — דריסת כתובת התמונה (ה-RPC כותב אותה רק עם הדגל, או כשהיא ריקה)
+        if force_images and bc in force_images and row.get("image_url"):
+            row["force_image"] = "1"
+        # 🧾 19/10/2026 — דגל אחד לכל השדות המוגנים; מה שנדרס נרשם ביומן הפעולות (content_changed)
+        if force_text and bc in force_text:
+            row["force_text"] = "1"
         rows.append(row)
     return rows
 
@@ -147,19 +177,26 @@ def push(env, rows, batch=200):
     return total_updated, total_missing
 
 def main():
-    args = [a for a in sys.argv[1:]]
-    force = set()
-    if "--force-names" in args:
-        idx = args.index("--force-names")
-        force = set(digits(a) for a in args[idx + 1:])
-        args = args[:idx]
-    only = set(digits(a) for a in args) or None
-    if force and not only:
-        only = set(force)
+    # דגלים: כל דגל חל על הברקודים שאחריו עד הדגל הבא; ברקודים לפני כל דגל = "רק אלה"
+    groups, cur = {"": []}, ""
+    for a in sys.argv[1:]:
+        if a in ("--force-names", "--force-images", "--force-text"):
+            cur = a; groups.setdefault(cur, []); continue
+        groups[cur].append(a)
+    force = set(digits(a) for a in groups.get("--force-names", []))
+    force_img = set(digits(a) for a in groups.get("--force-images", []))
+    force_txt = set(digits(a) for a in groups.get("--force-text", []))
+    only = set(digits(a) for a in groups[""]) or None
+    if (force or force_img or force_txt) and not only:
+        only = force | force_img | force_txt
     env = load_env()
     existing_main = fetch_existing_main(env)
     print(f"נקראו {len(existing_main)} קטגוריות קיימות מהמסד — הן לא יידרסו.")
-    rows = collect_rows(only, force, existing_main)
+    rows = collect_rows(only, force, existing_main, force_img, force_txt)
+    if force_txt:
+        print(f"🧾 דריסת כל שדות הטקסט ל-{sum(1 for r in rows if r.get('force_text'))} ברקודים (נרשם ביומן הפעולות)")
+    if force_img:
+        print(f"🖼️ דריסת כתובת תמונה ל-{sum(1 for r in rows if r.get('force_image'))} ברקודים")
     kept = sum(1 for r in rows if not r["main_category"])
     if kept:
         print(f"  🛡️  {kept} מוצרים ישמרו את הקטגוריה הקיימת שלהם.")
