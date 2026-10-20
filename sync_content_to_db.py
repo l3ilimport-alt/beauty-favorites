@@ -6,6 +6,8 @@
 דוחף שדות תוכן בלבד דרך RPC מאובטח (sync_product_content):
   description (חדש מנצח) · brand · category · main_category · name_he (רק לכרטיס דק, או עם --force-names)
   · name_en (רק אם ריק, או עם --force-text) · image_url (רק אם ריק, או עם --force-images / --force-text)
+  · category_slug + sub_type (עץ הקטגוריות — **רק כשריק במסד**, ללא דגל דריסה; מ-19/10)
+  · attrs (תכונות הסינון — רק כשריקות במסד; רק מפתחות/ערכים מ-ATTR_ALLOWED; מ-19/10)
 לעולם לא נוגע ב: מחירים, מלאי, sku, active.
 
 🔴 תוקן 09/09/2026 — הקטגוריה הראשית נדרסה בכל סנכרון (ראה fetch_existing_main).
@@ -114,6 +116,56 @@ def _hidden_images():
     return _HIDDEN
 
 
+_SLUGS = None
+def valid_slugs():
+    """הסלאגים הקיימים בעץ (טבלת categories, קריאה ציבורית).
+    🔴 19/10/2026 — category_slug הוא מפתח זר: סלאג שגוי אחד בכרטיס מפיל את **כל**
+    האצווה של ה-RPC (200 מוצרים). לכן מסננים כאן, ומדווחים במקום לשבור.
+    שליפה שנכשלה → קבוצה ריקה → לא שולחים סלאג כלל (בטוח: רק מדלג)."""
+    global _SLUGS
+    if _SLUGS is None:
+        try:
+            cfg = json.load(open(os.path.join(CATALOG, "supabase.config.json"), encoding="utf-8"))
+            req = urllib.request.Request(cfg["url"] + "/rest/v1/categories?select=slug",
+                                         headers={"apikey": cfg["anon_key"]})
+            _SLUGS = {r["slug"] for r in json.load(urllib.request.urlopen(req, timeout=30))}
+        except Exception as e:
+            print("⚠️ רשימת הקטגוריות לא נקראה — category_slug לא יישלח בסבב הזה:", e)
+            _SLUGS = set()
+    return _SLUGS
+
+
+BAD_SLUGS = []
+
+# 🎛️ 19/10/2026 — תכונות הסינון (attrs). המפתחות כפי שהם **במסד** (לא extra/st של האתר:
+#    extra = wear + ethics בתצוגה, st בא מ-sub_type). הערכים — ATTR_ORDER ב-build_catalog.py.
+ATTR_ALLOWED = {
+    "finish":   ["מאט", "טבעי", "סאטן", "זוהר", "שימרי", "מטאלי"],
+    "coverage": ["קל", "בינוני", "מלא", "ניתן לבנייה"],
+    "skin":     ["יבש", "שמן", "מעורב", "רגיש"],
+    "tone":     ["שקופה", "בגוון"],
+    "wear":     ["עמיד למים", "ארוך טווח"],
+    "ethics":   ["טבעוני", "ללא אכזריות"],
+}
+BAD_ATTRS = []
+
+def clean_attrs(bc, raw):
+    """רק מפתחות וערכים מהרשימה; כל השאר מדולג ומודפס (לא שובר את האצווה). {} → None."""
+    if not isinstance(raw, dict):
+        return None
+    out = {}
+    for k, vals in raw.items():
+        if k not in ATTR_ALLOWED:
+            BAD_ATTRS.append((bc, k, vals)); continue
+        vals = vals if isinstance(vals, list) else [vals]
+        good = [v.strip() for v in vals if isinstance(v, str) and v.strip() in ATTR_ALLOWED[k]]
+        for v in vals:
+            if not (isinstance(v, str) and v.strip() in ATTR_ALLOWED[k]):
+                BAD_ATTRS.append((bc, k, v))
+        if good:
+            out[k] = sorted(set(good), key=ATTR_ALLOWED[k].index)
+    return out or None
+
 def collect_rows(only_barcodes=None, force_names=None, existing_main=None, force_images=None, force_text=None):
     rows, seen = [], set()
     for pj in glob.glob(os.path.join(KNOW, "*", "product.json")):
@@ -150,6 +202,21 @@ def collect_rows(only_barcodes=None, force_names=None, existing_main=None, force
             # ולכן זה לעולם לא ידרוס תמונה שנבחרה ידנית בבק אופיס.
             "image_url": first_image_url(os.path.basename(os.path.dirname(pj))),
         }
+        # 🗂️ 19/10/2026 (בקשת הניהול) — העשרה קובעת את מקום המוצר בעץ (כלל 06/10). ה-RPC כותב
+        #    את שניהם **רק כשריקים במסד** — אחרי שנקבעו, הבק אופיס הוא מקור האמת. אין דגל דריסה.
+        slug = (p.get("category_slug") or "").strip()
+        if slug:
+            if slug in valid_slugs():
+                row["category_slug"] = slug
+            elif valid_slugs():
+                BAD_SLUGS.append((bc, slug))
+        sub = (p.get("sub_type") or "").strip()
+        if sub:
+            row["sub_type"] = sub
+        # 🎛️ תכונות סינון — ה-RPC כותב **רק כשריקות במסד**; אין דגל דריסה
+        at = clean_attrs(bc, p.get("attrs"))
+        if at:
+            row["attrs"] = at
         if force_names and bc in force_names:
             row["force_name"] = "1"
         # 🖼️ 18/10/2026 — דריסת כתובת התמונה (ה-RPC כותב אותה רק עם הדגל, או כשהיא ריקה)
@@ -202,6 +269,20 @@ def main():
         print(f"  🛡️  {kept} מוצרים ישמרו את הקטגוריה הקיימת שלהם.")
     if not rows:
         print("אין שורות לדחיפה."); return
+    if BAD_SLUGS:
+        print(f"⚠️ {len(BAD_SLUGS)} כרטיסים עם קטגוריה שאינה בעץ — לא נשלחה (לתקן בכרטיס):")
+        for bc, sl in BAD_SLUGS[:20]:
+            print(f"   {bc} → {sl}")
+    if BAD_ATTRS:
+        print(f"⚠️ {len(BAD_ATTRS)} תכונות סינון לא מוכרות — לא נשלחו (לתקן בכרטיס):")
+        for bc, k, v in BAD_ATTRS[:20]:
+            print(f"   {bc} → {k}: {v}")
+    n_attrs = sum(1 for r in rows if r.get("attrs"))
+    if n_attrs:
+        print(f"🎛️ {n_attrs} מוצרים נושאים תכונות סינון — ייכתבו רק למי שעדיין ריק במסד")
+    n_tree = sum(1 for r in rows if r.get("category_slug") or r.get("sub_type"))
+    if n_tree:
+        print(f"🗂️ {n_tree} מוצרים נושאים מקום בעץ — ייכתב רק למי שעדיין ריק במסד")
     print(f"דוחף תוכן ל-{len(rows)} מוצרים…")
     updated, missing = push(env, rows)
     print(f"✅ סונכרן: {updated} עודכנו · {missing} ברקודים לא קיימים במסד (תקין למוצרים שטרם נקלטו)")
