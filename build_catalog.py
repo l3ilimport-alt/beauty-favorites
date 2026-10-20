@@ -631,8 +631,12 @@ ORDER_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="theme-color" content="#3b2b20">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
 <script>window.SUPA=__SUPABASE_CONFIG__;</script>
-<link rel="icon" type="image/png" href="favicon-bf.png">
-<link rel="apple-touch-icon" href="favicon-bf.png">
+<!-- 🔍 20/10/2026 — אייקונים בגדלים שגוגל דורשת (כפולות של 48) + favicon.ico בשורש; הישן הוורוד עדיין הוצג בתוצאות החיפוש -->
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -1262,7 +1266,7 @@ def main():
     # במצב תצוגה מקדימה. בלי זה הלוגו פשוט לא מופיע בקובץ הבודד.
     if "--abs-img" in sys.argv:
         _site = SITE_URL.rstrip("/")
-        for _a in ('logo-bf.png', 'logo-bf-white.png', 'favicon-bf.png', 'cat/'):
+        for _a in ('logo-bf.png', 'logo-bf-white.png', 'favicon-bf.png', 'favicon.ico', 'favicon-48.png', 'favicon-96.png', 'favicon-192.png', 'apple-touch-icon.png', 'cat/'):
             out = out.replace('src="' + _a, 'src="' + _site + '/' + _a)
             out = out.replace('href="' + _a, 'href="' + _site + '/' + _a)
         print("🖼️  נכסי האתר בכתובת מלאה (לוגו, אייקון, תמונות קטגוריה)")
@@ -1282,7 +1286,7 @@ def main():
     # בקובץ הבודד (נתפס בקובץ האתר 06/10, אותה סיבה בדיוק).
     if "--abs-img" in sys.argv:
         _site = SITE_URL.rstrip("/")
-        for _a in ('logo-bf.png', 'logo-bf-white.png', 'favicon-bf.png', 'cat/'):
+        for _a in ('logo-bf.png', 'logo-bf-white.png', 'favicon-bf.png', 'favicon.ico', 'favicon-48.png', 'favicon-96.png', 'favicon-192.png', 'apple-touch-icon.png', 'cat/'):
             order_html = order_html.replace('src="' + _a, 'src="' + _site + '/' + _a)
             order_html = order_html.replace('href="' + _a, 'href="' + _site + '/' + _a)
     with open(os.path.join(out_dir, "order.html"), "w", encoding="utf-8") as f:
@@ -1333,8 +1337,12 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="__OG_IMAGE__">
 <meta name="theme-color" content="#3b2b20">
-<link rel="icon" type="image/png" href="favicon-bf.png">
-<link rel="apple-touch-icon" href="favicon-bf.png">
+<!-- 🔍 20/10/2026 — אייקונים בגדלים שגוגל דורשת (כפולות של 48) + favicon.ico בשורש; הישן הוורוד עדיין הוצג בתוצאות החיפוש -->
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png">
+<link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;500;600;700&family=Playfair+Display:wght@400&family=Montserrat:wght@600&family=Cormorant+Garamond:wght@500;600&family=Dancing+Script:wght@500;600;700&family=Suez+One&display=swap" rel="stylesheet">
 <style>
