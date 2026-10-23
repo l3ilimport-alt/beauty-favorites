@@ -66,9 +66,9 @@ class OrderPage(unittest.TestCase):
 
     def test_shares_the_site_code(self):
         h = self.html
-        for needle in ("972534555501", "SB.rpc('create_order'", "createOrder('whatsapp')", "'bf_cart_v1'",
+        for needle in ("972534555501", "SB.rpc('create_order'", "createOrder('whatsapp',closeWin)", "'bf_cart_v1'",
                        "SB.rpc('wholesale_prices'", "function priceHtml(v,cls)", "t('cons_rec')",
-                       "from('catalog_products')", "function buildOrderText(orderId)"):
+                       "from('catalog_products')", "function buildOrderText(orderId,serverTotal)"):
             self.assertIn(needle, h, needle)
         self.assertNotIn("function payNow", h)                          # תשלום באתר — לא כאן
         self.assertNotIn("applyCoupon(", h.split("// ===== עד כאן קוד האתר")[1])

@@ -56,6 +56,12 @@ COLOR_WORDS = [
 DEPTHS = [("porcelain", .08), ("fair", .17), ("light-medium", .34), ("light", .25),
           ("medium", .5), ("tan", .66), ("deep", .82), ("rich", .9), ("dark", .92), ("ebony", .95)]
 
+_SAFE_COLOR_RE = re.compile(r"#[0-9a-fA-F]{3,8}|(rgb|rgba|hsl|hsla)\([0-9.,%\s]+\)|[a-zA-Z]{3,20}")
+def _safe_color(c):
+    """צבע גוון נכנס ל-style="background:…" — מקבלים רק צורת צבע מוכרת (ביקורת קודקס F1, 23/10)."""
+    c = str(c or "").strip()
+    return c if c and _SAFE_COLOR_RE.fullmatch(c) else None
+
 def _skin_hex(depth, under):
     lo, hi = (246, 223, 197), (70, 43, 28)   # light beige -> deep brown
     r = int(lo[0] + (hi[0]-lo[0])*depth); g = int(lo[1]+(hi[1]-lo[1])*depth); b = int(lo[2]+(hi[2]-lo[2])*depth)
@@ -110,6 +116,17 @@ SITE_URL = "https://beautyfavorites.co.il"
 # ---- שכבת תוכן מהמסד (2026-07-19): הבק אופיס הוא מקור האמת לטקסטים ----
 # שולף את catalog_content (תצוגה ציבורית) ודורס name_he/description/brand/קטגוריות
 # בערכי המסד — כך עריכה בבק אופיס מגיעה לאתר בפרסום הבא. נכשל בשקט אם אין רשת/תצוגה.
+# 🔴 23/10/2026 (ביקורת קודקס F4): כשל בשליפה מהמסד **עוצר את הבנייה**. קודם הבנייה "הצליחה"
+#    עם {} / [] / מחירי קובץ הידע, והדף שיצא נראה תקין — בלי עץ, בלי סינון, ובמחירים ישנים.
+#    בלי רשת אפשר לבנות רק תצוגה מקדימה: --offline-preview, ורק עם --out (לא לתיקיית catalog/).
+OFFLINE_PREVIEW = "--offline-preview" in sys.argv
+def _db_fail(what, e, fallback):
+    if OFFLINE_PREVIEW:
+        print(f"⚠️  {what} לא נשלף ({e}) — --offline-preview: ממשיכים בלי (לתצוגה מקדימה בלבד!)")
+        return fallback
+    raise SystemExit(f"⛔ {what} לא נשלף מהמסד ({e}) — הבנייה נעצרה כדי לא לפרסם דף חסר.\n"
+                     f"   לתצוגה מקדימה בלי רשת: --offline-preview --out <תיקייה>")
+
 def fetch_db_content():
     import urllib.request, urllib.error
     try:
@@ -162,12 +179,17 @@ def fetch_db_content():
                     break
                 offset += 1000
         except Exception as e:
-            print(f"⚠️  מחירים חיים לא נשלפו ({e}) — נשאר המחיר מקובץ הידע")
+            _db_fail("מחירי הצרכן החיים", e, None)
+        if not out:
+            raise RuntimeError("catalog_content החזיר 0 שורות")
+        if npx == 0:
+            _db_fail("מחירי הצרכן החיים", "0 מחירים", None)
         print(f"🔗 תוכן מהמסד: {len(out)} מוצרים (הבק אופיס דורס טקסטים) · {npx} מחירי צרכן חיים")
         return out
+    except SystemExit:
+        raise
     except Exception as e:
-        print(f"⚠️  אין שכבת תוכן מהמסד ({e}) — בונה מקבצי הידע בלבד")
-        return {}
+        return _db_fail("תוכן המוצרים (catalog_content)", e, {})
 
 # ---- 🗂️ עץ הקטגוריות (06/10/2026) ----
 # שמונה קבוצות ו-50 תתי-קטגוריות, מטבלת `categories` במסד. **זה מחליף את
@@ -257,6 +279,8 @@ def fetch_categories():
             f"&active=is.true&order=sort&limit=500",
             headers={"apikey": key, "Authorization": "Bearer " + key})
         rows = json.load(urllib.request.urlopen(req, timeout=30))
+        if not rows:
+            raise RuntimeError("טבלת categories החזירה 0 שורות")
         tree, seen = [], {}
         for r in rows:
             m = r["main"]
@@ -271,8 +295,7 @@ def fetch_categories():
         print(f"🗂️  עץ קטגוריות: {len(tree)} קבוצות · {len(rows)} תתי-קטגוריות")
         return tree
     except Exception as e:
-        print(f"⚠️  עץ הקטגוריות לא נשלף ({e}) — האתר ייבנה בלי ניווט העץ")
-        return []
+        return _db_fail("עץ הקטגוריות", e, [])
 
 
 def _js(x):
@@ -625,7 +648,7 @@ ORDER_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Beauty Favorites — הזמנה מהירה</title>
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#3b2b20">
@@ -744,7 +767,7 @@ const I18N_HE={cart_items:'פריטים',cons_rec:'מומלץ לצרכן:',ws_un
   err_phone:'מספר טלפון לא תקין — נייד 10 ספרות (05X) או קווי 9 ספרות',
   err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',sending:'שולח…',cart_empty:'העגלה ריקה'};
 function t(k){return I18N_HE[k]!=null?I18N_HE[k]:k;}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}   // בטוח גם בתוך תכונה (aria-label="…") — ביקורת קודקס F1, 23/10
 function aesc(s){return String(s).replace(/"/g,'&quot;')}
 
 // דברים שהקוד המשותף מזכיר ויש רק באתר (קופון, כתובת משלוח, יישוב) — כאן ריקים.
@@ -931,6 +954,8 @@ def main():
     os.makedirs(IMGDIR, exist_ok=True)
     if fast:
         print("⚡ מצב מהיר: מדלג על עיבוד תמונות קיימות")
+    if OFFLINE_PREVIEW and os.path.abspath(out_dir) == os.path.abspath(CAT):
+        raise SystemExit("⛔ --offline-preview אסור בבנייה לתיקיית catalog/ — רק עם --out לתצוגה מקדימה")
 
     overrides = {}
     try:
@@ -1061,7 +1086,7 @@ def main():
             "contents_ar": p.get("contents_ar") or [],
             "imgs": imgs,
             "badges": badges,
-            "color": p.get("shade_hex") or shade_color(p.get("shade") or "", is_complexion(p)),
+            "color": _safe_color(p.get("shade_hex")) or shade_color(p.get("shade") or "", is_complexion(p)),
             "cslug": p.get("_cslug") or "",
             "stype": p.get("_stype") or "",
             "isset": bool(p.get("_isset")),
@@ -1313,7 +1338,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Beauty Favorites — קטלוג</title>
 <meta name="description" content="הקולקציה הנבחרת — איפור, טיפוח, שיער ובושם מהמותגים האהובים">
 <meta property="og:type" content="website">
@@ -1775,6 +1800,7 @@ body.pglock{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .cardqty button:hover{background:var(--accent);color:#fff}
 .cardqty span{min-width:28px;text-align:center;font-size:14px;font-weight:700;color:var(--text)}
 .cardqin{width:42px;height:34px;border:none;border-inline:1px solid var(--accent-l);text-align:center;font-size:14px;font-weight:700;color:var(--text);background:var(--surface);font-family:var(--font);-moz-appearance:textfield}
+@media (pointer:coarse){.cardqin,.qin{font-size:16px}}   /* בלי maximum-scale (קודקס F15) — אייפון מתקרב לבד לשדה קטן מ-16px */
 .cardqin::-webkit-outer-spin-button,.cardqin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .empty{text-align:center;color:var(--muted);padding:70px 20px;font-size:15px}
 
@@ -2561,7 +2587,7 @@ const I18N={
   wa_help_ph:'رسالتي…',wa_send:'إرسال عبر واتساب',wa_default:'مرحباً! لديّ سؤال عن منتج في الكتالوج',
   brand_title:'اختيار الماركة',brand_search:'ابحث عن ماركة…'}
 };
-let LANG=localStorage.getItem('sf_lang')||'he';
+let LANG=(function(){try{return localStorage.getItem('sf_lang')==='ar'?'ar':'he';}catch(e){return 'he';}})();   // אחסון חסום לא מפיל את האתחול (קודקס F10)
 function t(k){return (I18N[LANG]&&I18N[LANG][k]!=null)?I18N[LANG][k]:(I18N.he[k]!=null?I18N.he[k]:k);}
 function catLabel(c){
   if(CT_BY[c])return (LANG==='ar'&&CT_BY[c].ar)?CT_BY[c].ar:CT_BY[c].he;
@@ -2622,7 +2648,7 @@ function applyStatic(){
   setText('fdTitle',t('filter'));setText('fbLbl',t('fb_lbl'));setText('fdClear',t('reset_all'));
   setText('dhH1a',t('dh_h1a'));setText('dhH1b',t('dh_h1b'));setText('dhSub',t('dh_sub'));setText('dhCta',t('dh_cta'));
 }
-function toggleLang(){LANG=(LANG==='he')?'ar':'he';localStorage.setItem('sf_lang',LANG);applyLang();}
+function toggleLang(){LANG=(LANG==='he')?'ar':'he';try{localStorage.setItem('sf_lang',LANG);}catch(e){}applyLang();}
 function applyLang(){applyStatic();buildNav();render();renderCart();
   if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 
@@ -2732,9 +2758,11 @@ function gAttr(g,k){
 }
 function fselCount(){let n=0;for(const k in FSEL)n+=FSEL[k].size;return n;}
 const sel={};   // gid -> variant index
-const FAVS=new Set(JSON.parse(localStorage.getItem('sf_favs')||'[]'));
-function saveFavs(){localStorage.setItem('sf_favs',JSON.stringify([...FAVS]))}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+// מועדפים פגומים / אחסון חסום (גלישה פרטית) לא מפילים את האתחול — קודקס F10, 23/10
+function loadFavs(){try{var a=JSON.parse(localStorage.getItem('sf_favs')||'[]');return Array.isArray(a)?a.filter(function(x){return typeof x==='string';}):[];}catch(e){return [];}}
+const FAVS=new Set(loadFavs());
+function saveFavs(){try{localStorage.setItem('sf_favs',JSON.stringify([...FAVS]))}catch(e){}}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}   // בטוח גם בתוך תכונה (aria-label="…") — ביקורת קודקס F1, 23/10
 function aesc(s){return String(s).replace(/"/g,'&quot;')}
 function imgErr(img){img.style.display='none';const ph=document.createElement('div');ph.className='ph';ph.textContent=img.dataset.l||'✦';img.parentNode.appendChild(ph)}
 // default displayed variant = first IN-STOCK shade (so the card never defaults to a sold-out shade)
@@ -2749,10 +2777,12 @@ function defaultV(g){
 }
 function curIdx(g){var s=sel[g.gid];return s!=null?s:defaultV(g);}
 function selV(g){return g.variants[curIdx(g)];}
+// צבע גוון נכנס ל-style — רק צורות צבע מוכרות (קודקס F1)
+const SAFE_COLOR=/^(#[0-9a-fA-F]{3,8}|(rgb|rgba|hsl|hsla)\([0-9.,%\s]+\)|[a-zA-Z]{3,20})$/;
 function swPill(v,on,oc){
   var _sh=(LANG==='ar'&&v.shade_ar)?v.shade_ar:v.shade;
-  var so=isSold(v), oc2=so?'out':'', tip=aesc(_sh)+(so?' — '+t('sold_out'):'');
-  if(v.color)return `<button class="sw ${on?'on':''} ${oc2}" style="background:${v.color}" title="${tip}" aria-label="${tip}" onclick="event.stopPropagation();${oc}"></button>`;
+  var so=isSold(v), oc2=so?'out':'', tip=esc(_sh)+(so?' — '+t('sold_out'):'');
+  if(v.color&&SAFE_COLOR.test(v.color))return `<button class="sw ${on?'on':''} ${oc2}" style="background:${v.color}" title="${tip}" aria-label="${tip}" onclick="event.stopPropagation();${oc}"></button>`;
   return `<button class="sw txt ${on?'on':''} ${oc2}" title="${tip}" onclick="event.stopPropagation();${oc}">${esc(_sh)}</button>`;
 }
 
@@ -4198,32 +4228,41 @@ function noteText(){   // עוסק/ח.פ + הערת הלקוח + קופון — 
   if(activeCoupon){const d=discount(cartTotals().sub);if(d)n=(n?n+' | ':'')+`קופון ${activeCoupon.code} (−₪${d})`;}
   return n;
 }
-function buildOrderText(orderId){
+// serverTotal = הסכום שהשרת חישב (create_order). 23/10 (קודקס F2): המחירים בדפדפן הם רק תצוגה —
+// אם הסכום המקומי שונה מהשרת, ההודעה לא מצטטת מחירי שורות ומציגה את הסכום מהשרת.
+function buildOrderText(orderId,serverTotal){
   const keys=Object.keys(CART);if(!keys.length)return '';
   let msg='*הזמנה חדשה — Beauty Favorites*\n';
   if(orderId)msg+=`מס׳ הזמנה: #${orderId}\n`;
   const name=gv('buyer-name'),bid=gv('buyer-id'),phone=gv('buyer-phone'),addr=shipLine();
   if(name)msg+=`\nשם: ${name}`;if(bid)msg+=`\nעוסק/ח.פ: ${bid}`;
   if(addr)msg+=`\nכתובת: ${addr}`;if(phone)msg+=`\nטלפון: ${phone}`;msg+='\n\n';
-  let sub=0;keys.forEach(k=>{const it=CART[k];const lt=it.qty*it.price;sub+=lt;
-    msg+=`• ${it.name}${it.size?' ('+it.size+')':''} ×${it.qty} = ₪${lt}\n`});
+  let sub=0;keys.forEach(k=>{const it=CART[k];sub+=it.qty*it.price;});
   const d=discount(sub);const net=sub-d,vat=WHOLESALE?Math.round(net*0.18):0,tot=net+vat;
-  if(d)msg+=`\nהנחה (${activeCoupon.code}): −₪${d}`;
-  if(WHOLESALE)msg+=`\nסכום לפני מע"מ: ₪${net}\nמע"מ 18%: ₪${vat}\n*סה"כ כולל מע"מ: ₪${tot}*`;
-  else msg+=`\n*סה"כ לתשלום (כולל מע"מ): ₪${tot}*`;
+  const srv=(serverTotal!=null&&isFinite(Number(serverTotal)))?Math.round(Number(serverTotal)*100)/100:null;
+  const same=srv==null||Math.abs(srv-tot)<0.01;   // הדפדפן והשרת מסכימים → מפרטים כמו קודם
+  keys.forEach(k=>{const it=CART[k];
+    msg+=`• ${it.name}${it.size?' ('+it.size+')':''} ×${it.qty}${same?' = ₪'+(it.qty*it.price):''}\n`;});
+  if(!same)msg+=`\n*סה"כ לפי ההזמנה במערכת: ₪${srv}*\n(המחירים עודכנו בשרת — הפירוט המלא בהזמנה)`;
+  else{
+    if(d)msg+=`\nהנחה (${activeCoupon.code}): −₪${d}`;
+    if(WHOLESALE)msg+=`\nסכום לפני מע"מ: ₪${net}\nמע"מ 18%: ₪${vat}\n*סה"כ כולל מע"מ: ₪${tot}*`;
+    else msg+=`\n*סה"כ לתשלום (כולל מע"מ): ₪${tot}*`;
+  }
   const notes=gv('notes');if(notes)msg+=`\n\nהערות: ${notes}`;return msg;
 }
 
 /* ===== חיבור Supabase (אופציונלי). ריק → fallback לוואטסאפ-טקסט בלבד ===== */
 const SB=(window.SUPA&&window.SUPA.url&&window.SUPA.anon&&window.supabase)
   ? window.supabase.createClient(window.SUPA.url,window.SUPA.anon) : null;
-var STOCK={}, PRICE_WS={}, PRICE_CONS={};   // ברקוד-מנורמל -> מלאי / מחיר סיטונאי / מחיר צרכן (var=hoisted כדי ש-eff לא יזרוק בטעינה)
+var STOCK={}, PRICE_WS={}, PRICE_CONS={}, DBCODE={};   // ברקוד-מנורמל -> מלאי / מחיר סיטונאי / מחיר צרכן / הברקוד כפי שהוא במסד (נשלח ל-create_order) (var=hoisted כדי ש-eff לא יזרוק בטעינה)
 var STOCK_READY=false;
 var WS_CODE=(function(){try{return localStorage.getItem('wholesale_code')||null;}catch(e){return null;}})();  // הקוד השמור (אומת בשרת)
 var WHOLESALE=!!WS_CODE;   // מצב סיטונאי פעיל? (המחירים מגיעים מהשרת רק עם קוד תקף)
 function priceMap(){return WHOLESALE?PRICE_WS:PRICE_CONS;}   // המפה הפעילה לפי המצב
 function hasConsPrice(v){var m=PRICE_CONS[nbc(v&&v.barcode)];return m!=null&&m>0;}   // יש מחיר צרכן?
-function nbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}   // ברקוד → מפתח השוואה. אותיות נשמרות — יש מותגים עם ברקוד אלפאנומרי (ויקטוריהס סיקרט)
+function nbc(x){var s=String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();return /^[0-9]+$/.test(s)?(s.replace(/^0+/,'')||s):s;}   // ברקוד → מפתח השוואה, זהה ל-_nbc בבנאי: ספרות בלבד → בלי אפסים מובילים (קודקס F5, 23/10 — 3 גווני אסתי לאודר הוצגו 'אזל'); אלפאנומרי נשמר
+function rawbc(x){return String(x||'').replace(/[^0-9A-Za-z]/g,'').toUpperCase();}   // הצורה שהמסד מכיר (norm_code) — עם האפסים. אותיות נשמרות — יש מותגים עם ברקוד אלפאנומרי (ויקטוריהס סיקרט)
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
 function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);
   if(!WHOLESALE&&!hasConsPrice(v))return true;   // 12/10: גוון בלי מחיר צרכן — לא למכירה לצרכן (היה מציג ₪null)
@@ -4241,7 +4280,7 @@ async function loadStock(){
     for(;;){
       const {data,error}=await SB.from('catalog_products').select('barcode,stock,active,price_consumer').range(from,from+page-1);   // תצוגה ציבורית מצומצמת (~319): בלי עלות/סיטונאי — אלה נשלפים רק עם קוד תקף
       if(error)throw error;
-      (data||[]).forEach(p=>{const n=nbc(p.barcode);if(n){STOCK[n]=p.active?p.stock:0;
+      (data||[]).forEach(p=>{const n=nbc(p.barcode);if(n){STOCK[n]=p.active?p.stock:0;DBCODE[n]=rawbc(p.barcode);
         if(p.price_consumer!=null)PRICE_CONS[n]=Number(p.price_consumer);}});
       if(!data||data.length<page)break;
       from+=page;
@@ -4262,7 +4301,7 @@ async function loadWholesalePrices(code){   // מחירי סיטונאי — ר�
   }catch(e){console.warn('שליפת מחירי סיטונאי נכשלה:',e);return false;}
 }
 function cartItems(){      // [{sku, qty}] עבור create_order (sku = ברקוד מנורמל, תואם DB)
-  return Object.keys(CART).map(vid=>{const m=VMAP[vid];return {sku:nbc(m&&m.v.barcode),qty:CART[vid].qty,sold:m&&isSold(m.v)};}).filter(it=>it.sku&&!it.sold).map(({sku,qty})=>({sku,qty}));
+  return Object.keys(CART).map(vid=>{const m=VMAP[vid];const k=nbc(m&&m.v.barcode);return {sku:DBCODE[k]||rawbc(m&&m.v.barcode),qty:CART[vid].qty,sold:m&&isSold(m.v)};}).filter(it=>it.sku&&!it.sold).map(({sku,qty})=>({sku,qty}));
 }
 function syncAgree(){var c=document.getElementById('agreeTerms');var ok=!!(c&&c.checked);['sendBtn','payBtn'].forEach(function(id){var b=document.getElementById(id);if(b)b.classList.toggle('locked',!ok);});}
 function validateBuyer(needEmail){
@@ -4291,9 +4330,9 @@ function validateBuyer(needEmail){
   return true;
 }
 function setBusy(btn,on){if(!btn)return;if(on){btn.dataset.l=btn.textContent;btn.disabled=true;btn.textContent=t('sending');}else{btn.disabled=false;if(btn.dataset.l)btn.textContent=btn.dataset.l;}}
-async function createOrder(channel){   // קריאה אחת ל-create_order → {id,total}. המלאי לא יורד בשלב זה.
+async function createOrder(channel,onFail){   // קריאה אחת ל-create_order → {id,total}. המלאי לא יורד בשלב זה. onFail: לפני הודעת השגיאה (סוגר את לשונית הוואטסאפ הריקה)
   const items=cartItems();
-  if(!items.length){alert(t('err_order'));return null;}
+  if(!items.length){if(onFail)onFail();alert(t('err_order'));return null;}
   const _sp=shipParts();
   const {data,error}=await SB.rpc('create_order',{
     p_customer_name:gv('buyer-name'),p_customer_phone:gv('buyer-phone'),
@@ -4307,21 +4346,43 @@ async function createOrder(channel){   // קריאה אחת ל-create_order → 
     p_ship_floor:_sp.floor||null,p_ship_entrance:_sp.entrance||null,
     p_wholesale_code:(WHOLESALE&&WS_CODE)?WS_CODE:null,     // התמחור נקבע בשרת: קוד תקף = סיטונאי, אחרת צרכן
     p_coupon_code:activeCoupon?activeCoupon.code:null});    // הקופון מאומת ונצרב בשרת (total כבר כולל את ההנחה)
-  if(error){console.error(error);alert(t('err_order'));return null;}
+  if(error){console.error(error);if(onFail)onFail();alert(t('err_order'));return null;}
   const row=Array.isArray(data)?data[0]:data;
   return row?{id:row.order_id,total:row.order_total}:null;
 }
 
 // א) "שלח הזמנה לאישור (וואטסאפ)" — create_order(channel='whatsapp') ואז פתיחת wa.me עם מספר ההזמנה
+// 23/10 (ביקורת קודקס F12): window.open אחרי await נחסם בחוסמי חלונות (בעיקר אייפון) — ההזמנה נוצרה
+// והלקוחה לא ראתה וואטסאפ, ולחיצה חוזרת יצרה הזמנה כפולה. עכשיו: (1) הלשונית נפתחת **בלחיצה עצמה**
+// ומנווטת אחרי שההזמנה נוצרה; נחסמה → מעבר בלשונית הנוכחית. (2) אותו סל + אותו טלפון בתוך 30 דקות →
+// אותה הזמנה, בלי קריאה חוזרת לשרת.
+const WA_REUSE_KEY='bf_wa_last', WA_REUSE_MIN=30;
+// החתימה כוללת **כל מה שנכתב להזמנה** — שינוי שם/כתובת/הערה/מייל/ח.פ = הזמנה חדשה (ביקורת אבטחה 23/10)
+function orderSig(){return JSON.stringify({i:cartItems(),p:gv('buyer-phone').replace(/\D/g,''),c:activeCoupon?activeCoupon.code:'',w:!!(WHOLESALE&&WS_CODE),
+  n:gv('buyer-name'),e:gv('buyer-email'),b:gv('buyer-id'),t:gv('notes'),s:shipParts()});}
+function lastWaOrder(sig){try{const d=JSON.parse(sessionStorage.getItem(WA_REUSE_KEY)||'null');
+  return (d&&d.sig===sig&&(Date.now()-d.t)<WA_REUSE_MIN*6e4)?d.ord:null;}catch(e){return null;}}
+function rememberWaOrder(sig,ord){try{sessionStorage.setItem(WA_REUSE_KEY,JSON.stringify({sig:sig,t:Date.now(),ord:ord}));}catch(e){}}
+function goWhatsApp(win,txt){
+  const url='https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(txt);
+  if(win&&!win.closed){try{win.opener=null;}catch(e){}try{win.location.href=url;return;}catch(e){}}
+  window.location.href=url;   // החלון נחסם — עוברים בלשונית הזו (ההזמנה כבר שמורה; חזרה + לחיצה לא תכפיל אותה)
+}
 async function submitWhatsApp(){
   if(!validateBuyer())return;
   if(!SB){ // עוד לא חובר Supabase — שולחים טקסט בלבד (כמו קודם)
     window.open('https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(buildOrderText()));return;
   }
+  const sig=orderSig(), prev=lastWaOrder(sig);
+  if(prev){goWhatsApp(window.open('','_blank'),buildOrderText(prev.id,prev.total));return;}
+  const win=window.open('','_blank');   // בתוך הלחיצה — לפני ה-await, כדי שלא ייחסם
   const btn=document.getElementById('sendBtn');setBusy(btn,true);
-  const ord=await createOrder('whatsapp');setBusy(btn,false);
-  if(!ord)return;
-  window.open('https://wa.me/'+WA_NUMBER+'?text='+encodeURIComponent(buildOrderText(ord.id)));
+  let ord=null;
+  const closeWin=function(){if(win&&!win.closed)try{win.close();}catch(e){}};
+  try{ord=await createOrder('whatsapp',closeWin);}finally{setBusy(btn,false);}
+  if(!ord){closeWin();return;}
+  rememberWaOrder(sig,ord);
+  goWhatsApp(win,buildOrderText(ord.id,ord.total));
 }
 // ב) "שלם עכשיו" — create_order(channel='payment') ואז create-checkout → הפניה ללינק התשלום
 async function payNow(){

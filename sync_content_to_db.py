@@ -19,6 +19,9 @@
   python3 catalog/sync_content_to_db.py --force-names 0123...  # גם דריסת שם עברי לברקודים אלה
   python3 catalog/sync_content_to_db.py --force-images 0123... # גם דריסת כתובת התמונה (למשל אחרי שינוי שם תיקיית כרטיס)
   python3 catalog/sync_content_to_db.py --force-text 0123...   # דריסת כל שדות הטקסט המוגנים (name_he, name_en, image_url) — נרשם ביומן
+  python3 catalog/sync_content_to_db.py --force-category 0123... # דריסת category_slug + sub_type מהכרטיס (תיקון מהקופסה) — 22/10
+  python3 catalog/sync_content_to_db.py --photo-done 0123...     # צולם — needs_photo=false גם כשהוחלפה תמונה קיימת — 22/10
+  (תמונה ראשונה למוצר בלי תמונה מאפסת את needs_photo לבד, בלי דגל)
   (אפשר את שני הדגלים יחד; כל דגל חל על הברקודים שאחריו עד הדגל הבא)
 
 דרישות: backoffice/.sync-env עם CONTENT_SYNC_SECRET (מקומי, לא בריפו).
@@ -247,19 +250,30 @@ def main():
     # דגלים: כל דגל חל על הברקודים שאחריו עד הדגל הבא; ברקודים לפני כל דגל = "רק אלה"
     groups, cur = {"": []}, ""
     for a in sys.argv[1:]:
-        if a in ("--force-names", "--force-images", "--force-text"):
+        if a in ("--force-names", "--force-images", "--force-text", "--force-category", "--photo-done"):
             cur = a; groups.setdefault(cur, []); continue
         groups[cur].append(a)
     force = set(digits(a) for a in groups.get("--force-names", []))
     force_img = set(digits(a) for a in groups.get("--force-images", []))
     force_txt = set(digits(a) for a in groups.get("--force-text", []))
+    force_cat = set(digits(a) for a in groups.get("--force-category", []))
+    photo_done = set(digits(a) for a in groups.get("--photo-done", []))
     only = set(digits(a) for a in groups[""]) or None
-    if (force or force_img or force_txt) and not only:
-        only = force | force_img | force_txt
+    if (force or force_img or force_txt or force_cat or photo_done) and not only:
+        only = force | force_img | force_txt | force_cat | photo_done
     env = load_env()
     existing_main = fetch_existing_main(env)
     print(f"נקראו {len(existing_main)} קטגוריות קיימות מהמסד — הן לא יידרסו.")
     rows = collect_rows(only, force, existing_main, force_img, force_txt)
+    for r in rows:
+        if r["barcode"] in force_cat and r.get("category_slug"):
+            r["force_category"] = "1"
+        if r["barcode"] in photo_done and r.get("image_url"):   # 'צולם' רק כשבכרטיס יש תמונה (גם במסד נבדק)
+            r["photo_done"] = "1"
+    if force_cat:
+        print(f"🗂️ דריסת מקום בעץ ל-{sum(1 for r in rows if r.get('force_category'))} ברקודים (נרשם ביומן)")
+    if photo_done:
+        print(f"📷 סימון 'צולם' (needs_photo=false) ל-{sum(1 for r in rows if r.get('photo_done'))} ברקודים")
     if force_txt:
         print(f"🧾 דריסת כל שדות הטקסט ל-{sum(1 for r in rows if r.get('force_text'))} ברקודים (נרשם ביומן הפעולות)")
     if force_img:
