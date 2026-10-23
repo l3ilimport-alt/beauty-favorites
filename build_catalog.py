@@ -765,7 +765,8 @@ const I18N_HE={cart_items:'פריטים',cons_rec:'מומלץ לצרכן:',ws_un
   incl_vat:'המחירים כוללים מע"מ',grand:'סה"כ לתשלום',alert_empty:'העגלה ריקה',
   alert_fill:'נא למלא שם מלא וטלפון לפני שליחת ההזמנה',
   err_phone:'מספר טלפון לא תקין — נייד 10 ספרות (05X) או קווי 9 ספרות',
-  err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',sending:'שולח…',cart_empty:'העגלה ריקה'};
+  err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',sending:'שולח…',cart_empty:'העגלה ריקה',
+  max_stock:'יש במלאי רק {n} יחידות מהמוצר הזה'};
 function t(k){return I18N_HE[k]!=null?I18N_HE[k]:k;}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}   // בטוח גם בתוך תכונה (aria-label="…") — ביקורת קודקס F1, 23/10
 function aesc(s){return String(s).replace(/"/g,'&quot;')}
@@ -1208,7 +1209,9 @@ def main():
                 "set": any(m.get("isset") for m in members),
                 "at": _attrs_union(members),
                 "sts": sorted({m.get("stype") for m in members if m.get("stype")}),
-                "variants": [variant(m) for m in members]}
+                # 23/10 (קודקס סבב 2): לכל גוון השם האנגלי שלו — שם הקבוצה נגזר מהגוון הראשון ונשאר עם
+                # שם הגוון (52 קבוצות; Cedar הציג "Beech 6"). הכרטיס והחלון מציגים את שם הגוון הנבחר.
+                "variants": [dict(variant(m), en=m["name_en"]) if m["name_en"] else variant(m) for m in members]}
 
     for k, members in buckets.items():
         if len(members) >= 2:
@@ -2483,7 +2486,7 @@ const I18N={
   err_city:'נא למלא יישוב',err_street:'נא למלא רחוב או כתובת',err_house:'נא למלא מספר בית',
   err_phone:'מספר טלפון לא תקין — נייד 10 ספרות (05X) או קווי 9 ספרות',
   send_order:'שלח הזמנה לאישור (וואטסאפ)',send_hint:'ההזמנה תיפתח ב-WhatsApp עם מספר ההזמנה',
-  pay_now:'שלם עכשיו 💳',sold_out:'אזל',sending:'שולח…',err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',
+  pay_now:'שלם עכשיו 💳',sold_out:'אזל',max_stock:'יש במלאי רק {n} יחידות מהמוצר הזה',sending:'שולח…',err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',
   pay_ok:'התשלום התקבל בהצלחה! 🎉 הזמנה מספר {id} אושרה — פרטי אישור נשלחו אליך. תודה שקנית בביוטי פייבוריטס!',
   pay_fail:'התשלום לא הושלם. ההזמנה שלך ({id}) שמורה אצלנו — אפשר לנסות שוב או לפנות אלינו בוואטסאפ 053-4555501.',
   cart_empty:'העגלה ריקה',subtotal:'סכום ביניים',discount:'הנחה',vat:'מע"מ 18%',grand:'סה"כ לתשלום',incl_vat:'המחירים כוללים מע"מ',
@@ -2548,7 +2551,7 @@ const I18N={
   err_city:'يرجى تعبئة البلدة',err_street:'يرجى تعبئة الشارع أو العنوان',err_house:'يرجى تعبئة رقم البيت',
   err_phone:'رقم هاتف غير صالح — جوال 10 أرقام (05X) أو أرضي 9 أرقام',
   send_order:'إرسال الطلب للموافقة (واتساب)',send_hint:'سيُفتح الطلب في WhatsApp مع رقم الطلب',
-  pay_now:'ادفع الآن 💳',sold_out:'نفد',sending:'جارٍ الإرسال…',err_order:'حدث خطأ في إنشاء الطلب. حاول مرة أخرى.',
+  pay_now:'ادفع الآن 💳',sold_out:'نفد',max_stock:'يتوفر في المخزون {n} وحدات فقط من هذا المنتج',sending:'جارٍ الإرسال…',err_order:'حدث خطأ في إنشاء الطلب. حاول مرة أخرى.',
   pay_ok:'تم استلام الدفع بنجاح! 🎉 تم تأكيد الطلب رقم {id} — تم إرسال تفاصيل التأكيد إليك. شكراً لتسوقك في بيوتي فيفوريتس!',
   pay_fail:'لم تكتمل عملية الدفع. طلبك ({id}) محفوظ لدينا — يمكنك المحاولة مرة أخرى أو التواصل معنا عبر واتساب 053-4555501.',
   cart_empty:'السلة فارغة',subtotal:'المجموع الفرعي',discount:'خصم',vat:'ضريبة 18%',grand:'الإجمالي للدفع',incl_vat:'الأسعار تشمل الضريبة',
@@ -2649,7 +2652,18 @@ function applyStatic(){
   setText('dhH1a',t('dh_h1a'));setText('dhH1b',t('dh_h1b'));setText('dhSub',t('dh_sub'));setText('dhCta',t('dh_cta'));
 }
 function toggleLang(){LANG=(LANG==='he')?'ar':'he';try{localStorage.setItem('sf_lang',LANG);}catch(e){}applyLang();}
-function applyLang(){applyStatic();buildNav();render();renderCart();
+// ♿ 23/10 (קודקס סבב 2): תוויות נגישות (aria-label/title) נשארו בעברית במצב ערבית — קורא מסך הקריא עברית.
+const ARIA_AR={'נקה חיפוש':'مسح البحث','נקה':'مسح','סינון':'تصفية','סגירה':'إغلاق','סגור':'إغلاق','חזרה למעלה':'العودة إلى الأعلى',
+  'תמונה מוגדלת':'صورة مكبّرة','הקודמת':'السابقة','הבאה':'التالية','יישובים':'البلدات','רחובות':'الشوارع',
+  'חיפוש מוצר, מותג או ברקוד':'ابحث عن منتج أو ماركة أو باركود','חיפוש מותג':'ابحث عن ماركة',
+  'הוסף למועדפים':'أضف إلى المفضلة','הקטן כמות':'قلّل الكمية','כמות':'الكمية','הגדל כמות':'زِد الكمية',
+  'הוסף לסל':'أضف إلى السلة','לפרטים':'للتفاصيل'};
+function A(he){return (LANG==='ar'&&ARIA_AR[he])?ARIA_AR[he]:he;}
+function translateAria(){document.querySelectorAll('[aria-label],[title]').forEach(function(e){   // נוגע רק בתוויות שבמילון — לא בשמות מוצרים ולא במה ש-applyStatic כבר תרגם
+  ['aria-label','title'].forEach(function(at){if(!e.hasAttribute(at))return;
+    var k='data-he-'+at, he=e.getAttribute(k)||e.getAttribute(at); if(ARIA_AR[he]==null)return;
+    e.setAttribute(k,he); e.setAttribute(at,A(he));});});}
+function applyLang(){applyStatic();buildNav();render();renderCart();translateAria();
   if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 
 // brand prestige tiers (1 = luxury/prestige … 4 = generic) for the default "מומלץ" sort
@@ -2764,7 +2778,10 @@ const FAVS=new Set(loadFavs());
 function saveFavs(){try{localStorage.setItem('sf_favs',JSON.stringify([...FAVS]))}catch(e){}}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}   // בטוח גם בתוך תכונה (aria-label="…") — ביקורת קודקס F1, 23/10
 function aesc(s){return String(s).replace(/"/g,'&quot;')}
-function imgErr(img){img.style.display='none';const ph=document.createElement('div');ph.className='ph';ph.textContent=img.dataset.l||'✦';img.parentNode.appendChild(ph)}
+// 🖼️ 23/10 (קודקס סבב 2): כשל רגעי (רשת/מטמון) הסתיר תמונה לתמיד — עכשיו ניסיון חוזר אחד אחרי שנייה
+function imgErr(img){var r=+(img.dataset.r||0);
+  if(r<1){img.dataset.r=r+1;var src=img.getAttribute('src')||'';setTimeout(function(){img.src=src+(src.indexOf('?')<0?'?':'&')+'r='+Date.now();},1000);return;}
+  img.style.display='none';const ph=document.createElement('div');ph.className='ph';ph.textContent=img.dataset.l||'✦';img.parentNode.appendChild(ph)}
 // default displayed variant = first IN-STOCK shade (so the card never defaults to a sold-out shade)
 function defaultV(g){
   if(STOCK_READY){
@@ -3544,24 +3561,24 @@ function cardHtml(g){
     shades=`<div class="shrow" onclick="event.stopPropagation()">${g.variants.map((vv,k)=>swPill(vv,k===idx,`pickV('${g.gid}',${k})`)).join('')}</div>`;
   }
   const nInStock=STOCK_READY?g.variants.filter(vv=>STOCK[nbc(vv.barcode)]>0).length:0;
-  return `<div class="card${gsold?' sold':''}" id="card-${g.gid}" role="button" tabindex="0" aria-label="${esc(g.name_he||'')} — לפרטים" onclick="openPd(${g._i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPd(${g._i})}">
+  return `<div class="card${gsold?' sold':''}" id="card-${g.gid}" role="button" tabindex="0" aria-label="${esc(g.name_he||'')} — ${A('לפרטים')}" onclick="openPd(${g._i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openPd(${g._i})}">
       <div class="imgbox"${CARD_TINT(g)}>
-        <button class="fav ${fav}" aria-label="הוסף למועדפים" onclick="event.stopPropagation();toggleFav('${g.gid}',this)">♥</button>
+        <button class="fav ${fav}" aria-label="${A('הוסף למועדפים')}" onclick="event.stopPropagation();toggleFav('${g.gid}',this)">♥</button>
         ${badgesHtml(v)}${img}
         ${gsold?`<span class="soldflag">${t('sold_out')}</span>`:''}
       </div>
       <div class="body">
         <div class="brand">${esc(g.brand)}${g.ben?`<span class="brand-en">${esc(g.ben)}</span>`:''}</div>
         <div class="nm">${esc(g.name_he)}</div>
-        ${g.name_en?`<div class="nm-en">${esc(g.name_en)}</div>`:''}
+        ${(v.en||g.name_en)?`<div class="nm-en">${esc(v.en||g.name_en)}</div>`:''}
         ${g.variants.length>1?`<span class="nsh">${g.variants.length} ${t('shades')}${(STOCK_READY&&nInStock>0)?` · <b class="instk">${nInStock} ${t('in_stock_short')}</b>`:''}</span>`:(v.size?`<div class="meta"><span class="tag">${esc(v.size)}</span></div>`:'')}
         ${shades}
         ${lowStockHtml(v)}
         <div class="foot">
           ${priceHtml(v)}
           ${isSold(v)?`<span class="soldpill">${t('sold_out')}</span>`
-            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button aria-label="הקטן כמות" onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><input class="cardqin" type="number" inputmode="numeric" min="1" value="${qty}" aria-label="כמות" onfocus="this.select()" onclick="event.stopPropagation();this.select()" onkeydown="if(event.key==='Enter')this.blur()" onchange="event.stopPropagation();cartSetQty('${v.id}',Math.max(1,parseInt(this.value)||1))"><button aria-label="הגדל כמות" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
-                 :`<button class="add" aria-label="הוסף לסל" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button>`}
+            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button aria-label="${A('הקטן כמות')}" onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><input class="cardqin" type="number" inputmode="numeric" min="1" value="${qty}" aria-label="${A('כמות')}" onfocus="this.select()" onclick="event.stopPropagation();this.select()" onkeydown="if(event.key==='Enter')this.blur()" onchange="event.stopPropagation();cartSetQty('${v.id}',Math.max(1,parseInt(this.value)||1))"><button aria-label="${A('הגדל כמות')}" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
+                 :`<button class="add" aria-label="${A('הוסף לסל')}" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button>`}
         </div>
       </div>
     </div>`;
@@ -3744,7 +3761,7 @@ function renderPd(g){
     <div class="pd">
       <div class="b">${esc(g.brand)}${g.ben?`<span class="brand-en">${esc(g.ben)}</span>`:''}</div>
       <h2>${esc(g.name_he)}</h2>
-      ${g.name_en?`<div class="en">${esc(g.name_en)}</div>`:''}
+      ${(v.en||g.name_en)?`<div class="en">${esc(v.en||g.name_en)}</div>`:''}
       <div class="row">${bdg}${v.size?`<span class="tag">${esc(v.size)}</span>`:''}<span class="tag">${esc(catLabel(g.type))}</span></div>
       ${shades}
       ${pr}
@@ -3768,10 +3785,15 @@ function toggleFavFromModal(gid){if(FAVS.has(gid))FAVS.delete(gid);else FAVS.add
 
 // ===== cart (keyed by variant id) =====
 const CART={};
+// 23/10 (קודקס סבב 2): כמות בסל ≤ מלאי. השרת אוכף רק באישור ההזמנה, כך שהזמנה מעל המלאי
+// נוצרה ואז לא ניתן היה לאשר אותה. לפני שהמלאי נטען — אין תקרה (השרת עדיין שומר).
+function stockCap(v){if(!STOCK_READY)return Infinity;var n=STOCK[nbc(v&&v.barcode)];return n>0?n:0;}
+function capMsg(n){alert(t('max_stock').replace('{n}',n));}
 function cartChange(vid,delta){
   const m=VMAP[vid];if(!m)return;
   if(delta>0&&isSold(m.v))return;
   if(delta>0){
+    const cap=stockCap(m.v);if((CART[vid]?CART[vid].qty:0)+1>cap){capMsg(cap);if(CART[vid])updateCard(m.g.gid);return;}
     if(CART[vid])CART[vid].qty++;
     else CART[vid]={vid,name:m.g.name_he+(m.v.shade&&m.g.variants.length>1?' · '+m.v.shade:''),brand:m.g.brand,size:m.v.size,price:eff(m.v),qty:1};
   } else if(CART[vid]){
@@ -3790,7 +3812,8 @@ function renderCart(){const {qty,sub}=cartTotals();const bar=document.getElement
   document.body.classList.toggle('has-cart',qty>0);
   if(qty===0){bar.classList.remove('show');return}bar.classList.add('show');
   document.getElementById('cartsum').innerHTML=`${qty} ${t('cart_items')} · <b>₪${sub}</b>`;}
-function pruneUnavailableCart(){Object.keys(CART).forEach(vid=>{const m=VMAP[vid];if(m&&isSold(m.v))delete CART[vid];});}
+function pruneUnavailableCart(){Object.keys(CART).forEach(vid=>{const m=VMAP[vid];if(m&&isSold(m.v))delete CART[vid];
+  else if(m){const cap=stockCap(m.v);if(CART[vid].qty>cap)CART[vid].qty=cap;}});}   // סל שמור מעל המלאי של היום → יורד למלאי
 
 /* קופונים: מאומתים בשרת (check_coupon) — אין רשימה בדפדפן, וההנחה נצרבת גם בהזמנה עצמה */
 let activeCoupon=null;      // {code,kind,value} מאומת מהשרת
@@ -4203,7 +4226,7 @@ function renderOrder(){
     let n=parseInt(inp.value,10);if(isNaN(n)||n<1)n=1;cartSetQty(key,n);};
   renderTotals();
 }
-function cartSetQty(vid,n){const m=VMAP[vid];if(!m||!CART[vid])return;CART[vid].qty=Math.max(1,n);
+function cartSetQty(vid,n){const m=VMAP[vid];if(!m||!CART[vid])return;const cap=stockCap(m.v);if(n>cap&&cap>=1){n=cap;capMsg(cap);}CART[vid].qty=Math.max(1,n);
   saveCart();
   renderCart();updateCard(m.g.gid);if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 function renderTotals(){const {sub}=cartTotals();const d=discount(sub);const el=document.getElementById('totals');
@@ -4546,6 +4569,7 @@ document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(
 document.querySelectorAll('.ov .x, .wachat .wx').forEach(b=>{if(!b.getAttribute('aria-label'))b.setAttribute('aria-label','סגור');});
 (function(){var q=document.getElementById('q');if(q&&!q.getAttribute('aria-label'))q.setAttribute('aria-label','חיפוש מוצר, מותג או ברקוד');
   var bs=document.getElementById('brandSearch');if(bs)bs.setAttribute('aria-label','חיפוש מותג');})();
+translateAria();   // שפה שמורה = ערבית → התוויות שנקבעו עד כאן מתורגמות
 document.addEventListener('touchstart',()=>{if(![...document.querySelectorAll('.ov')].some(o=>o.classList.contains('open'))&&!(typeof drawerOpen==='function'&&drawerOpen()))document.body.style.overflow=''},{passive:true});
 
 function goTop(){window.scrollTo(0,0);document.documentElement.scrollTop=0;document.body.scrollTop=0;}

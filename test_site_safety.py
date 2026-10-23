@@ -28,6 +28,7 @@ const opens=[];
 const dom=new JSDOM(html,{runScripts:'dangerously',url:'https://beautyfavorites.co.il/',pretendToBeVisual:true,
   beforeParse(w){
     if(mode==='badfavs'){w.localStorage.setItem('sf_favs','{not json');}
+    if(mode==='ar'){w.localStorage.setItem('sf_lang','ar');}
     w.matchMedia=w.matchMedia||(()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}}));
     w.IntersectionObserver=w.IntersectionObserver||class{observe(){}unobserve(){}disconnect(){}};
     w.scrollTo=()=>{}; w.__alertWinClosed=[]; w.alert=()=>{const o=opens[opens.length-1];w.__alertWinClosed.push(!!(o&&o.closed));};
@@ -59,6 +60,26 @@ T(`STOCK[nbc('27131969808')]=6; DBCODE[nbc('27131969808')]=rawbc('27131969808');
 out.soldWithZero=T(`isSold({barcode:'027131969808'})`);
 T(`VMAP['__t']={g:{name_he:'t',brand:'b',variants:[]},v:{barcode:'027131969808',shade:''}}; CART['__t']={vid:'__t',name:'t',price:150,qty:2};`);
 out.cartSku=T(`JSON.stringify(cartItems())`);
+// סבב 2 — כמות בסל ≤ מלאי
+T(`(function(){const g=GROUPS.find(x=>x.variants.length===1&&!x._noimg);window.__sg=g;const v=g.variants[0];
+  STOCK[nbc(v.barcode)]=3;PRICE_CONS[nbc(v.barcode)]=100;DBCODE[nbc(v.barcode)]=rawbc(v.barcode);})()`);
+const a0=w.__alertWinClosed.length;
+T(`(function(){const id=__sg.variants[0].id;for(let i=0;i<4;i++)cartChange(id,1);})()`);
+out.capQty=T(`CART[__sg.variants[0].id].qty`); out.capAlert=w.__alertWinClosed.length-a0;
+T(`cartSetQty(__sg.variants[0].id,10)`); out.capSet=T(`CART[__sg.variants[0].id].qty`);
+T(`delete CART[__sg.variants[0].id]`);
+// סבב 2 — שם אנגלי לפי הגוון הנבחר
+out.enGroups=T(`GROUPS.filter(g=>g.variants.length>1&&g.variants.some(v=>v.en&&v.en!==g.variants[0].en)).length`);
+out.enFollows=T(`(function(){const g=GROUPS.find(g=>g.variants.length>1&&g.variants[1].en&&g.variants[1].en!==g.variants[0].en);
+  sel[g.gid]=1;const b=document.createElement('div');b.innerHTML=cardHtml(g);delete sel[g.gid];
+  const e=b.querySelector('.nm-en');return !!e&&e.textContent===g.variants[1].en;})()`);
+// סבב 2 — imgErr מנסה שוב פעם אחת לפני placeholder
+out.imgRetry=T(`(function(){const b=document.createElement('div');b.innerHTML='<img src="images/x/01.jpg" data-l="א">';const im=b.firstChild;
+  imgErr(im);const first=im.style.display!=='none'&&!b.querySelector('.ph');imgErr(im);return first&&im.style.display==='none'&&!!b.querySelector('.ph');})()`);
+// סבב 2 — תוויות נגישות לפי שפה
+out.aria=T(`JSON.stringify({lang:LANG,he:[...document.querySelectorAll('[aria-label]')].map(e=>e.getAttribute('aria-label')).filter(x=>ARIA_AR[x]!=null).length,
+  q:(document.getElementById('q')||{}).getAttribute&&document.getElementById('q').getAttribute('aria-label'),
+  card:(function(){const b=document.createElement('div');b.innerHTML=cardHtml(GROUPS.find(g=>!g._noimg));return b.querySelector('.fav').getAttribute('aria-label');})()})`);
 // F2 — הודעה: מחיר מהשרת כשהוא שונה
 out.msgSame=E(`buildOrderText(77,300)`); out.msgDiff=E(`buildOrderText(77,999)`);
 // F12 — החלון נפתח בלחיצה, הזמנה אחת לשני ניסיונות
@@ -139,6 +160,30 @@ class SiteSafety(unittest.TestCase):
         r = run(PAGE, 'badfavs')
         self.assertEqual(r['errors'], [])
         self.assertGreater(r['cards'], 50)
+
+    def test_R2_cart_capped_at_stock(self):
+        self.assertEqual(self.r['capQty'], 3)                         # 4 לחיצות, מלאי 3
+        self.assertEqual(self.r['capAlert'], 1)                       # הודעה אחת ללקוחה
+        self.assertEqual(self.r['capSet'], 3)                         # הקלדת 10 → 3
+
+    def test_R2_english_name_follows_shade(self):
+        self.assertGreater(self.r['enGroups'], 20)
+        self.assertTrue(self.r['enFollows'])
+
+    def test_R2_image_retries_once(self):
+        self.assertTrue(self.r['imgRetry'])
+
+    def test_R2_aria_hebrew_in_hebrew_mode(self):
+        a = json.loads(self.r['aria'])
+        self.assertEqual(a['lang'], 'he')
+        self.assertEqual(a['card'], 'הוסף למועדפים')
+
+    def test_R2_aria_arabic_in_arabic_mode(self):
+        a = json.loads(run(PAGE, 'ar')['aria'])
+        self.assertEqual(a['lang'], 'ar')
+        self.assertEqual(a['he'], 0, 'תווית נגישות בעברית במצב ערבית')
+        self.assertEqual(a['q'], 'ابحث عن منتج أو ماركة أو باركود')
+        self.assertEqual(a['card'], 'أضف إلى المفضلة')
 
     def test_F15_zoom_allowed(self):
         for f in (PAGE, ORDER):
