@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<!-- 🔒 מדיניות תוכן: רק הסקריפט של הדף (לפי טביעה — שינוי בסקריפט מחייב טביעה חדשה; הבדיקה paylink.test.js תופסת) והפנייה לפונקציה. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TVPUBFTWwaheusD1lsyWtCzYF8/NohAHnf8rHsSWI4M='; style-src 'unsafe-inline'; img-src 'self'; connect-src https://ieifiducsmiabncwwmiz.supabase.co; base-uri 'none'; form-action 'none'">
+<title>תשלום מאובטח — Beauty Favorites</title>
+<!-- 🔗 15/11/2026 — דף הקישור הקבוע לתשלום (תקף שנה). הקישור שנשלח ללקוח בוואטסאפ:
+     https://beautyfavorites.co.il/pay/?t=<אסימון חתום>
+     סורקי התצוגה המקדימה (וואטסאפ וכו') לא מריצים סקריפט — הם רואים רק את התגים כאן, ולא נוצר להם דף תשלום.
+     הלקוח: הסקריפט שולח את האסימון לפונקציה create-checkout, שבודקת חתימה ותפוגה ומצב ההזמנה,
+     ומחזירה קישור פיי פלוס טרי בסכום שבמסד עכשיו — או מצב (שולם / לא זמין) שמוצג כאן.
+     נבנה בצ'אט "בנייה בק" (הקוד בשרת: backoffice/functions/create-checkout/paylink.ts). -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="תשלום מאובטח — Beauty Favorites">
+<meta property="og:description" content="לחצו לתשלום מאובטח בכרטיס אשראי, ביט, אפל פיי או גוגל פיי">
+<meta property="og:image" content="https://beautyfavorites.co.il/og-image.jpg?v=noa1">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="he_IL">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+  :root { --bg: #faf7f5; --card: #fff; --fg: #2b2426; --muted: #6f6468; --accent: #b0426a; --line: #eadfe2 }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1b1719; --card: #262022; --fg: #f3ecee; --muted: #b9adb1; --accent: #e07aa0; --line: #3a3135; color-scheme: dark } }
+  * { box-sizing: border-box }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+    background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Arial, sans-serif }
+  .card { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 28px 22px; text-align: center; display: grid; gap: 14px }
+  .logo { width: 150px; max-width: 60%; margin: 0 auto }
+  h1 { font-size: 20px; margin: 0; text-wrap: balance }
+  p { margin: 0; color: var(--muted) }
+  .spin { width: 28px; height: 28px; margin: 4px auto; border: 3px solid var(--line); border-top-color: var(--accent);
+    border-radius: 50%; animation: s 0.9s linear infinite }
+  @keyframes s { to { transform: rotate(360deg) } }
+  a.btn, button.btn { display: inline-block; padding: 11px 18px; border-radius: 10px; border: 0; cursor: pointer;
+    background: var(--accent); color: #fff; font: inherit; font-weight: 600; text-decoration: none }
+  .phone { direction: ltr; unicode-bidi: plaintext; font-weight: 600; color: var(--fg) }
+  [hidden] { display: none !important }
+</style>
+</head>
+<body>
+<main class="card">
+  <img class="logo" src="/logo-bf.png" alt="Beauty Favorites">
+  <h1 id="title">מעבירים אותך לתשלום מאובטח…</h1>
+  <div class="spin" id="spin"></div>
+  <p id="msg">רגע אחד.</p>
+  <div id="actions" hidden></div>
+</main>
+<script>
+(function () {
+  var FN = 'https://ieifiducsmiabncwwmiz.supabase.co/functions/v1/create-checkout'
+  var ANON = 'sb_publishable_vvhhk186MODu13GS60Uc0g_PW1HfgQy'   // מפתח ציבורי (כמו בקטלוג)
+  var WA = '972534555501'
+  var $ = function (id) { return document.getElementById(id) }
+
+  function show(title, msg, kind) {
+    $('spin').hidden = true
+    $('title').textContent = title
+    $('msg').textContent = msg
+    var a = $('actions'); a.textContent = ''; a.hidden = false
+    if (kind === 'retry') {
+      var b = document.createElement('button'); b.className = 'btn'; b.textContent = 'לנסות שוב'
+      b.onclick = function () { location.reload() }; a.appendChild(b)
+    } else if (kind === 'contact') {
+      var l = document.createElement('a'); l.className = 'btn'; l.textContent = 'לכתוב לנו בוואטסאפ'
+      l.href = 'https://wa.me/' + WA; l.target = '_blank'; l.rel = 'noopener'; a.appendChild(l)
+    } else if (kind === 'home') {
+      var h = document.createElement('a'); h.className = 'btn'; h.textContent = 'לאתר'
+      h.href = '/'; a.appendChild(h)
+    }
+  }
+
+  var t = new URLSearchParams(location.search).get('t') || ''
+  if (!/^\d{1,12}b?-[0-9a-z]{6}[A-Za-z0-9_-]{16}$/.test(t)) {
+    show('הקישור אינו תקין', 'נראה שהקישור נחתך או השתנה בהעתקה. אפשר לבקש מאיתנו קישור חדש.', 'contact')
+    return
+  }
+
+  fetch(FN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: 'Bearer ' + ANON },
+    body: JSON.stringify({ t: t })
+  })
+    .then(function (r) { return r.json().catch(function () { return {} }) })
+    .then(function (d) {
+      if (d && typeof d.url === 'string' && /^https:\/\/([a-z0-9-]+\.)*payplus\.co\.il\//i.test(d.url)) { location.replace(d.url); return }
+      if (d && d.state === 'paid') { show('ההזמנה כבר שולמה 💗', 'תודה רבה! אין צורך לשלם שוב.', 'home'); return }
+      if (d && d.state === 'partial') { show('כבר התקבל תשלום על ההזמנה', 'נשארה יתרה לתשלום. כתבו לנו ונשלים אותה יחד.', 'contact'); return }
+      if (d && d.state === 'invoiced') { show('התשלום על ההזמנה הזו נעשה מולנו', 'להזמנה כבר הופקה חשבונית. כתבו לנו ונסגור את התשלום יחד.', 'contact'); return }
+      if (d && d.state === 'unavailable') { show('הקישור כבר לא פעיל', 'אפשר לבקש מאיתנו קישור חדש לתשלום.', 'contact'); return }
+      show('תקלה זמנית', 'לא הצלחנו לפתוח את דף התשלום. נסו שוב בעוד רגע.', 'retry')
+    })
+    .catch(function () { show('אין חיבור', 'בדקו את החיבור לאינטרנט ונסו שוב.', 'retry') })
+})()
+</script>
+</body>
+</html>
