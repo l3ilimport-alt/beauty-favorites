@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
 <!-- 🔒 מדיניות תוכן: רק הסקריפט של הדף (לפי טביעה — שינוי בסקריפט מחייב טביעה חדשה; הבדיקה paylink.test.js תופסת) והפנייה לפונקציה. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-TVPUBFTWwaheusD1lsyWtCzYF8/NohAHnf8rHsSWI4M='; style-src 'unsafe-inline'; img-src 'self'; connect-src https://ieifiducsmiabncwwmiz.supabase.co; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-pKOuCGt0OT8a7baxbE5ziUyuyNc35OWafjmLgGVDXvo='; style-src 'unsafe-inline'; img-src 'self'; connect-src https://ieifiducsmiabncwwmiz.supabase.co; base-uri 'none'; form-action 'none'">
 <title>תשלום מאובטח — Beauty Favorites</title>
 <!-- 🔗 15/11/2026 — דף הקישור הקבוע לתשלום (תקף שנה). הקישור שנשלח ללקוח בוואטסאפ:
      https://beautyfavorites.co.il/pay/?t=<אסימון חתום>
@@ -76,7 +76,7 @@
   }
 
   var t = new URLSearchParams(location.search).get('t') || ''
-  if (!/^\d{1,12}b?-[0-9a-z]{6}[A-Za-z0-9_-]{16}$/.test(t)) {
+  if (!/^\d{1,12}b?(a\d{1,10})?-[0-9a-z]{6}[A-Za-z0-9_-]{16}$/.test(t)) {
     show('הקישור אינו תקין', 'נראה שהקישור נחתך או השתנה בהעתקה. אפשר לבקש מאיתנו קישור חדש.', 'contact')
     return
   }
@@ -91,7 +91,7 @@
       if (d && typeof d.url === 'string' && /^https:\/\/([a-z0-9-]+\.)*payplus\.co\.il\//i.test(d.url)) { location.replace(d.url); return }
       if (d && d.state === 'paid') { show('ההזמנה כבר שולמה 💗', 'תודה רבה! אין צורך לשלם שוב.', 'home'); return }
       if (d && d.state === 'partial') { show('כבר התקבל תשלום על ההזמנה', 'נשארה יתרה לתשלום. כתבו לנו ונשלים אותה יחד.', 'contact'); return }
-      if (d && d.state === 'invoiced') { show('התשלום על ההזמנה הזו נעשה מולנו', 'להזמנה כבר הופקה חשבונית. כתבו לנו ונסגור את התשלום יחד.', 'contact'); return }
+      if (d && d.state === 'invoiced') { show('התשלום על ההזמנה הזו נעשה מולנו', 'כתבו לנו ונסגור את התשלום יחד.', 'contact'); return }
       if (d && d.state === 'unavailable') { show('הקישור כבר לא פעיל', 'אפשר לבקש מאיתנו קישור חדש לתשלום.', 'contact'); return }
       show('תקלה זמנית', 'לא הצלחנו לפתוח את דף התשלום. נסו שוב בעוד רגע.', 'retry')
     })
