@@ -1,57 +1,87 @@
 {
-  "_how": "רשימת תמונות שלא ייכנסו לאתר. מפתח = תיקיית הכרטיס ב-knowledge/, ערך = {קובץ: סיבה}. הקבצים לא נמחקים.",
-  "_reviewed": "06/10/2026 — 1,869 תמונות נבדקו בעין בשני סבבים (409 מכרטיסים חדשים + 1,460 ריבועיות עם רקע לא אחיד).",
-  "2520-gucci-gucci-eternite-de-beaute-24h-wear-breathable-foundat": {
-    "99-hand.jpg": "ביד, בחנות — צילום של נמרוד"
-  },
-  "2521-made-by-mitchell-made-by-mitchell-xpresso-3-shades-eyeliner-bundle-3-": {
-    "01.jpg": "קופסה ביד",
-    "02.jpg": "קופסה פתוחה על משטח"
-  },
-  "2526-e-l-f-e-l-f-skin-mini-superclarify-gel-cleanser-with-niaci": {
-    "99-hand.jpg": "ביד"
-  },
-  "2135-tatcha-the-kissu-lip-mask-gold-leaf": {
-    "02.jpg": "ביד, על תיק",
-    "03.jpg": "בידיים",
-    "04.jpg": "מריחה על היד"
-  },
-  "2052-victorias-secret-vs-him-platinum-3pc-gift-set": {
-    "02.jpg": "צילום טלפון על רקע מבריק",
-    "03.jpg": "צילום טלפון",
-    "04.jpg": "צילום טלפון",
-    "05.jpg": "גב הקופסה"
-  },
-  "1984-the-ordinary-the-most-loved-set": {
-    "05.jpg": "על משטח בבית",
-    "04.jpg": "גבולי — צילום משווק על דלפק"
-  },
-  "513-morphe-m431-brush": {
-    "04.jpg": "ביד, על מגבת"
-  },
-  "1770-makeup-forever-blush-glow": {
-    "03.jpg": "על בד"
-  },
-  "2136-pixi-botanical-collagen-tonic-125ml": {
-    "04.jpg": "מדף בחנות"
-  },
-  "562-kryolan-setting-spray-300ml": {
-    "04.jpg": "בבית, ליד מקרר"
-  },
-  "1762-gucci-lip-511-madge-red": {
-    "05.jpg": "ביד"
-  },
-  "206-clarins-total-eye-lift": {
-    "03.jpg": "ביד",
-    "02.jpg": "גבולי — צילום משווק על אבן"
-  },
-  "1794-nars-luminizing-powder-ophelia": {
-    "02.jpg": "ביד, עם כיתוב של משווק"
-  },
-  "1590-pixi-by-petra-on-the-glow-blush-fleur-0-6oz": {
-    "03.jpg": "קופסה עם מדבקת מחסן"
-  },
-  "2370-kayali-oudgasm-cafe-oud-19-50": {
-    "03.jpg": "גבולי — צנצנת קפה, המוצר לא בתמונה"
-  }
+ "_how": "רשימת תמונות שלא ייכנסו לאתר. מפתח = תיקיית הכרטיס ב-knowledge/, ערך = {קובץ: סיבה}. הקבצים לא נמחקים.",
+ "_reviewed": "06/10/2026 — 1,869 תמונות נבדקו בעין בשני סבבים (409 מכרטיסים חדשים + 1,460 ריבועיות עם רקע לא אחיד). | 25/11/2026 — נוספו 9 תמונות גוון זר ב-4 כרטיסים (מחקר קודקס 24/11, אומת בניהול ובעין בצ'אט המחקר). | 25/11/2026 סבב ב — עוד 5 תמונות ב-4 כרטיסים (נמדד מרחק גוון מול תמונת ייחוס + בדיקה בעין).",
+ "2520-gucci-gucci-eternite-de-beaute-24h-wear-breathable-foundat": {
+  "99-hand.jpg": "ביד, בחנות — צילום של נמרוד"
+ },
+ "2521-made-by-mitchell-made-by-mitchell-xpresso-3-shades-eyeliner-bundle-3-": {
+  "01.jpg": "קופסה ביד",
+  "02.jpg": "קופסה פתוחה על משטח"
+ },
+ "2526-e-l-f-e-l-f-skin-mini-superclarify-gel-cleanser-with-niaci": {
+  "99-hand.jpg": "ביד"
+ },
+ "2135-tatcha-the-kissu-lip-mask-gold-leaf": {
+  "02.jpg": "ביד, על תיק",
+  "03.jpg": "בידיים",
+  "04.jpg": "מריחה על היד"
+ },
+ "2052-victorias-secret-vs-him-platinum-3pc-gift-set": {
+  "02.jpg": "צילום טלפון על רקע מבריק",
+  "03.jpg": "צילום טלפון",
+  "04.jpg": "צילום טלפון",
+  "05.jpg": "גב הקופסה"
+ },
+ "1984-the-ordinary-the-most-loved-set": {
+  "05.jpg": "על משטח בבית",
+  "04.jpg": "גבולי — צילום משווק על דלפק"
+ },
+ "513-morphe-m431-brush": {
+  "04.jpg": "ביד, על מגבת"
+ },
+ "1770-makeup-forever-blush-glow": {
+  "03.jpg": "על בד"
+ },
+ "2136-pixi-botanical-collagen-tonic-125ml": {
+  "04.jpg": "מדף בחנות"
+ },
+ "562-kryolan-setting-spray-300ml": {
+  "04.jpg": "בבית, ליד מקרר"
+ },
+ "1762-gucci-lip-511-madge-red": {
+  "05.jpg": "ביד"
+ },
+ "206-clarins-total-eye-lift": {
+  "03.jpg": "ביד",
+  "02.jpg": "גבולי — צילום משווק על אבן"
+ },
+ "1794-nars-luminizing-powder-ophelia": {
+  "02.jpg": "ביד, עם כיתוב של משווק"
+ },
+ "1590-pixi-by-petra-on-the-glow-blush-fleur-0-6oz": {
+  "03.jpg": "קופסה עם מדבקת מחסן"
+ },
+ "2370-kayali-oudgasm-cafe-oud-19-50": {
+  "03.jpg": "גבולי — צנצנת קפה, המוצר לא בתמונה"
+ },
+ "688-e-l-f-cosmetics-flawless-brightening-concealer": {
+  "03.jpg": "גוון אחר — Deep 50 W (מק\"ט 84629); המוצר שלנו בהיר. אומת 25/11 מול תמונת ייחוס לפי ברקוד 609332846203.",
+  "04.jpg": "גוון אחר — סווטץ' Deep 50 W. אומת 25/11.",
+  "06.jpg": "גוון אחר — עט Deep 50 W. אומת 25/11."
+ },
+ "854-e-l-f-soft-glam-satin-concealer-31-medium-neut": {
+  "05.jpg": "גוון אחר — 10 Fair Cool; הכרטיס הוא 31 Medium Neutral. אומת 25/11 מול תמונת ייחוס לפי ברקוד 609332851887."
+ },
+ "496-milk-makeup-jelly-tint-splash": {
+  "02.jpg": "גוון אחר — Burst (ורוד פופי); הכרטיס הוא Splash (ברי). אומת 25/11 מול אתר מילק, הפרש 1.6 מול Burst ו-10+ מול כל גוון אחר.",
+  "03.jpg": "גוון אחר — Burst. אומת 25/11, הפרש 2.8 מול Burst."
+ },
+ "134-pixi-superglow-petaldew": {
+  "04.jpg": "גוון אחר — IcePearl, השם מודפס על התמונה; הכרטיס הוא PetalDew. אומת 25/11.",
+  "05.jpg": "גוון אחר — GildedGold, השם מודפס על התמונה. אומת 25/11.",
+  "06.jpg": "גוון אחר — NaturaLustre, השם מודפס על התמונה. אומת 25/11."
+ },
+ "1387-nars-radiant-creamy-concealer": {
+  "01.jpg": "גוון אחר — חום-כהה, הכרטיס הוא Crema Catalana. נמדד 25/11: מרחק גוון 64 מתמונת הייחוס, מול 10–11 ב-03/04/05.",
+  "02.jpg": "גוון אחר — צהבהב-ירקרק. נמדד 25/11: מרחק גוון 35 מתמונת הייחוס."
+ },
+ "1080-laura-mercier-real-flawless-weightless-perfect": {
+  "02.jpg": "גוון אחר — כהה בהרבה מ-2C1. נמדד 25/11: מרחק גוון 68, מול 1–2 ב-01/03/04."
+ },
+ "649-e-l-f-16hr-camo-concealer-medium-neutral-0-203": {
+  "06.jpg": "מוצר אחר — שפופרת עם מכסה שחור ונוזל זהוב. נמדד 25/11: מרחק גוון 66, מול 1–19 בשאר."
+ },
+ "2062-rare-beauty-by-selena-gomez-liquid-touch-weigh": {
+  "02.jpg": "גוון אחר — כהה וחום יותר מ-330N. נמדד 25/11: מרחק גוון 48 מתמונת הייחוס, מול 3.7 ב-01 ו-1.0 ב-03."
+ }
 }
